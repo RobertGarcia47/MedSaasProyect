@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "medsaasr"
+  },
+  "targets": {
+    "medsaasr": {
+      "hosting": {
+        "medsaas": [
+          "medsaas"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

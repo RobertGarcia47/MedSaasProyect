@@ -1,0 +1,271 @@
+/* ============================================================
+   MedSaaS — Material Design 3 foundation (teal medical theme)
+   ============================================================ */
+
+/* ---------- LIGHT THEME ---------- */
+:root {
+  --primary: #006A60;
+  --on-primary: #FFFFFF;
+  --primary-container: #9EF2E4;
+  --on-primary-container: #00201C;
+  --primary-fixed-dim: #82D5C8;
+
+  --secondary: #4A635E;
+  --on-secondary: #FFFFFF;
+  --secondary-container: #CCE8E1;
+  --on-secondary-container: #06201B;
+
+  --tertiary: #3F6375;
+  --on-tertiary: #FFFFFF;
+  --tertiary-container: #C2E8FD;
+  --on-tertiary-container: #001E2D;
+
+  --error: #BA1A1A;
+  --on-error: #FFFFFF;
+  --error-container: #FFDAD6;
+  --on-error-container: #410002;
+
+  --success: #2E6B4F;
+  --success-container: #B3F1CF;
+  --on-success-container: #002112;
+  --warning: #8A5A00;
+  --warning-container: #FFDDB3;
+  --on-warning-container: #2C1700;
+
+  --background: #F4FBF8;
+  --on-background: #161D1B;
+  --surface: #F4FBF8;
+  --on-surface: #161D1B;
+  --surface-variant: #DAE5E1;
+  --on-surface-variant: #3F4946;
+  --outline: #6F7976;
+  --outline-variant: #BEC9C5;
+
+  --surface-dim: #D5DBD8;
+  --surface-bright: #F4FBF8;
+  --surface-container-lowest: #FFFFFF;
+  --surface-container-low: #EFF5F2;
+  --surface-container: #E9EFEC;
+  --surface-container-high: #E3EAE7;
+  --surface-container-highest: #DEE4E1;
+
+  --inverse-surface: #2B322F;
+  --inverse-on-surface: #ECF2EE;
+  --inverse-primary: #82D5C8;
+
+  --scrim: rgba(0,0,0,0.32);
+  --shadow: rgba(0, 32, 28, 0.16);
+
+  --elev-1: 0 1px 2px rgba(0,32,28,0.18), 0 1px 3px 1px rgba(0,32,28,0.10);
+  --elev-2: 0 1px 2px rgba(0,32,28,0.18), 0 2px 6px 2px rgba(0,32,28,0.10);
+  --elev-3: 0 4px 8px 3px rgba(0,32,28,0.12), 0 1px 3px rgba(0,32,28,0.18);
+
+  --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 28px; --r-full: 999px;
+
+  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-body: 'Public Sans', system-ui, sans-serif;
+}
+
+/* ---------- DARK THEME ---------- */
+[data-theme="dark"] {
+  --primary: #82D5C8;
+  --on-primary: #003731;
+  --primary-container: #005048;
+  --on-primary-container: #9EF2E4;
+
+  --secondary: #B1CCC5;
+  --on-secondary: #1C3531;
+  --secondary-container: #334B47;
+  --on-secondary-container: #CCE8E1;
+
+  --tertiary: #A7CCE1;
+  --on-tertiary: #073447;
+  --tertiary-container: #254B5E;
+  --on-tertiary-container: #C2E8FD;
+
+  --error: #FFB4AB;
+  --on-error: #690005;
+  --error-container: #93000A;
+  --on-error-container: #FFDAD6;
+
+  --success: #98D4AE;
+  --success-container: #14523A;
+  --on-success-container: #B3F1CF;
+  --warning: #F8BC6E;
+  --warning-container: #683E00;
+  --on-warning-container: #FFDDB3;
+
+  --background: #0E1513;
+  --on-background: #DEE4E1;
+  --surface: #0E1513;
+  --on-surface: #DEE4E1;
+  --surface-variant: #3F4946;
+  --on-surface-variant: #BEC9C5;
+  --outline: #899390;
+  --outline-variant: #3F4946;
+
+  --surface-dim: #0E1513;
+  --surface-bright: #343B39;
+  --surface-container-lowest: #090F0E;
+  --surface-container-low: #161D1B;
+  --surface-container: #1A211F;
+  --surface-container-high: #252B2A;
+  --surface-container-highest: #2F3634;
+
+  --inverse-surface: #DEE4E1;
+  --inverse-on-surface: #2B322F;
+  --inverse-primary: #006A60;
+
+  --scrim: rgba(0,0,0,0.5);
+  --shadow: rgba(0,0,0,0.5);
+
+  --elev-1: 0 1px 2px rgba(0,0,0,0.4), 0 1px 3px 1px rgba(0,0,0,0.25);
+  --elev-2: 0 1px 2px rgba(0,0,0,0.4), 0 2px 6px 2px rgba(0,0,0,0.30);
+  --elev-3: 0 4px 8px 3px rgba(0,0,0,0.30), 0 1px 3px rgba(0,0,0,0.45);
+}
+
+/* ---------- Accent overrides ---------- */
+[data-accent="blue"] { --primary: #2D5DA0; --primary-container: #D6E3FF; --on-primary-container: #001A41; }
+[data-accent="blue"][data-theme="dark"] { --primary: #ABC7FF; --primary-container: #00439A; --on-primary-container: #D6E3FF; }
+[data-accent="green"] { --primary: #1E6E52; --primary-container: #A8F2CD; --on-primary-container: #002115; }
+[data-accent="green"][data-theme="dark"] { --primary: #8AD6B2; --primary-container: #005236; --on-primary-container: #A8F2CD; }
+[data-accent="indigo"] { --primary: #5450A8; --primary-container: #E3DFFF; --on-primary-container: #0E0069; }
+[data-accent="indigo"][data-theme="dark"] { --primary: #C5C0FF; --primary-container: #3B3891; --on-primary-container: #E3DFFF; }
+
+/* ---------- base reset ---------- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: var(--font-body);
+  background: var(--background);
+  color: var(--on-surface);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#root { height: 100%; }
+body { transition: background-color .35s ease, color .35s ease; }
+::selection { background: var(--primary-container); color: var(--on-primary-container); }
+
+/* ---------- Material Symbols ---------- */
+.ms {
+  font-family: 'Material Symbols Rounded';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
+  flex-shrink: 0;
+}
+.ms.fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+
+/* ---------- type scale ---------- */
+.display-l { font-family: var(--font-display); font-weight: 700; font-size: 57px; line-height: 64px; letter-spacing: -.5px; }
+.display-m { font-family: var(--font-display); font-weight: 700; font-size: 45px; line-height: 52px; }
+.display-s { font-family: var(--font-display); font-weight: 700; font-size: 36px; line-height: 44px; }
+.headline-l { font-family: var(--font-display); font-weight: 700; font-size: 32px; line-height: 40px; }
+.headline-m { font-family: var(--font-display); font-weight: 600; font-size: 28px; line-height: 36px; }
+.headline-s { font-family: var(--font-display); font-weight: 600; font-size: 24px; line-height: 32px; }
+.title-l { font-family: var(--font-display); font-weight: 600; font-size: 22px; line-height: 28px; }
+.title-m { font-family: var(--font-body); font-weight: 600; font-size: 16px; line-height: 24px; letter-spacing: .15px; }
+.title-s { font-family: var(--font-body); font-weight: 600; font-size: 14px; line-height: 20px; letter-spacing: .1px; }
+.body-l { font-size: 16px; line-height: 24px; letter-spacing: .5px; }
+.body-m { font-size: 14px; line-height: 20px; letter-spacing: .25px; }
+.body-s { font-size: 12px; line-height: 16px; letter-spacing: .4px; }
+.label-l { font-weight: 600; font-size: 14px; line-height: 20px; letter-spacing: .1px; }
+.label-m { font-weight: 600; font-size: 12px; line-height: 16px; letter-spacing: .5px; }
+.label-s { font-weight: 600; font-size: 11px; line-height: 16px; letter-spacing: .5px; }
+
+/* ---------- scrollbars ---------- */
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+*::-webkit-scrollbar-thumb:hover { background: var(--outline); background-clip: content-box; }
+*::-webkit-scrollbar-track { background: transparent; }
+
+/* ---------- state layer ---------- */
+.state-layer { position: relative; overflow: hidden; }
+.state-layer::after {
+  content: ''; position: absolute; inset: 0; background: currentColor;
+  opacity: 0; transition: opacity .15s ease; pointer-events: none;
+}
+.state-layer:hover::after { opacity: .08; }
+.state-layer:active::after { opacity: .12; }
+
+/* ---------- animations ---------- */
+@keyframes ripple  { to { transform: scale(2.6); opacity: 0; } }
+@keyframes fadeUp  { from { transform: translateY(12px); } to { transform: none; } }
+@keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scaleIn { from { transform: scale(.97); } to { transform: scale(1); } }
+@keyframes spin    { to { transform: rotate(360deg); } }
+
+.fade-up { animation: fadeUp .45s cubic-bezier(.2,0,0,1) both; }
+@media (prefers-reduced-motion: reduce) { .fade-up { animation: none; } }
+
+/* ---------- utilities ---------- */
+.scroll-y { overflow-y: auto; }
+button { font-family: inherit; cursor: pointer; }
+input, textarea, select { font-family: inherit; }
+a { color: inherit; text-decoration: none; }
+
+/* ---------- page / layout ---------- */
+.page-pad { padding: 32px 36px 48px; }
+.density-compact .page-pad { padding: 22px 26px 36px; }
+.density-comfy  .page-pad { padding: 44px 48px 60px; }
+
+.sidebar-wrap { display: flex; flex-shrink: 0; height: 100%; }
+.mobile-menu-btn { display: none !important; }
+.mobile-fab { display: none !important; }
+.bottom-nav { display: none !important; }
+
+/* ---------- editor de nota clínica (contenteditable) ---------- */
+.consulta-editor:empty::before {
+  content: attr(data-placeholder);
+  color: var(--on-surface-variant);
+  opacity: .7;
+  pointer-events: none;
+}
+.consulta-editor:focus { border-color: var(--primary) !important; }
+.consulta-editor p { margin: 0 0 10px; }
+.consulta-editor ul, .consulta-editor ol { margin: 0 0 10px; padding-left: 22px; }
+
+/* nota clínica renderizada en el historial */
+.nota-clinica-render p { margin: 0 0 8px; }
+.nota-clinica-render ul, .nota-clinica-render ol { margin: 0 0 8px; padding-left: 22px; }
+.nota-clinica-render :last-child { margin-bottom: 0; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 1100px) {
+  .dash-grid { grid-template-columns: 1fr !important; }
+}
+
+/* página de consulta: rail apilado en pantallas medianas */
+@media (max-width: 1200px) {
+  .consulta-body { flex-direction: column !important; }
+  .consulta-rail { width: 100% !important; position: static !important; }
+}
+
+@media (max-width: 860px) {
+  .sidebar-wrap { display: none !important; }
+  .mobile-menu-btn { display: inline-flex !important; }
+  .bottom-nav { display: flex !important; }
+  .mobile-fab { display: flex !important; }
+  .appbar-user { display: none !important; }
+  .login-split { grid-template-columns: 1fr !important; }
+  .login-hero { display: none !important; }
+  .topnav-items { display: none !important; }
+}
+
+@media (max-width: 560px) {
+  .patients-table-head,
+  .patients-row { grid-template-columns: 2fr 1fr !important; }
+  .patients-table-head > *:not(:first-child):not(:last-child),
+  .patients-row > *:not(:first-child):not(:last-child) { display: none; }
+}
