@@ -49,8 +49,8 @@ interface Med {
 }
 const nuevoMed = (id: number): Med => ({ id, nombre: '', dosis: '', frecuencia: '', duracion: '', via: '', instrucciones: '', controlado: false });
 
-export function Receta({ go, toast, patientId }: {
-  go: (n: string, p?: any) => void; toast?: (m: string) => void; patientId?: string;
+export function Receta({ go, goBack, toast, patientId }: {
+  go: (n: string, p?: any) => void; goBack?: () => void; toast?: (m: string) => void; patientId?: string;
 }) {
   const account = useAccount();
   const obsRef = useRef<HTMLDivElement>(null);
@@ -103,6 +103,7 @@ export function Receta({ go, toast, patientId }: {
         diagnostico_cie10: dx || null,
         indicaciones: obs && obs !== '<br>' ? obs : null,
         medicamentos,
+        fecha_receta: recipeDate || null,
       });
       toast?.('Receta emitida correctamente');
       go('patient', { id: pid });
@@ -131,21 +132,30 @@ export function Receta({ go, toast, patientId }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* Top app bar */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--surface)', borderBottom: '1px solid var(--outline-variant)', padding: '14px 28px', display: 'flex', alignItems: 'center', gap: 18 }}>
-        <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Icon name="prescriptions" size={24} fill />
+      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--surface)', borderBottom: '1px solid var(--outline-variant)', padding: '10px 28px', display: 'flex', alignItems: 'center', gap: 12 }}>
+        {goBack && (
+          <button onClick={goBack} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container)', color: 'var(--on-surface-variant)', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <Icon name="arrow_back" size={18} />Regresar
+          </button>
+        )}
+        <button onClick={() => pid && go('patient', { id: pid })} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container)', color: 'var(--on-surface)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-body)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <Icon name="folder_shared" size={18} />{paciente ? paciente.name : 'Expediente'}
+        </button>
+        <div style={{ width: 1, height: 32, background: 'var(--outline-variant)', flexShrink: 0 }} />
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon name="prescriptions" size={22} fill />
         </div>
         <div style={{ minWidth: 0 }}>
-          <div className="title-l" style={{ fontWeight: 700, letterSpacing: '-.2px' }}>Nueva receta</div>
-          <div style={{ fontSize: 13, color: 'var(--on-surface-variant)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            Prescribe medicamentos al paciente · {fechaLarga}
+          <div className="title-l" style={{ fontWeight: 700, letterSpacing: '-.2px', fontSize: 17 }}>Nueva receta</div>
+          <div style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>
+            <span onClick={() => go('patients')} style={{ cursor: 'pointer' }}>Pacientes</span>
+            {paciente && <>{' › '}<span>{paciente.name}</span></>}
           </div>
         </div>
         <div style={{ flex: 1 }} />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, background: dirty ? 'var(--surface-container-highest)' : 'var(--success-container)', color: dirty ? 'var(--on-surface-variant)' : 'var(--on-success-container)' }}>
           <Icon name={dirty ? 'edit_document' : 'check_circle'} size={16} />{dirty ? 'Borrador' : 'Sin cambios'}
         </span>
-        <Button variant="text" onClick={() => go('patient', { id: pid })}>Cancelar</Button>
         <Button variant="filled" icon="check_circle" onClick={emitir} disabled={saving}>
           {saving ? 'Emitiendo…' : 'Emitir receta'}
         </Button>
@@ -176,8 +186,35 @@ export function Receta({ go, toast, patientId }: {
               <Field label="Fecha de nacimiento" type="date" value={birth} onChange={(v) => { setBirth(v); setDirty(true); }} />
               <Field label="Edad calculada" value={calcEdad(birth)} readOnly />
             </div>
-            <div style={{ marginTop: 10 }}>
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <button onClick={() => pid && go('patient', { id: pid })} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, background: 'var(--surface-container)', color: 'var(--on-surface)', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--font-body)', width: '100%' }}>
+                <Icon name="folder_shared" size={16} style={{ color: 'var(--primary)' }} />Ver expediente completo
+              </button>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
+                {([
+                  { key: 'consulta',    icon: 'stethoscope',   label: 'Consulta' },
+                  { key: 'receta',      icon: 'prescriptions', label: 'Receta'   },
+                  { key: 'informe',     icon: 'clinical_notes',label: 'Informe'  },
+                  { key: 'laboratorio', icon: 'labs',           label: 'Lab'     },
+                ] as const).map(({ key, icon, label }) => {
+                  const active = key === 'receta';
+                  return (
+                    <button key={key} disabled={active} onClick={() => !active && go(key, { patientId: pid })} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 4px', borderRadius: 10, border: 'none', cursor: active ? 'default' : 'pointer', background: active ? 'var(--primary-container)' : 'var(--surface-container-high)', color: active ? 'var(--on-primary-container)' : 'var(--on-surface-variant)', fontFamily: 'var(--font-body)', fontSize: 10.5, fontWeight: active ? 700 : 500 }}>
+                      <Icon name={icon} size={16} fill={active} />{label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginTop: 10 }}>
               <Field label="Fecha de la receta" type="date" value={recipeDate} onChange={(v) => { setRecipeDate(v); setDirty(true); }} />
+              {/* Folio asignado por DB al guardar */}
+              <div style={{ position: 'relative' }}>
+                <div style={{ border: '1px solid var(--outline-variant)', borderRadius: 12, padding: '10px 12px 8px', background: 'var(--surface-container-low)' }}>
+                  <span style={{ position: 'absolute', top: -8, left: 11, padding: '0 5px', background: 'var(--surface-container-low)', fontSize: 11.5, fontWeight: 600, color: 'var(--on-surface-variant)' }}>Folio</span>
+                  <div style={{ fontSize: 12.5, fontStyle: 'italic', color: 'var(--on-surface-variant)' }}>Se asignará al guardar</div>
+                </div>
+              </div>
             </div>
           </RailCard>
 

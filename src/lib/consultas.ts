@@ -142,6 +142,11 @@ export interface VitalesInput {
   ta_diastolica?: number | null;
   fc?: number | null;
   temp_c?: number | null;
+  fr?: number | null;
+  spo2?: number | null;
+  glucosa?: number | null;
+  perimetro_abdominal_cm?: number | null;
+  grasa_corporal_pct?: number | null;
 }
 
 export interface DiagnosticoInput {
@@ -167,15 +172,20 @@ export async function crearConsulta(
   input: NuevaConsulta,
 ): Promise<string> {
   const { data, error } = await supabase.rpc('crear_consulta', {
-    p_expediente_id: expedienteId,
-    p_motivo: input.motivo ?? null,
-    p_notas:  input.notas ?? null,
-    p_peso:   input.vitales.peso_kg ?? null,
-    p_talla:  input.vitales.talla_cm ?? null,
-    p_ta_sis: input.vitales.ta_sistolica ?? null,
-    p_ta_dia: input.vitales.ta_diastolica ?? null,
-    p_fc:     input.vitales.fc ?? null,
-    p_temp:   input.vitales.temp_c ?? null,
+    p_expediente_id:       expedienteId,
+    p_motivo:              input.motivo ?? null,
+    p_notas:               input.notas ?? null,
+    p_peso:                input.vitales.peso_kg ?? null,
+    p_talla:               input.vitales.talla_cm ?? null,
+    p_ta_sis:              input.vitales.ta_sistolica ?? null,
+    p_ta_dia:              input.vitales.ta_diastolica ?? null,
+    p_fc:                  input.vitales.fc ?? null,
+    p_temp:                input.vitales.temp_c ?? null,
+    p_fr:                  input.vitales.fr ?? null,
+    p_spo2:                input.vitales.spo2 ?? null,
+    p_glucosa:             input.vitales.glucosa ?? null,
+    p_perimetro_abdominal: input.vitales.perimetro_abdominal_cm ?? null,
+    p_grasa_corporal_pct:  input.vitales.grasa_corporal_pct ?? null,
   });
   if (error) throw error;
   const consultaId = data as string;
@@ -205,8 +215,13 @@ export interface ConsultaDetalleUI {
   ta_diastolica: number | null;
   fc: number | null;
   temp_c: number | null;
-  motivo: string | null;       // descifrado por la RPC
-  notas: string | null;        // descifrado por la RPC
+  fr: number | null;
+  spo2: number | null;
+  glucosa: number | null;
+  perimetro_abdominal_cm: number | null;
+  grasa_corporal_pct: number | null;
+  motivo: string | null;
+  notas: string | null;
 }
 
 /** Historial de consultas con narrativa descifrada (RPC obtener_consultas). */

@@ -81,7 +81,7 @@ const PLANTILLAS: Record<string, string> = {
     '<p><b>Padecimiento actual:</b> </p><p><b>Exploración física:</b> </p><p><b>Impresión diagnóstica:</b> </p><p><b>Plan e indicaciones:</b> </p>',
 };
 
-const VITAL_VACIO = { peso: '', talla: '', taSist: '', taDiast: '', fc: '', temp: '' };
+const VITAL_VACIO = { peso: '', talla: '', taSist: '', taDiast: '', fc: '', temp: '', fr: '', spo2: '', glucosa: '', periAbdo: '', grasaPct: '' };
 
 // Opciones de grupo sanguíneo (mismo enum que la BD)
 const GRUPO_SANGRE_OPTS = [
@@ -100,8 +100,9 @@ const CATS_ANT: { key: keyof Antecedentes; label: string; icon: string }[] = [
 
 interface Dx { code: string; label: string }
 
-export function Consulta({ go, toast, patientId }: {
+export function Consulta({ go, goBack, toast, patientId }: {
   go: (n: string, p?: any) => void;
+  goBack?: () => void;
   toast?: (m: string) => void;
   patientId?: string;
 }) {
@@ -211,6 +212,10 @@ export function Consulta({ go, toast, patientId }: {
           peso_kg: num(vitales.peso), talla_cm: num(vitales.talla),
           ta_sistolica: num(vitales.taSist), ta_diastolica: num(vitales.taDiast),
           fc: num(vitales.fc), temp_c: num(vitales.temp),
+          fr: num(vitales.fr), spo2: num(vitales.spo2),
+          glucosa: num(vitales.glucosa),
+          perimetro_abdominal_cm: num(vitales.periAbdo),
+          grasa_corporal_pct: num(vitales.grasaPct),
         },
         diagnosticos: diagnosticos.map((d, i) => ({ codigo: d.code, es_principal: i === 0 })),
       });
@@ -299,16 +304,26 @@ export function Consulta({ go, toast, patientId }: {
       {/* ── Top app bar ── */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 20, background: 'var(--surface)',
-        borderBottom: '1px solid var(--outline-variant)', padding: '14px 28px',
-        display: 'flex', alignItems: 'center', gap: 18,
+        borderBottom: '1px solid var(--outline-variant)', padding: '10px 28px',
+        display: 'flex', alignItems: 'center', gap: 12,
       }}>
-        <div style={{ width: 44, height: 44, borderRadius: 14, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Icon name="stethoscope" size={24} fill />
+        {goBack && (
+          <button onClick={goBack} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container)', color: 'var(--on-surface-variant)', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+            <Icon name="arrow_back" size={18} />Regresar
+          </button>
+        )}
+        <button onClick={() => pid && go('patient', { id: pid })} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container)', color: 'var(--on-surface)', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'var(--font-body)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+          <Icon name="folder_shared" size={18} />{paciente ? paciente.name : 'Expediente'}
+        </button>
+        <div style={{ width: 1, height: 32, background: 'var(--outline-variant)', flexShrink: 0 }} />
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon name="stethoscope" size={22} fill />
         </div>
         <div style={{ minWidth: 0 }}>
-          <div className="title-l" style={{ fontWeight: 700, letterSpacing: '-.2px' }}>Nueva consulta</div>
-          <div style={{ fontSize: 13, color: 'var(--on-surface-variant)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            Registra la consulta del paciente · {fechaLarga}
+          <div className="title-l" style={{ fontWeight: 700, letterSpacing: '-.2px', fontSize: 17 }}>Nueva consulta</div>
+          <div style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>
+            <span onClick={() => go('patients')} style={{ cursor: 'pointer' }}>Pacientes</span>
+            {paciente && <>{' › '}<span>{paciente.name}</span></>}
           </div>
         </div>
         <div style={{ flex: 1 }} />
@@ -320,7 +335,6 @@ export function Consulta({ go, toast, patientId }: {
         }}>
           <Icon name={dirty ? 'edit_document' : 'check_circle'} size={16} />{dirty ? 'Borrador' : 'Sin cambios'}
         </span>
-        <Button variant="text" onClick={() => go('patient', { id: pid })}>Cancelar</Button>
         <Button variant="filled" icon="check_circle" onClick={registrar} disabled={saving}>
           {saving ? 'Registrando…' : 'Registrar consulta'}
         </Button>
@@ -345,7 +359,11 @@ export function Consulta({ go, toast, patientId }: {
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--surface-container-high)', borderRadius: 12, boxShadow: 'var(--elev-3)', zIndex: 30, maxHeight: 280, overflowY: 'auto', padding: 6 }}>
                   {pacientes.length === 0 && <div style={{ padding: 12, fontSize: 13, color: 'var(--on-surface-variant)' }}>Sin pacientes registrados.</div>}
                   {pacientes.map((p) => (
-                    <button key={p.id} onClick={() => { setPid(p.id); setPatOpen(false); }} className="state-layer" style={{
+                    <button key={p.id} onClick={() => {
+                      if (p.id !== pid && antDirty &&
+                          !window.confirm('Tienes antecedentes sin guardar. ¿Cambiar de paciente y perder los cambios?')) return;
+                      setPid(p.id); setPatOpen(false);
+                    }} className="state-layer" style={{
                       display: 'block', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer',
                       padding: '10px 12px', borderRadius: 8, position: 'relative',
                       background: p.id === pid ? 'var(--secondary-container)' : 'transparent',
@@ -355,13 +373,25 @@ export function Consulta({ go, toast, patientId }: {
                 </div>
               )}
             </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-              <button onClick={() => pid && go('patient', { id: pid })} className="state-layer" style={pillStyle()}>
-                <Icon name="folder_shared" size={18} />Expediente
+            <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <button onClick={() => pid && go('patient', { id: pid })} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, background: 'var(--surface-container)', color: 'var(--on-surface)', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--font-body)', width: '100%' }}>
+                <Icon name="folder_shared" size={16} style={{ color: 'var(--primary)' }} />Ver expediente completo
               </button>
-              <button onClick={() => pid && go('patient', { id: pid })} className="state-layer" style={pillStyle()}>
-                <Icon name="history" size={18} />Consultas
-              </button>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
+                {([
+                  { key: 'consulta',    icon: 'stethoscope',  label: 'Consulta' },
+                  { key: 'receta',      icon: 'prescriptions',label: 'Receta'   },
+                  { key: 'informe',     icon: 'clinical_notes',label: 'Informe' },
+                  { key: 'laboratorio', icon: 'labs',          label: 'Lab'     },
+                ] as const).map(({ key, icon, label }) => {
+                  const active = key === 'consulta';
+                  return (
+                    <button key={key} disabled={active} onClick={() => !active && go(key, { patientId: pid })} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 4px', borderRadius: 10, border: 'none', cursor: active ? 'default' : 'pointer', background: active ? 'var(--primary-container)' : 'var(--surface-container-high)', color: active ? 'var(--on-primary-container)' : 'var(--on-surface-variant)', fontFamily: 'var(--font-body)', fontSize: 10.5, fontWeight: active ? 700 : 500 }}>
+                      <Icon name={icon} size={16} fill={active} />{label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             {paciente && (
               <div style={{ marginTop: 12 }}>
@@ -393,7 +423,12 @@ export function Consulta({ go, toast, patientId }: {
                     c.talla_cm != null ? `${c.talla_cm} cm` : null,
                     (c.ta_sistolica != null && c.ta_diastolica != null) ? `PA ${c.ta_sistolica}/${c.ta_diastolica}` : null,
                     c.fc != null ? `${c.fc} lpm` : null,
+                    c.fr != null ? `FR ${c.fr} rpm` : null,
                     c.temp_c != null ? `${c.temp_c} °C` : null,
+                    c.spo2 != null ? `SpO₂ ${c.spo2}%` : null,
+                    c.glucosa != null ? `Glucosa ${c.glucosa} mg/dL` : null,
+                    c.perimetro_abdominal_cm != null ? `Abd. ${c.perimetro_abdominal_cm} cm` : null,
+                    c.grasa_corporal_pct != null ? `GC ${c.grasa_corporal_pct}%` : null,
                   ].filter(Boolean).join(' · ');
                   const isOpen = openHist === c.id;
                   return (
@@ -520,13 +555,18 @@ export function Consulta({ go, toast, patientId }: {
           {/* Signos vitales */}
           <RailCard icon="monitor_heart" title="Signos vitales">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Peso (kg)"  type="number" value={vitales.peso}  onChange={(v) => updVital('peso', v)} />
-              <Field label="Estatura (cm)" type="number" value={vitales.talla} onChange={(v) => updVital('talla', v)} />
-              <Field label="IMC" value={imc?.value ?? ''} readOnly hint={imc?.hint} hintColor={imc?.color} tint={imc?.color} />
-              <Field label="TA sistólica"  type="number" value={vitales.taSist}  onChange={(v) => updVital('taSist', v)} />
-              <Field label="TA diastólica" type="number" value={vitales.taDiast} onChange={(v) => updVital('taDiast', v)} />
-              <Field label="FC (lpm)"   type="number" value={vitales.fc}   onChange={(v) => updVital('fc', v)} />
-              <Field label="Temp (°C)"  type="number" value={vitales.temp} onChange={(v) => updVital('temp', v)} />
+              <Field label="Peso (kg)"      type="number" value={vitales.peso}    onChange={(v) => updVital('peso', v)} />
+              <Field label="Estatura (cm)"  type="number" value={vitales.talla}   onChange={(v) => updVital('talla', v)} />
+              <Field label="IMC"            value={imc?.value ?? ''} readOnly hint={imc?.hint} hintColor={imc?.color} tint={imc?.color} />
+              <Field label="TA sistólica"   type="number" value={vitales.taSist}  onChange={(v) => updVital('taSist', v)} />
+              <Field label="TA diastólica"  type="number" value={vitales.taDiast} onChange={(v) => updVital('taDiast', v)} />
+              <Field label="FC (lpm)"       type="number" value={vitales.fc}      onChange={(v) => updVital('fc', v)} />
+              <Field label="Temp (°C)"      type="number" value={vitales.temp}    onChange={(v) => updVital('temp', v)} />
+              <Field label="FR (rpm)"       type="number" value={vitales.fr}      onChange={(v) => updVital('fr', v)} />
+              <Field label="SpO₂ (%)"       type="number" value={vitales.spo2}    onChange={(v) => updVital('spo2', v)} />
+              <Field label="Glucosa (mg/dL)" type="number" value={vitales.glucosa} onChange={(v) => updVital('glucosa', v)} />
+              <Field label="Perímetro abd. (cm)" type="number" value={vitales.periAbdo}  onChange={(v) => updVital('periAbdo', v)} />
+              <Field label="Grasa corporal (%)"  type="number" value={vitales.grasaPct}  onChange={(v) => updVital('grasaPct', v)} />
             </div>
           </RailCard>
 

@@ -10,8 +10,8 @@ export interface MedicamentoInput {
   frecuencia?: string | null;
   duracion?: string | null;
   via?: string | null;
-  instrucciones?: string | null;   // requiere columna receta_medicamentos.instrucciones
-  controlado?: boolean;            // requiere columna receta_medicamentos.controlado
+  instrucciones?: string | null;
+  controlado?: boolean;
 }
 
 export interface RecetaUI {
@@ -21,6 +21,8 @@ export interface RecetaUI {
   diagnostico_cie10: string | null;
   indicaciones: string | null;       // descifrada por la RPC
   medicamentos: MedicamentoInput[];
+  fecha_receta: string | null;       // 'YYYY-MM-DD'
+  folio_num: number | null;
   created_at: string;
 }
 
@@ -29,6 +31,17 @@ export interface NuevaReceta {
   indicaciones?: string | null;
   medicamentos: MedicamentoInput[];
   consulta_id?: string | null;
+  fecha_receta?: string | null;
+}
+
+/** Formatea el folio de receta: "R3 - 22-06-2026". */
+export function formatFolioReceta(folio_num: number | null, fecha_receta: string | null, created_at: string): string {
+  if (!folio_num) return '—';
+  const d = fecha_receta ? new Date(fecha_receta + 'T00:00:00') : new Date(created_at);
+  const dd   = String(d.getDate()).padStart(2, '0');
+  const mm   = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `R${folio_num} - ${dd}-${mm}-${yyyy}`;
 }
 
 /** Crea una receta (cifra indicaciones) y devuelve su id. */
@@ -36,9 +49,10 @@ export async function crearReceta(expedienteId: string, input: NuevaReceta): Pro
   const { data, error } = await supabase.rpc('crear_receta', {
     p_expediente_id:     expedienteId,
     p_diagnostico_cie10: input.diagnostico_cie10 ?? null,
-    p_indicaciones:      input.indicaciones ?? null,
-    p_medicamentos:      input.medicamentos ?? [],
-    p_consulta_id:       input.consulta_id ?? null,
+    p_indicaciones:      input.indicaciones      ?? null,
+    p_medicamentos:      input.medicamentos       ?? [],
+    p_consulta_id:       input.consulta_id        ?? null,
+    p_fecha_receta:      input.fecha_receta        ?? null,
   });
   if (error) throw error;
   return data as string;

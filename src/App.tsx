@@ -11,6 +11,8 @@ import { PatientList, PatientRecord } from './pages/Patients';
 import { Prescriptions, Reports, AppointmentModal, ReportModal, PatientModal } from './pages/Clinical';
 import { Consulta } from './pages/Consulta';
 import { Receta } from './pages/Receta';
+import { Informe } from './pages/Informe';
+import { Laboratorio } from './pages/Laboratorio';
 import { Profile, Settings } from './pages/Profile';
 
 // URL del onboarding (donde el usuario completa alta + tenant).
@@ -299,6 +301,7 @@ export default function App() {
   const [authError,  setAuthError]  = useState('');
   const [theme,     setTheme]     = useState('light');
   const [route,     setRoute]     = useState<{ name: string; params: any }>({ name: 'dashboard', params: {} });
+  const [prevRoute, setPrevRoute] = useState<{ name: string; params: any } | null>(null);
   const [navStyle,  setNavStyle]  = useState('topnav');
   const [collapsed, setCollapsed] = useState(false);
   const [drawer,    setDrawer]    = useState(false);
@@ -353,11 +356,15 @@ export default function App() {
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
 
   const go = (name: string, params: any = {}) => {
+    setPrevRoute(route);
     setRoute({ name, params });
     setDrawer(false);
     window.scrollTo(0, 0);
     const m = document.querySelector('.main-scroll');
     if (m) (m as HTMLElement).scrollTop = 0;
+  };
+  const goBack = () => {
+    if (prevRoute) go(prevRoute.name, prevRoute.params);
   };
 
   const openModal = (type: string, prefill?: any) => {
@@ -396,7 +403,7 @@ export default function App() {
     return <TrialExpired doctor={doctor} onLogout={onLogout} />;
   }
 
-  const pageProps = { go, openModal, toast, dataVersion, refreshAccount: resolveSession };
+  const pageProps = { go, goBack: prevRoute ? goBack : undefined, openModal, toast, dataVersion, refreshAccount: resolveSession };
   let page;
   switch (route.name) {
     case 'dashboard':    page = <Dashboard    {...pageProps} />; break;
@@ -405,6 +412,8 @@ export default function App() {
     case 'patient':      page = <PatientRecord id={route.params.id} {...pageProps} />; break;
     case 'consulta':     page = <Consulta patientId={route.params.patientId} {...pageProps} />; break;
     case 'receta':       page = <Receta   patientId={route.params.patientId} {...pageProps} />; break;
+    case 'informe':      page = <Informe      patientId={route.params.patientId} {...pageProps} />; break;
+    case 'laboratorio':  page = <Laboratorio  patientId={route.params.patientId} {...pageProps} />; break;
     case 'prescriptions':page = <Prescriptions {...pageProps} />; break;
     case 'reports':      page = <Reports      {...pageProps} />; break;
     case 'profile':      page = <Profile      {...pageProps} />; break;

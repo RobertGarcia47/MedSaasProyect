@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from '../context/AccountContext';
-import { fetchPacientes, fetchPacienteDetalle, type PacienteUI, type PacienteDetalleUI } from '../lib/patients';
-import { obtenerRecetas, type RecetaUI } from '../lib/recetas';
-import { obtenerInformes, TIPO_INFORME_LABEL, type InformeUI } from '../lib/informes';
+import { fetchPacientes, fetchPacienteDetalle, actualizarPaciente, type PacienteUI, type PacienteDetalleUI } from '../lib/patients';
+import type { SexoEnum, GrupoSanguineo } from '../lib/types';
+import { obtenerRecetas, formatFolioReceta, type RecetaUI } from '../lib/recetas';
+import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, TIPO_INFORME_ICON, TIPO_INFORME_COLOR, VISIBILIDAD_ICON, VISIBILIDAD_LABEL, type InformeUI } from '../lib/informes';
+import { obtenerEstudios, urlDescarga, type EstudioUI } from '../lib/laboratorio';
 import { obtenerConsultas, type ConsultaDetalleUI } from '../lib/consultas';
 import { Icon, Button, Card, Chip, Avatar, IconButton, Segmented, Divider, SectionHeader } from '../components';
 
@@ -145,24 +147,44 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
   const account   = useAccount();
   const clinicaId = account.clinicaId ?? '';
 
-  const [tab,     setTab]     = useState('resumen');
-  const [loading, setLoading] = useState(true);
-  const [pac,     setPac]     = useState<PacienteDetalleUI | null>(null);
+  const [tab,       setTab]       = useState('resumen');
+  const [loading,   setLoading]   = useState(true);
+  const [pac,       setPac]       = useState<PacienteDetalleUI | null>(null);
+  const [pacVersion, setPacVersion] = useState(0);
+
+  // Edit modal
+  const [editOpen,   setEditOpen]   = useState(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError,  setEditError]  = useState<string | null>(null);
+  const [editForm,   setEditForm]   = useState({
+    nombre: '', apellido_paterno: '', apellido_materno: '',
+    fecha_nacimiento: '', sexo: '' as SexoEnum | '',
+    grupo_sanguineo: '' as GrupoSanguineo | '',
+    telefono: '', email: '', curp: '',
+  });
 
   // Consultas / recetas / informes (se cargan vía RPC al abrir su pestaña)
   const [consultasFull, setConsultasFull] = useState<ConsultaDetalleUI[] | null>(null);
   const [recetas,  setRecetas]  = useState<RecetaUI[] | null>(null);
-  const [informes, setInformes] = useState<InformeUI[] | null>(null);
+  const [informes,  setInformes]  = useState<InformeUI[]   | null>(null);
+  const [estudios,  setEstudios]  = useState<EstudioUI[]   | null>(null);
   const [loadingDoc, setLoadingDoc] = useState(false);
   const [openConsulta, setOpenConsulta] = useState<string | null>(null); // acordeón Historial: id de la consulta abierta
+  const [openReceta,   setOpenReceta]   = useState<string | null>(null); // acordeón Recetas: id de la receta abierta
+  const [openInforme,  setOpenInforme]  = useState<string | null>(null); // acordeón Informes: id del informe abierto
+
+  // Visor de archivos de laboratorio
+  const [archivoModal, setArchivoModal] = useState<{ url: string; nombre: string; tipo: 'pdf' | 'image' } | null>(null);
+  const [zoomLevel,    setZoomLevel]    = useState(1);
 
   useEffect(() => {
     if (!id || !clinicaId) { setLoading(false); return; }
+    setLoading(true);
     fetchPacienteDetalle(id, clinicaId)
       .then(setPac)
       .catch((e) => console.error('PatientRecord load error:', e))
       .finally(() => setLoading(false));
-  }, [id, clinicaId, dataVersion]);
+  }, [id, clinicaId, dataVersion, pacVersion]);
 
   // Carga perezosa de recetas/informes según la pestaña activa.
   const expedienteId = pac?.expedienteId ?? null;
@@ -180,10 +202,14 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
       setLoadingDoc(true);
       obtenerInformes(expedienteId).then(setInformes).catch((e) => { console.error(e); setInformes([]); }).finally(() => setLoadingDoc(false));
     }
+    if (tab === 'labs' && estudios === null) {
+      setLoadingDoc(true);
+      obtenerEstudios(expedienteId).then(setEstudios).catch((e) => { console.error(e); setEstudios([]); }).finally(() => setLoadingDoc(false));
+    }
   }, [tab, expedienteId]);
 
   // Al crear una consulta/receta/informe (dataVersion cambia) invalida lo cargado.
-  useEffect(() => { setConsultasFull(null); setRecetas(null); setInformes(null); setOpenConsulta(null); }, [dataVersion]);
+  useEffect(() => { setConsultasFull(null); setRecetas(null); setInformes(null); setEstudios(null); setOpenConsulta(null); setOpenReceta(null); setOpenInforme(null); }, [dataVersion]);
 
   const tabs = [
     ['resumen',  'Resumen',   'summarize'],
@@ -228,10 +254,26 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
             </div>
           </div>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <Button variant="outlined" icon="edit" onClick={() => {
+              setEditForm({
+                nombre:            pac.nombre_raw,
+                apellido_paterno:  pac.apellido_paterno_raw ?? '',
+                apellido_materno:  pac.apellido_materno_raw ?? '',
+                fecha_nacimiento:  pac.fecha_nacimiento ?? '',
+                sexo:              (pac.sex ?? '') as SexoEnum | '',
+                grupo_sanguineo:   (pac.grupo_sanguineo ?? '') as GrupoSanguineo | '',
+                telefono:          pac.telefono ?? '',
+                email:             pac.email ?? '',
+                curp:              pac.curp ?? '',
+              });
+              setEditError(null);
+              setEditOpen(true);
+            }}>Editar</Button>
             <Button variant="outlined" icon="event"         onClick={() => openModal('appointment',  { patientId: pac.id })}>Agendar</Button>
             <Button variant="outlined" icon="prescriptions" onClick={() => go('receta', { patientId: pac.id })}>Receta</Button>
-            <Button variant="outlined" icon="description"   onClick={() => openModal('report',       { patientId: pac.id })}>Informe</Button>
-            <Button variant="filled"   icon="stethoscope"   onClick={() => go('consulta', { patientId: pac.id })}>Nueva consulta</Button>
+            <Button variant="outlined" icon="description"   onClick={() => go('informe',     { patientId: pac.id })}>Informe</Button>
+            <Button variant="outlined" icon="labs"          onClick={() => go('laboratorio', { patientId: pac.id })}>Laboratorio</Button>
+            <Button variant="filled"   icon="stethoscope"   onClick={() => go('consulta',    { patientId: pac.id })}>Nueva consulta</Button>
           </div>
         </div>
         {pac.alergias.length > 0 && (
@@ -336,7 +378,7 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
 
       {/* Historial de consultas — RPC obtener_consultas (narrativa descifrada) */}
       {tab === 'timeline' && (
-        <Card variant="elevated" style={{ padding: 24 }}>
+        <Card variant="elevated" style={{ padding: 24, maxWidth: 900, margin: '0 auto', width: '100%' }}>
           {loadingDoc && consultasFull === null ? <Spinner /> : (consultasFull?.length ?? 0) === 0 ? (
             <EmptyState icon="history" text="Sin consultas registradas" />
           ) : (
@@ -347,7 +389,12 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
                   c.talla_cm != null ? `${c.talla_cm} cm` : null,
                   (c.ta_sistolica != null && c.ta_diastolica != null) ? `PA ${c.ta_sistolica}/${c.ta_diastolica}` : null,
                   c.fc != null ? `${c.fc} lpm` : null,
+                  c.fr != null ? `FR ${c.fr} rpm` : null,
                   c.temp_c != null ? `${c.temp_c} °C` : null,
+                  c.spo2 != null ? `SpO₂ ${c.spo2}%` : null,
+                  c.glucosa != null ? `Glucosa ${c.glucosa} mg/dL` : null,
+                  c.perimetro_abdominal_cm != null ? `Abd. ${c.perimetro_abdominal_cm} cm` : null,
+                  c.grasa_corporal_pct != null ? `GC ${c.grasa_corporal_pct}%` : null,
                 ].filter(Boolean).join(' · ');
                 const isOpen = openConsulta === c.id;
                 return (
@@ -404,87 +451,473 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
 
       {/* Recetas — RPC obtener_recetas */}
       {tab === 'recetas' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 900, margin: '0 auto', width: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <Button variant="filled" icon="add" onClick={() => go('receta', { patientId: pac.id })}>Nueva receta</Button>
           </div>
           {loadingDoc && recetas === null ? <Spinner /> : (recetas?.length ?? 0) === 0 ? (
             <Card variant="elevated" style={{ padding: 24 }}><EmptyState icon="prescriptions" text="Sin recetas registradas" /></Card>
-          ) : recetas!.map((r) => (
-            <Card key={r.id} variant="outlined" style={{ padding: 0, overflow: 'hidden' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '16px 20px', background: 'var(--surface-container-low)', borderBottom: '1px solid var(--outline-variant)' }}>
-                <div style={{ width: 42, height: 42, borderRadius: 10, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name="prescriptions" size={22} fill />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="title-m">{r.diagnostico_cie10 || 'Receta'}</div>
-                  <div style={{ fontSize: 13, color: 'var(--on-surface-variant)' }}>
-                    {new Date(r.created_at).toLocaleDateString('es-MX', { dateStyle: 'medium' })} · {r.medicamentos.length} medicamento(s)
+          ) : recetas!.map((r) => {
+            const isOpen = openReceta === r.id;
+            return (
+              <Card key={r.id} variant="outlined" style={{ padding: 0, overflow: 'hidden' }}>
+                {/* Cabecera acordeón */}
+                <button
+                  onClick={() => setOpenReceta(isOpen ? null : r.id)}
+                  aria-expanded={isOpen}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                    padding: '14px 20px', background: isOpen ? 'var(--surface-container)' : 'var(--surface-container-low)',
+                    border: 'none', borderBottom: isOpen ? '1px solid var(--outline-variant)' : 'none',
+                    cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--on-surface)',
+                  }}
+                >
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon name="prescriptions" size={20} fill />
                   </div>
-                </div>
-              </div>
-              <div style={{ padding: '8px 20px' }}>
-                {r.medicamentos.map((m, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '12px 0', borderBottom: i === r.medicamentos.length - 1 ? 'none' : '1px solid var(--outline-variant)' }}>
-                    <Icon name="medication" size={22} style={{ color: 'var(--secondary)', marginTop: 2 }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span className="title-s">{m.medicamento}</span>
-                        {m.controlado && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: 'var(--warning-container)', color: 'var(--on-warning-container)' }}>CONTROLADO</span>}
-                      </div>
-                      <div style={{ fontSize: 13, color: 'var(--on-surface-variant)' }}>
-                        {[m.dosis, m.frecuencia, m.duracion, m.via].filter(Boolean).join(' · ')}
-                      </div>
-                      {m.instrucciones && <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginTop: 3, fontStyle: 'italic' }}>{m.instrucciones}</div>}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                      <div className="title-s">{r.diagnostico_cie10 || 'Receta'}</div>
+                      {r.folio_num && (
+                        <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, padding: '1px 8px', borderRadius: 999, background: 'var(--primary-container)', color: 'var(--on-primary-container)', fontVariantNumeric: 'tabular-nums' }}>
+                          {formatFolioReceta(r.folio_num, r.fecha_receta, r.created_at)}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginTop: 2 }}>
+                      {(r.fecha_receta
+                        ? new Date(r.fecha_receta + 'T00:00:00')
+                        : new Date(r.created_at)
+                      ).toLocaleDateString('es-MX', { dateStyle: 'medium' })} · {r.medicamentos.length} medicamento(s)
                     </div>
                   </div>
-                ))}
-                {r.indicaciones && (
-                  <div style={{ padding: '12px 0 4px', fontSize: 13.5, color: 'var(--on-surface-variant)' }}>
-                    <Icon name="notes" size={16} style={{ verticalAlign: '-3px', marginRight: 6 }} />{r.indicaciones}
+                  <Icon name="expand_more" size={22}
+                    style={{ color: 'var(--on-surface-variant)', flexShrink: 0, transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'none' }} />
+                </button>
+                {/* Cuerpo: solo cuando está desplegada */}
+                {isOpen && (
+                  <div style={{ padding: '8px 20px 16px' }}>
+                    {r.medicamentos.map((m, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '12px 0', borderBottom: i === r.medicamentos.length - 1 ? 'none' : '1px solid var(--outline-variant)' }}>
+                        <Icon name="medication" size={22} style={{ color: 'var(--secondary)', marginTop: 2, flexShrink: 0 }} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span className="title-s">{m.medicamento}</span>
+                            {m.controlado && <span style={{ fontSize: 10.5, fontWeight: 800, padding: '2px 8px', borderRadius: 999, background: 'var(--warning-container)', color: 'var(--on-warning-container)' }}>CONTROLADO</span>}
+                          </div>
+                          <div style={{ fontSize: 13, color: 'var(--on-surface-variant)' }}>
+                            {[m.dosis, m.frecuencia, m.duracion, m.via].filter(Boolean).join(' · ')}
+                          </div>
+                          {m.instrucciones && <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginTop: 3, fontStyle: 'italic' }}>{m.instrucciones}</div>}
+                        </div>
+                      </div>
+                    ))}
+                    {r.indicaciones && (
+                      <div style={{ marginTop: 10, padding: '10px 14px', background: 'var(--surface-container-high)', borderRadius: 'var(--r-sm)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, fontSize: 12, fontWeight: 700, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                          <Icon name="notes" size={15} />Indicaciones generales
+                        </div>
+                        <div className="nota-clinica-render"
+                          style={{ fontSize: 13.5, color: 'var(--on-surface)', lineHeight: 1.55 }}
+                          dangerouslySetInnerHTML={{ __html: r.indicaciones }}
+                        />
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
 
       {/* Informes — RPC obtener_informes */}
       {tab === 'informes' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 900 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 900, margin: '0 auto', width: '100%' }}>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="filled" icon="add" onClick={() => openModal('report', { patientId: pac.id })}>Nuevo informe</Button>
+            <Button variant="filled" icon="add" onClick={() => go('informe', { patientId: pac.id })}>Nuevo informe</Button>
           </div>
           {loadingDoc && informes === null ? <Spinner /> : (informes?.length ?? 0) === 0 ? (
             <Card variant="elevated" style={{ padding: 24 }}><EmptyState icon="description" text="Sin informes registrados" /></Card>
-          ) : informes!.map((inf) => (
-            <Card key={inf.id} variant="outlined" style={{ padding: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-                <div style={{ width: 42, height: 42, borderRadius: 10, background: 'var(--tertiary-container)', color: 'var(--on-tertiary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon name="description" size={22} fill />
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <span className="title-m">{inf.titulo}</span>
-                    <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 10px', borderRadius: 999, background: 'var(--surface-container-highest)', color: 'var(--on-surface-variant)' }}>{TIPO_INFORME_LABEL[inf.tipo] ?? inf.tipo}</span>
+          ) : informes!.map((inf) => {
+            const isOpen  = openInforme === inf.id;
+            const tipoCfg = TIPO_INFORME_COLOR[inf.tipo] ?? { color: 'var(--primary)', bg: 'var(--primary-container)' };
+            const tipoIcon = TIPO_INFORME_ICON[inf.tipo] ?? 'description';
+            const fechaDisplay = inf.fecha_informe
+              ? new Date(inf.fecha_informe + 'T00:00:00').toLocaleDateString('es-MX', { dateStyle: 'medium' })
+              : new Date(inf.created_at).toLocaleDateString('es-MX', { dateStyle: 'medium' });
+            return (
+              <Card key={inf.id} variant="outlined" style={{ padding: 0, overflow: 'hidden' }}>
+                {/* Cabecera acordeón */}
+                <button
+                  onClick={() => setOpenInforme(isOpen ? null : inf.id)}
+                  aria-expanded={isOpen}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14, width: '100%',
+                    padding: '14px 20px', background: isOpen ? 'var(--surface-container)' : 'var(--surface-container-low)',
+                    border: 'none', borderBottom: isOpen ? '1px solid var(--outline-variant)' : 'none',
+                    cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--on-surface)',
+                  }}
+                >
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: tipoCfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon name={tipoIcon} size={20} style={{ color: tipoCfg.color }} />
                   </div>
-                  <div style={{ fontSize: 13, color: 'var(--on-surface-variant)', marginTop: 4 }}>
-                    {new Date(inf.created_at).toLocaleDateString('es-MX', { dateStyle: 'medium' })}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                      <div className="title-s" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inf.titulo}</div>
+                      {inf.folio_num && (
+                        <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, padding: '1px 8px', borderRadius: 999, background: 'var(--surface-container-highest)', color: 'var(--on-surface-variant)', fontVariantNumeric: 'tabular-nums' }}>
+                          {formatFolio(inf.folio_num, inf.fecha_informe, inf.created_at)}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      <span>{TIPO_INFORME_LABEL[inf.tipo] ?? inf.tipo}</span>
+                      <span>·</span>
+                      <span>{fechaDisplay}</span>
+                      {inf.visibilidad && inf.visibilidad !== 'expediente' && (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                          · <Icon name={VISIBILIDAD_ICON[inf.visibilidad]} size={13} style={{ marginLeft: 4 }} />{VISIBILIDAD_LABEL[inf.visibilidad]}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  {inf.cuerpo && <p className="body-m" style={{ color: 'var(--on-surface-variant)', marginTop: 10, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{inf.cuerpo}</p>}
-                </div>
-              </div>
-            </Card>
-          ))}
+                  <Icon name="expand_more" size={22}
+                    style={{ color: 'var(--on-surface-variant)', flexShrink: 0, transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'none' }} />
+                </button>
+                {/* Cuerpo desplegable */}
+                {isOpen && (
+                  <div style={{ padding: '14px 20px 18px' }}>
+                    {/* Tags */}
+                    {inf.tags?.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
+                        {inf.tags.map((t) => (
+                          <span key={t} style={{ display: 'inline-flex', alignItems: 'center', padding: '3px 10px', borderRadius: 999, fontSize: 11.5, fontWeight: 500, background: 'var(--surface-container-highest)', color: 'var(--on-surface-variant)' }}>{t}</span>
+                        ))}
+                      </div>
+                    )}
+                    {/* Cuerpo HTML */}
+                    {inf.cuerpo ? (
+                      <div className="nota-clinica-render"
+                        style={{ fontSize: 14, color: 'var(--on-surface)', lineHeight: 1.65, padding: '10px 14px', background: 'var(--surface-container-high)', borderRadius: 'var(--r-sm)' }}
+                        dangerouslySetInnerHTML={{ __html: inf.cuerpo }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: 13, color: 'var(--on-surface-variant)', fontStyle: 'italic' }}>Sin contenido registrado.</div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Labs — sin tabla aún */}
+      {/* Laboratorio */}
       {tab === 'labs' && (
-        <Card variant="elevated" style={{ padding: 24 }}>
-          <EmptyState icon="labs" text="Resultados de laboratorio disponibles próximamente" />
-        </Card>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 900, margin: '0 auto', width: '100%' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <Button variant="filled" icon="add" onClick={() => go('laboratorio', { patientId: pac.id })}>Nuevo estudio</Button>
+          </div>
+          {loadingDoc && estudios === null ? <Spinner /> : (estudios?.length ?? 0) === 0 ? (
+            <Card variant="elevated" style={{ padding: 24 }}><EmptyState icon="labs" text="Sin estudios de laboratorio registrados" /></Card>
+          ) : estudios!.map((est) => {
+            const isOpen = openInforme === est.id;
+            return (
+              <Card key={est.id} variant="outlined" style={{ padding: 0, overflow: 'hidden' }}>
+                <button
+                  onClick={() => setOpenInforme(isOpen ? null : est.id)}
+                  aria-expanded={isOpen}
+                  style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '14px 20px', background: isOpen ? 'var(--surface-container)' : 'var(--surface-container-low)', border: 'none', borderBottom: isOpen ? '1px solid var(--outline-variant)' : 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--on-surface)' }}
+                >
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--secondary-container)', color: 'var(--on-secondary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon name="labs" size={20} fill />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="title-s">{est.tipo_estudio}</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginTop: 2 }}>
+                      {new Date(est.fecha_estudio + 'T00:00:00').toLocaleDateString('es-MX', { dateStyle: 'medium' })}
+                      {est.laboratorio_externo && ` · ${est.laboratorio_externo}`}
+                    </div>
+                  </div>
+                  <Icon name="expand_more" size={22} style={{ color: 'var(--on-surface-variant)', flexShrink: 0, transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'none' }} />
+                </button>
+                {isOpen && (
+                  <div style={{ padding: '14px 20px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {/* Botón ver archivo */}
+                    <button
+                      onClick={async () => {
+                        try {
+                          const url  = await urlDescarga(est.archivo_url);
+                          const nombre = est.archivo_nombre ?? est.archivo_url.split('/').pop() ?? 'archivo';
+                          const ext  = nombre.split('.').pop()?.toLowerCase() ?? '';
+                          const tipo: 'pdf' | 'image' = ext === 'pdf' ? 'pdf' : 'image';
+                          setZoomLevel(1);
+                          setArchivoModal({ url, nombre, tipo });
+                        } catch (e) { console.error('Error al obtener el archivo', e); }
+                      }}
+                      style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 16px', borderRadius: 999, border: '1px solid var(--outline-variant)', background: 'var(--surface)', cursor: 'pointer', fontSize: 13.5, fontWeight: 500, color: 'var(--primary)', fontFamily: 'var(--font-body)' }}
+                    >
+                      <Icon name="visibility" size={18} />
+                      {est.archivo_nombre ?? 'Ver archivo'}
+                    </button>
+                    {/* Notas */}
+                    {est.notas && (
+                      <div className="nota-clinica-render"
+                        style={{ fontSize: 14, color: 'var(--on-surface)', lineHeight: 1.65, padding: '10px 14px', background: 'var(--surface-container-high)', borderRadius: 'var(--r-sm)' }}
+                        dangerouslySetInnerHTML={{ __html: est.notas }}
+                      />
+                    )}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Modal editar paciente ─────────────────────────────────────────── */}
+      {editOpen && (
+        <div
+          onClick={() => { if (!editSaving) setEditOpen(false); }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.55)', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: 'var(--surface)', borderRadius: 20, width: '100%', maxWidth: 560, maxHeight: '90vh', overflowY: 'auto', boxShadow: 'var(--elev-5)', display: 'flex', flexDirection: 'column' }}
+          >
+            {/* Cabecera */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '18px 24px 14px', borderBottom: '1px solid var(--outline-variant)', flexShrink: 0 }}>
+              <Icon name="edit" size={22} style={{ color: 'var(--primary)' }} />
+              <span className="title-l" style={{ flex: 1 }}>Editar paciente</span>
+              <button onClick={() => setEditOpen(false)} disabled={editSaving}
+                style={{ width: 36, height: 36, border: 'none', background: 'var(--surface-container)', borderRadius: 10, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-surface)' }}>
+                <Icon name="close" size={20} />
+              </button>
+            </div>
+
+            {/* Formulario */}
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {/* Nombre */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>Nombre *</label>
+                <input
+                  value={editForm.nombre}
+                  onChange={(e) => setEditForm((f) => ({ ...f, nombre: e.target.value }))}
+                  placeholder="Nombre"
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container-high)', color: 'var(--on-surface)', fontSize: 15, fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box' }}
+                />
+              </div>
+
+              {/* Apellidos */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>Apellido paterno</label>
+                  <input
+                    value={editForm.apellido_paterno}
+                    onChange={(e) => setEditForm((f) => ({ ...f, apellido_paterno: e.target.value }))}
+                    placeholder="Paterno"
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container-high)', color: 'var(--on-surface)', fontSize: 15, fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>Apellido materno</label>
+                  <input
+                    value={editForm.apellido_materno}
+                    onChange={(e) => setEditForm((f) => ({ ...f, apellido_materno: e.target.value }))}
+                    placeholder="Materno"
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container-high)', color: 'var(--on-surface)', fontSize: 15, fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              {/* Fecha nacimiento + Sexo */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>Fecha de nacimiento</label>
+                  <input
+                    type="date"
+                    value={editForm.fecha_nacimiento}
+                    onChange={(e) => setEditForm((f) => ({ ...f, fecha_nacimiento: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container-high)', color: 'var(--on-surface)', fontSize: 15, fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>Sexo</label>
+                  <select
+                    value={editForm.sexo}
+                    onChange={(e) => setEditForm((f) => ({ ...f, sexo: e.target.value as SexoEnum | '' }))}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container-high)', color: 'var(--on-surface)', fontSize: 15, fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box' }}
+                  >
+                    <option value="">— Sin especificar —</option>
+                    <option value="M">Masculino</option>
+                    <option value="F">Femenino</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Grupo sanguíneo */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>Grupo sanguíneo</label>
+                <select
+                  value={editForm.grupo_sanguineo}
+                  onChange={(e) => setEditForm((f) => ({ ...f, grupo_sanguineo: e.target.value as GrupoSanguineo | '' }))}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container-high)', color: 'var(--on-surface)', fontSize: 15, fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box' }}
+                >
+                  <option value="">— Desconocido —</option>
+                  {(['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as GrupoSanguineo[]).map((g) => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Teléfono + Email */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>Teléfono</label>
+                  <input
+                    value={editForm.telefono}
+                    onChange={(e) => setEditForm((f) => ({ ...f, telefono: e.target.value }))}
+                    placeholder="10 dígitos"
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container-high)', color: 'var(--on-surface)', fontSize: 15, fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>Correo electrónico</label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                    placeholder="correo@ejemplo.com"
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container-high)', color: 'var(--on-surface)', fontSize: 15, fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+
+              {/* CURP */}
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', display: 'block', marginBottom: 6 }}>CURP</label>
+                <input
+                  value={editForm.curp}
+                  onChange={(e) => setEditForm((f) => ({ ...f, curp: e.target.value.toUpperCase() }))}
+                  placeholder="18 caracteres"
+                  maxLength={18}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container-high)', color: 'var(--on-surface)', fontSize: 15, fontFamily: 'var(--font-body)', outline: 'none', boxSizing: 'border-box', textTransform: 'uppercase', letterSpacing: 1 }}
+                />
+              </div>
+
+              {editError && (
+                <div style={{ padding: '10px 14px', borderRadius: 10, background: 'var(--error-container)', color: 'var(--on-error-container)', fontSize: 13.5 }}>
+                  {editError}
+                </div>
+              )}
+            </div>
+
+            {/* Acciones */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '14px 24px 20px', borderTop: '1px solid var(--outline-variant)', flexShrink: 0 }}>
+              <Button variant="outlined" onClick={() => setEditOpen(false)} disabled={editSaving}>Cancelar</Button>
+              <Button
+                variant="filled"
+                disabled={editSaving || !editForm.nombre.trim()}
+                onClick={async () => {
+                  if (!pac) return;
+                  setEditSaving(true);
+                  setEditError(null);
+                  try {
+                    await actualizarPaciente(pac.id, {
+                      nombre:           editForm.nombre,
+                      apellido_paterno: editForm.apellido_paterno || null,
+                      apellido_materno: editForm.apellido_materno || null,
+                      fecha_nacimiento: editForm.fecha_nacimiento || null,
+                      sexo:             (editForm.sexo as SexoEnum) || null,
+                      grupo_sanguineo:  (editForm.grupo_sanguineo as GrupoSanguineo) || null,
+                      telefono:         editForm.telefono || null,
+                      email:            editForm.email || null,
+                      curp:             editForm.curp || null,
+                    });
+                    setEditOpen(false);
+                    setPacVersion((v) => v + 1);
+                  } catch (e: any) {
+                    setEditError(e?.message ?? 'Error al guardar los cambios');
+                  } finally {
+                    setEditSaving(false);
+                  }
+                }}
+              >{editSaving ? 'Guardando…' : 'Guardar cambios'}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal visor de archivos de laboratorio ─────────────────────────── */}
+      {archivoModal && (
+        <div
+          onClick={() => setArchivoModal(null)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.72)', zIndex: 1200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 16 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: 'var(--surface)', borderRadius: 20, overflow: 'hidden', width: '100%', maxWidth: 900, maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: 'var(--elev-5)' }}
+          >
+            {/* Barra superior */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--outline-variant)', flexShrink: 0 }}>
+              <Icon name={archivoModal.tipo === 'pdf' ? 'picture_as_pdf' : 'image'} size={20} style={{ color: 'var(--primary)' }} />
+              <span className="title-s" style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{archivoModal.nombre}</span>
+              {archivoModal.tipo === 'image' && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <button onClick={() => setZoomLevel((z) => Math.max(0.25, +(z - 0.25).toFixed(2)))}
+                    style={{ width: 32, height: 32, border: '1px solid var(--outline-variant)', borderRadius: 8, background: 'var(--surface-container)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="remove" size={18} />
+                  </button>
+                  <span style={{ minWidth: 46, textAlign: 'center', fontSize: 13, fontVariantNumeric: 'tabular-nums' }}>{Math.round(zoomLevel * 100)}%</span>
+                  <button onClick={() => setZoomLevel((z) => Math.min(4, +(z + 0.25).toFixed(2)))}
+                    style={{ width: 32, height: 32, border: '1px solid var(--outline-variant)', borderRadius: 8, background: 'var(--surface-container)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Icon name="add" size={18} />
+                  </button>
+                  <button onClick={() => setZoomLevel(1)}
+                    style={{ marginLeft: 4, height: 32, padding: '0 10px', border: '1px solid var(--outline-variant)', borderRadius: 8, background: 'var(--surface-container)', cursor: 'pointer', fontSize: 12, color: 'var(--on-surface-variant)', fontFamily: 'var(--font-body)' }}>
+                    Reset
+                  </button>
+                </div>
+              )}
+              <a href={archivoModal.url} download={archivoModal.nombre} target="_blank" rel="noreferrer"
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container)', color: 'var(--on-surface-variant)', textDecoration: 'none' }}>
+                <Icon name="download" size={18} />
+              </a>
+              <button onClick={() => setArchivoModal(null)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 36, height: 36, borderRadius: 10, border: 'none', background: 'var(--surface-container)', cursor: 'pointer', color: 'var(--on-surface)' }}>
+                <Icon name="close" size={20} />
+              </button>
+            </div>
+
+            {/* Contenido */}
+            <div style={{ flex: 1, overflow: 'auto', minHeight: 0, display: 'flex', alignItems: archivoModal.tipo === 'image' ? 'flex-start' : 'stretch', justifyContent: 'center', background: archivoModal.tipo === 'pdf' ? 'var(--surface-container-low)' : '#1a1a1a' }}>
+              {archivoModal.tipo === 'pdf' ? (
+                <iframe
+                  src={archivoModal.url}
+                  title={archivoModal.nombre}
+                  style={{ width: '100%', height: '75vh', border: 'none' }}
+                />
+              ) : (
+                <div
+                  style={{ padding: 16, overflow: 'auto', width: '100%', height: '75vh', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', cursor: zoomLevel > 1 ? 'grab' : 'zoom-in' }}
+                  onWheel={(e) => {
+                    e.preventDefault();
+                    const delta = e.deltaY < 0 ? 0.1 : -0.1;
+                    setZoomLevel((z) => Math.min(4, Math.max(0.25, +(z + delta).toFixed(2))));
+                  }}
+                >
+                  <img
+                    src={archivoModal.url}
+                    alt={archivoModal.nombre}
+                    style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center', maxWidth: '100%', display: 'block', transition: 'transform .15s', userSelect: 'none' }}
+                    draggable={false}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

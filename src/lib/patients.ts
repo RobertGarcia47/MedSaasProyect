@@ -68,7 +68,12 @@ export interface ConsultaResumen {
 }
 
 export interface PacienteDetalleUI extends PacienteUI {
-  expedienteId: string | null;       // necesario para recetas/informes (RPCs)
+  expedienteId: string | null;
+  // Campos crudos para pre-poblar el formulario de edición
+  nombre_raw: string;
+  apellido_paterno_raw: string | null;
+  apellido_materno_raw: string | null;
+  fecha_nacimiento: string | null;   // "YYYY-MM-DD"
   ultimos_vitales: VitalesUI | null;
   consultas: ConsultaResumen[];
   diagnosticos: { codigo: string; descripcion: string; es_principal: boolean }[];
@@ -117,6 +122,29 @@ export async function actualizarGrupoSanguineo(pacienteId: string, grupo: GrupoS
   const { error } = await supabase
     .from('pacientes')
     .update({ grupo_sanguineo: grupo })
+    .eq('id', pacienteId);
+  if (error) throw error;
+}
+
+/** Actualiza los datos demográficos editables de un paciente. */
+export async function actualizarPaciente(
+  pacienteId: string,
+  input: Partial<NuevoPaciente>,
+): Promise<void> {
+  const campos: Record<string, unknown> = {};
+  if (input.nombre !== undefined)            campos.nombre            = input.nombre?.trim() || undefined;
+  if (input.apellido_paterno !== undefined)  campos.apellido_paterno  = input.apellido_paterno?.trim() || null;
+  if (input.apellido_materno !== undefined)  campos.apellido_materno  = input.apellido_materno?.trim() || null;
+  if (input.fecha_nacimiento !== undefined)  campos.fecha_nacimiento  = input.fecha_nacimiento  || null;
+  if (input.sexo !== undefined)              campos.sexo              = input.sexo              || null;
+  if (input.grupo_sanguineo !== undefined)   campos.grupo_sanguineo   = input.grupo_sanguineo   || null;
+  if (input.telefono !== undefined)          campos.telefono          = input.telefono?.trim()  || null;
+  if (input.email !== undefined)             campos.email             = input.email?.trim()     || null;
+  if (input.curp !== undefined)              campos.curp              = input.curp?.trim()      || null;
+
+  const { error } = await supabase
+    .from('pacientes')
+    .update(campos)
     .eq('id', pacienteId);
   if (error) throw error;
 }
@@ -336,6 +364,10 @@ export async function fetchPacienteDetalle(
   return {
     id: pac.id,
     expedienteId: expediente?.id ?? null,
+    nombre_raw: pac.nombre,
+    apellido_paterno_raw: pac.apellido_paterno,
+    apellido_materno_raw: pac.apellido_materno,
+    fecha_nacimiento: pac.fecha_nacimiento,
     name: nombreCompleto(pac.nombre, pac.apellido_paterno, pac.apellido_materno),
     initials: calcIniciales(pac.nombre, pac.apellido_paterno),
     color: patientColor(pac.id),
