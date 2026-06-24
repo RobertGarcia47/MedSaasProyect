@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Icon, Button, TextField, Divider } from '../components';
 
 // URL del onboarding (app separada que crea la cuenta + tenant).
-const ONBOARDING_URL = 'https://medsaasr.web.app/';
+const ONBOARDING_URL = 'https://medsaas-onboarding.vercel.app/';
 
 // Mapea errores de Supabase Auth a mensajes en español (por substring del message).
 function authErrorMsg(message?: string): string {
