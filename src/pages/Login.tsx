@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Icon, Button, TextField, Divider } from '../components';
 
@@ -85,62 +85,197 @@ function MedicalBackdrop({ children, style = {}, className = '' }) {
 }
 
 /* ---------- Login form ---------- */
+type LoginView = 'login' | 'forgot' | 'forgot-sent' | 'reset';
+
 function LoginForm({ onLogin, authError, onClearAuthError }) {
   const [tab, setTab]         = useState('login');
+  const [view, setView]       = useState<LoginView>('login');
   const [email, setEmail]     = useState('');
   const [pwd, setPwd]         = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [name, setName]       = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
-  const isReg = tab === 'register';
 
-  const displayError = authError || error;
+  // Nueva contraseña (vista reset)
+  const [newPwd,  setNewPwd]  = useState('');
+  const [newPwd2, setNewPwd2] = useState('');
+  const [showNew,  setShowNew]  = useState(false);
+  const [showNew2, setShowNew2] = useState(false);
+
+  const isReg = tab === 'register';
+  const displayError = (view === 'login' ? authError : '') || error;
   const clearError = () => { setError(''); onClearAuthError?.(); };
+
+  // Detecta el redirect de recuperación de contraseña desde el email de Supabase.
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') setView('reset');
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleEmailAuth = async () => {
     if (!email || !pwd) { setError('Completa todos los campos.'); return; }
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password: pwd,
-      });
-      if (signInError) {
-        setError(authErrorMsg(signInError.message));
-        return;
-      }
-      // El listener onAuthStateChange en App aplica el guard (perfil + trial).
+      const { error: err } = await supabase.auth.signInWithPassword({ email, password: pwd });
+      if (err) { setError(authErrorMsg(err.message)); return; }
       onLogin?.();
     } catch (e: any) {
       setError(authErrorMsg(e?.message));
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const handleGoogle = async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true); setError('');
     try {
-      // OAuth con redirect: la página navega a Google y vuelve al origin.
-      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      const { error: err } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: { redirectTo: window.location.origin },
       });
-      if (oauthError) {
-        setError(authErrorMsg(oauthError.message));
-        setLoading(false);
-      }
+      if (err) { setError(authErrorMsg(err.message)); setLoading(false); }
     } catch (e: any) {
-      setError(authErrorMsg(e?.message));
-      setLoading(false);
+      setError(authErrorMsg(e?.message)); setLoading(false);
     }
   };
 
-  const handleKeyDown = (e) => { if (e.key === 'Enter') handleEmailAuth(); };
+  const handleForgot = async () => {
+    if (!email) { setError('Ingresa tu correo electrónico.'); return; }
+    setLoading(true); setError('');
+    try {
+      const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin,
+      });
+      if (err) throw err;
+      setView('forgot-sent');
+    } catch (e: any) {
+      setError(authErrorMsg(e?.message));
+    } finally { setLoading(false); }
+  };
 
+  const handleResetPassword = async () => {
+    if (newPwd.length < 8) { setError('La contraseña debe tener al menos 8 caracteres.'); return; }
+    if (newPwd !== newPwd2) { setError('Las contraseñas no coinciden.'); return; }
+    setLoading(true); setError('');
+    try {
+      const { error: err } = await supabase.auth.updateUser({ password: newPwd });
+      if (err) throw err;
+      onLogin?.();
+    } catch (e: any) {
+      setError(authErrorMsg(e?.message));
+    } finally { setLoading(false); }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key !== 'Enter') return;
+    if (view === 'forgot') handleForgot();
+    else if (view === 'reset') handleResetPassword();
+    else handleEmailAuth();
+  };
+
+  // ── Vista: recuperación enviada ───────────────────────────────────────────
+  if (view === 'forgot-sent') return (
+    <div style={{ width: '100%', maxWidth: 380, margin: '0 auto', textAlign: 'center' }}>
+      <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+        <Icon name="mark_email_read" size={36} fill style={{ color: 'var(--on-primary-container)' }} />
+      </div>
+      <h2 className="headline-s" style={{ marginBottom: 10, letterSpacing: '-.3px' }}>Revisa tu correo</h2>
+      <p className="body-m" style={{ color: 'var(--on-surface-variant)', marginBottom: 8, lineHeight: 1.6 }}>
+        Enviamos un enlace de recuperación a
+      </p>
+      <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 28, color: 'var(--on-surface)' }}>{email}</p>
+      <p className="body-s" style={{ color: 'var(--on-surface-variant)', marginBottom: 24, lineHeight: 1.6 }}>
+        El enlace expira en 60 minutos. Si no lo ves, revisa tu carpeta de spam.
+      </p>
+      <Button full variant="outlined" onClick={() => { setView('forgot'); setError(''); }}>
+        Cambiar correo
+      </Button>
+      <button
+        onClick={() => { setView('login'); setError(''); }}
+        style={{ marginTop: 16, background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-body)' }}
+      >
+        ← Volver al inicio de sesión
+      </button>
+    </div>
+  );
+
+  // ── Vista: nueva contraseña (desde el link del correo) ────────────────────
+  if (view === 'reset') return (
+    <div style={{ width: '100%', maxWidth: 380, margin: '0 auto' }} onKeyDown={handleKeyDown}>
+      <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+        <Icon name="lock_reset" size={32} fill style={{ color: 'var(--on-primary-container)' }} />
+      </div>
+      <h2 className="headline-s" style={{ marginBottom: 6, letterSpacing: '-.3px' }}>Crea una nueva contraseña</h2>
+      <p className="body-m" style={{ color: 'var(--on-surface-variant)', marginBottom: 26 }}>
+        Elige una contraseña segura de al menos 8 caracteres.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <TextField
+          label="Nueva contraseña"
+          icon="lock"
+          type={showNew ? 'text' : 'password'}
+          value={newPwd}
+          onChange={(v) => { setNewPwd(v); clearError(); }}
+          trailingIcon={showNew ? 'visibility_off' : 'visibility'}
+          onTrailingClick={() => setShowNew(!showNew)}
+        />
+        <TextField
+          label="Confirmar contraseña"
+          icon="lock_open"
+          type={showNew2 ? 'text' : 'password'}
+          value={newPwd2}
+          onChange={(v) => { setNewPwd2(v); clearError(); }}
+          trailingIcon={showNew2 ? 'visibility_off' : 'visibility'}
+          onTrailingClick={() => setShowNew2(!showNew2)}
+        />
+        {error && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 'var(--r-sm)', background: 'var(--error-container)', color: 'var(--on-error-container)', fontSize: 13.5, fontWeight: 500 }}>
+            <Icon name="error" size={18} fill style={{ flexShrink: 0 }} />{error}
+          </div>
+        )}
+        <Button full size="md" onClick={handleResetPassword} disabled={loading} style={{ height: 52, marginTop: 4 }} trailingIcon={loading ? undefined : 'check'}>
+          {loading ? 'Actualizando…' : 'Establecer contraseña'}
+        </Button>
+      </div>
+    </div>
+  );
+
+  // ── Vista: solicitar correo de recuperación ───────────────────────────────
+  if (view === 'forgot') return (
+    <div style={{ width: '100%', maxWidth: 380, margin: '0 auto' }} onKeyDown={handleKeyDown}>
+      <button
+        onClick={() => { setView('login'); setError(''); }}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', color: 'var(--on-surface-variant)', fontWeight: 600, fontSize: 13, cursor: 'pointer', marginBottom: 24, padding: 0, fontFamily: 'var(--font-body)' }}
+      >
+        <Icon name="arrow_back" size={18} /> Volver
+      </button>
+      <h2 className="headline-s" style={{ marginBottom: 6, letterSpacing: '-.3px' }}>¿Olvidaste tu contraseña?</h2>
+      <p className="body-m" style={{ color: 'var(--on-surface-variant)', marginBottom: 26, lineHeight: 1.6 }}>
+        Ingresa el correo con el que te registraste y te enviaremos un enlace para restablecer tu contraseña.
+      </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <TextField
+          label="Correo electrónico"
+          icon="mail"
+          type="email"
+          value={email}
+          onChange={(v) => { setEmail(v); clearError(); }}
+          placeholder="nombre@clinica.mx"
+        />
+        {error && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 'var(--r-sm)', background: 'var(--error-container)', color: 'var(--on-error-container)', fontSize: 13.5, fontWeight: 500 }}>
+            <Icon name="error" size={18} fill style={{ flexShrink: 0 }} />{error}
+          </div>
+        )}
+        <Button full size="md" onClick={handleForgot} disabled={loading} style={{ height: 52 }} trailingIcon={loading ? undefined : 'send'}>
+          {loading ? 'Enviando…' : 'Enviar enlace de recuperación'}
+        </Button>
+      </div>
+    </div>
+  );
+
+  // ── Vista: login / register ───────────────────────────────────────────────
   return (
     <div style={{ width: '100%', maxWidth: 380, margin: '0 auto' }}>
       <div style={{ display: 'flex', gap: 4, padding: 4, background: 'var(--surface-container-high)', borderRadius: 'var(--r-full)', marginBottom: 28 }}>
@@ -150,13 +285,13 @@ function LoginForm({ onLogin, authError, onClearAuthError }) {
               if (k === 'register') {
                 window.open(ONBOARDING_URL, '_blank', 'noopener,noreferrer');
               } else {
-                setTab(k);
-                clearError();
+                setTab(k); clearError();
               }
             }}
             style={{
               flex: 1, height: 40, border: 'none', borderRadius: 'var(--r-full)', cursor: 'pointer',
-              background: tab === k ? 'var(--primary)' : 'transparent', color: tab === k ? 'var(--on-primary)' : 'var(--on-surface-variant)',
+              background: tab === k ? 'var(--primary)' : 'transparent',
+              color: tab === k ? 'var(--on-primary)' : 'var(--on-surface-variant)',
               fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14, transition: 'all .2s',
             }}>{l}</button>
         ))}
@@ -184,7 +319,12 @@ function LoginForm({ onLogin, authError, onClearAuthError }) {
 
         {!isReg && (
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -6 }}>
-            <a style={{ color: 'var(--primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>¿Olvidaste tu contraseña?</a>
+            <button
+              onClick={() => { setView('forgot'); setError(''); }}
+              style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 0 }}
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
           </div>
         )}
         <Button full size="md" onClick={handleEmailAuth} disabled={loading} style={{ height: 52, marginTop: 4 }} trailingIcon={loading ? undefined : 'arrow_forward'}>

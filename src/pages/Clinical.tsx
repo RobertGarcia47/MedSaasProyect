@@ -761,13 +761,20 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
   const [telefono,     setTelefono]    = useState('');
   const [email,        setEmail]       = useState('');
   const [curp,         setCurp]        = useState('');
+  const [domicilio,    setDomicilio]   = useState('');
+  const [municipio,    setMunicipio]   = useState('');
+  const [estado,       setEstado]      = useState('');
+  const [nss,          setNss]         = useState('');
+  const [rfc,          setRfc]         = useState('');
   const [saving,       setSaving]      = useState(false);
 
   useEffect(() => {
     if (open) {
       setNombre(''); setApPaterno(''); setApMaterno('');
       setDateNacVal({ d: 1, m: 0, y: 1990 }); setDateNacSet(false); setPickerNacOpen(false);
-      setSexo(''); setGrupo(''); setTelefono(''); setEmail(''); setCurp(''); setSaving(false);
+      setSexo(''); setGrupo(''); setTelefono(''); setEmail(''); setCurp('');
+      setDomicilio(''); setMunicipio(''); setEstado(''); setNss(''); setRfc('');
+      setSaving(false);
     }
   }, [open]);
 
@@ -783,6 +790,7 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
         sexo: (sexo as SexoEnum) || null,
         grupo_sanguineo: (grupo as GrupoSanguineo) || null,
         telefono, email, curp,
+        domicilio, municipio, estado, nss, rfc,
       });
       toast?.('Paciente registrado correctamente');
       onCreated?.(); onClose();
@@ -878,6 +886,37 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
               style={{ letterSpacing: '.5px', textTransform: 'uppercase' }}
             />
           </Field>
+
+          {/* Domicilio */}
+          <Field label="Domicilio (calle y número)" icon="home">
+            <FocusInput value={domicilio} onChange={(e) => setDomicilio(e.target.value)} placeholder="Ej. Av. Juárez 123, Col. Centro" />
+          </Field>
+
+          {/* Municipio + Estado */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            <Field label="Municipio / Alcaldía" icon="location_city">
+              <FocusInput value={municipio} onChange={(e) => setMunicipio(e.target.value)} placeholder="Ej. Guadalajara" />
+            </Field>
+            <Field label="Estado" icon="map">
+              <FocusInput value={estado} onChange={(e) => setEstado(e.target.value)} placeholder="Ej. Jalisco" />
+            </Field>
+          </div>
+
+          {/* NSS + RFC */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+            <Field label="NSS (Núm. Seguro Social)" icon="badge">
+              <FocusInput value={nss} onChange={(e) => setNss(e.target.value)} placeholder="11 dígitos" maxLength={11} />
+            </Field>
+            <Field label="RFC" icon="receipt_long">
+              <FocusInput
+                value={rfc}
+                onChange={(e) => setRfc(e.target.value.toUpperCase())}
+                placeholder="XAXX010101000"
+                maxLength={13}
+                style={{ textTransform: 'uppercase' }}
+              />
+            </Field>
+          </div>
         </div>
       )}
 

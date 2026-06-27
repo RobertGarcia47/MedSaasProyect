@@ -13,7 +13,7 @@ export interface ApptUI {
   date: string;   // "YYYY-MM-DD"
   start: string;  // "HH:MM"
   end: string;    // "HH:MM" (fecha + 30 min asumidos — no hay duración en schema)
-  type: 'Consulta';
+  type: 'Consulta' | 'Seguimiento' | 'Urgencia' | 'Revision';
   reason: string;  // motivo_enc es bytea → placeholder hasta tener RPCs
   status: 'en-curso' | 'pendiente' | 'completada' | 'confirmada' | 'sala-espera' | 'cancelada';
   room: string;

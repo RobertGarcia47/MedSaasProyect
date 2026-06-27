@@ -37,6 +37,24 @@ const ESTADO_TO_STATUS: Record<EstadoCita, ApptUI['status']> = {
   no_asistio:  'cancelada',
 };
 
+// ── Tipo de cita codificado en el campo motivo como "[tipo] texto" ────────────
+function decodeTipoCita(motivo: string | null): string {
+  if (!motivo) return 'Consulta';
+  const m = motivo.match(/^\[(consulta|seguimiento|urgencia|revision)\]/i);
+  if (!m) return 'Consulta';
+  const t = m[1].toLowerCase();
+  const map: Record<string, string> = { consulta: 'Consulta', seguimiento: 'Seguimiento', urgencia: 'Urgencia', revision: 'Revision' };
+  return map[t] ?? 'Consulta';
+}
+function decodeMotivoCita(motivo: string | null): string {
+  if (!motivo) return 'Cita';
+  return motivo.replace(/^\[(consulta|seguimiento|urgencia|revision)\]\s*/i, '') || 'Cita';
+}
+export function encodeMotivoConTipo(tipo: string, motivo: string): string {
+  const t = tipo.toLowerCase();
+  return t !== 'consulta' ? `[${t}] ${motivo}`.trim() : motivo;
+}
+
 // ── Row anidado de Supabase ───────────────────────────────────────────────────
 type CitaRow = {
   id: string;
@@ -75,8 +93,8 @@ async function queryCitas(clinicaId: string, desde: string, hasta: string): Prom
       date: c.fecha.slice(0, 10),
       start: hhmm(c.fecha),
       end: hhmm(addMin(c.fecha, c.duracion_min || 30)),
-      type: 'Consulta',
-      reason: c.motivo || 'Cita',
+      type: decodeTipoCita(c.motivo) as ApptUI['type'],
+      reason: decodeMotivoCita(c.motivo),
       status: ESTADO_TO_STATUS[c.estado] ?? 'pendiente',
       room: 'Consultorio',
     };
@@ -98,6 +116,13 @@ export async function fetchCitasSemana(clinicaId: string, diaDeLaSemana: Date): 
   const lunes = new Date(d); lunes.setDate(d.getDate() + diffLunes); lunes.setHours(0, 0, 0, 0);
   const domingo = new Date(lunes); domingo.setDate(lunes.getDate() + 6); domingo.setHours(23, 59, 59, 999);
   return queryCitas(clinicaId, lunes.toISOString(), domingo.toISOString());
+}
+
+/** Citas del mes completo (año/mes en números, month = 0-based). */
+export async function fetchCitasMes(clinicaId: string, year: number, month: number): Promise<ApptUI[]> {
+  const desde = new Date(year, month, 1); desde.setHours(0, 0, 0, 0);
+  const hasta = new Date(year, month + 1, 0); hasta.setHours(23, 59, 59, 999);
+  return queryCitas(clinicaId, desde.toISOString(), hasta.toISOString());
 }
 
 /** Cuenta citas en un rango. */
@@ -142,4 +167,62 @@ export async function createCita(
     .single<{ id: string }>();
   if (error) throw error;
   return data.id;
+}
+
+// ── Chequeo de conflicto de horario ───────────────────────────────────────────
+export interface ConflictoInfo {
+  pacienteName: string;
+  start: string; // HH:MM
+  end: string;   // HH:MM
+}
+
+export async function checkConflicto(
+  clinicaId: string,
+  medicoId: string,
+  fechaIso: string,   // ISO timestamp del inicio de la nueva cita
+  duracionMin: number,
+  excludeId?: string, // id de la cita a ignorar (reagendar)
+): Promise<ConflictoInfo | null> {
+  const inicio  = new Date(fechaIso);
+  const fin     = new Date(inicio.getTime() + duracionMin * 60_000);
+  const dayStart = new Date(inicio); dayStart.setHours(0, 0, 0, 0);
+  const dayEnd   = new Date(inicio); dayEnd.setHours(23, 59, 59, 999);
+
+  const { data, error } = await supabase
+    .from('citas')
+    .select('id, fecha, duracion_min, estado, paciente_id, pacientes(nombre, apellido_paterno)')
+    .eq('clinica_id', clinicaId)
+    .eq('medico_id', medicoId)
+    .neq('estado', 'cancelada')
+    .gte('fecha', dayStart.toISOString())
+    .lte('fecha', dayEnd.toISOString());
+
+  if (error || !data) return null;
+
+  for (const c of data as any[]) {
+    if (excludeId && c.id === excludeId) continue;
+    const cStart = new Date(c.fecha).getTime();
+    const cEnd   = cStart + (c.duracion_min ?? 30) * 60_000;
+    // Traslape: los intervalos se superponen si inicio < cEnd && fin > cStart
+    if (inicio.getTime() < cEnd && fin.getTime() > cStart) {
+      const pac  = c.pacientes ?? {};
+      const name = [pac.nombre, pac.apellido_paterno].filter(Boolean).join(' ') || 'otro paciente';
+      return {
+        pacienteName: name,
+        start: hhmm(c.fecha),
+        end:   hhmm(new Date(cEnd).toISOString()),
+      };
+    }
+  }
+  return null;
+}
+
+export async function cancelarCita(citaId: string): Promise<void> {
+  const { error } = await supabase.from('citas').update({ estado: 'cancelada' }).eq('id', citaId);
+  if (error) throw error;
+}
+
+export async function reagendarCita(citaId: string, nuevaFecha: string, duracionMin: number): Promise<void> {
+  const { error } = await supabase.from('citas').update({ fecha: nuevaFecha, duracion_min: duracionMin }).eq('id', citaId);
+  if (error) throw error;
 }

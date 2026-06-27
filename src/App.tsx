@@ -16,7 +16,7 @@ import { Laboratorio } from './pages/Laboratorio';
 import { Profile, Settings } from './pages/Profile';
 
 // URL del onboarding (donde el usuario completa alta + tenant).
-const ONBOARDING_URL = 'https://medsaasr.web.app/';
+const ONBOARDING_URL = 'https://medsaas-onboarding.vercel.app/';
 
 const ROL_LABEL: Record<string, string> = {
   owner: 'Propietario',
@@ -45,11 +45,9 @@ function doctorFromAccount(account: AccountContext | null) {
 }
 
 const NAV = [
-  { key: 'dashboard',    label: 'Inicio',        icon: 'space_dashboard' },
+  { key: 'dashboard',    label: 'Inicio',         icon: 'space_dashboard' },
   { key: 'calendar',     label: 'Agenda',         icon: 'calendar_month' },
   { key: 'patients',     label: 'Pacientes',      icon: 'groups' },
-  { key: 'prescriptions',label: 'Recetas',        icon: 'prescriptions' },
-  { key: 'reports',      label: 'Informes',       icon: 'description' },
 ];
 const NAV2 = [
   { key: 'profile',  label: 'Mi perfil',     icon: 'account_circle' },

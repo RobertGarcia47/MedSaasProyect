@@ -180,8 +180,7 @@ export function Dashboard({ go, openModal, dataVersion = 0 }: { go: (name: strin
           </h1>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <Button variant="outlined" icon="description" onClick={() => openModal('report')}>Nuevo informe</Button>
-          <Button variant="filled"   icon="add"         onClick={() => openModal('appointment')}>Nueva cita</Button>
+          <Button variant="filled" icon="add" onClick={() => openModal('appointment')}>Nueva cita</Button>
         </div>
       </div>
 
@@ -193,7 +192,6 @@ export function Dashboard({ go, openModal, dataVersion = 0 }: { go: (name: strin
             <StatCard icon="event_available" label="Citas hoy"           value={consultasHoy}   tone="primary"   onClick={() => go('calendar')} />
             <StatCard icon="groups"          label="Total pacientes"     value={totalPacientes} tone="tertiary"  onClick={() => go('patients')} />
             <StatCard icon="calendar_month"  label="Consultas este mes"  value={consultasMes}   tone="secondary" onClick={() => go('calendar')} />
-            <StatCard icon="prescriptions"   label="Recetas"             value="—"              tone="warning"   onClick={() => go('prescriptions')} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: 20 }} className="dash-grid">
@@ -225,7 +223,6 @@ export function Dashboard({ go, openModal, dataVersion = 0 }: { go: (name: strin
                     ['person_add',   'Nuevo paciente', () => openModal('patient')],
                     ['event',        'Agendar cita',   () => openModal('appointment')],
                     ['prescriptions','Crear receta',   () => go('receta')],
-                    ['description',  'Nuevo informe',  () => openModal('report')],
                   ].map(([ic, l, fn]) => (
                     <button key={l as string} onClick={fn as () => void} className="state-layer" style={{
                       display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 10, padding: '14px 14px', borderRadius: 'var(--r-md)',

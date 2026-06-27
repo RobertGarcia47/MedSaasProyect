@@ -1,13 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAccount } from '../context/AccountContext';
-import {
-  Icon, Button, Card, Avatar, TextField, Select,
-  SectionHeader, Divider, Chip, Switch,
-} from '../components';
+import { Switch, Select } from '../components';
 import type { Especialidad } from '../lib/types';
 
-// ─── Tipos locales ────────────────────────────────────────────────────────────
+// ─── Tipos locales ─────────────────────────────────────────────────────────────
 
 interface ClinicaFull {
   id: string;
@@ -16,6 +13,8 @@ interface ClinicaFull {
   telefono: string | null;
   correo_contacto: string | null;
   logo_url: string | null;
+  rfc: string | null;
+  clues: string | null;
 }
 
 interface MedicoDetalleFull {
@@ -25,6 +24,172 @@ interface MedicoDetalleFull {
   especialidad_id: number | null;
 }
 
+type TabId = 'personal' | 'clinica' | 'profesional';
+
+// ─── Inline SVGs (Feather/Heroicons style) ────────────────────────────────────
+
+const IUser = ({ c = '#9ca3af', s = 13 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+  </svg>
+);
+const IPhone = ({ c = '#9ca3af', s = 13 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6.29 6.29l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+  </svg>
+);
+const IMail = ({ c = '#9ca3af', s = 13 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+    <polyline points="22,6 12,13 2,6"/>
+  </svg>
+);
+const IBuilding = ({ c = '#9ca3af', s = 13 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+    <rect x="2" y="7" width="20" height="14" rx="2"/>
+    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+  </svg>
+);
+const IPin = ({ c = '#9ca3af', s = 13 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
+  </svg>
+);
+const IDoc = ({ c = '#9ca3af', s = 13 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+    <rect x="3" y="4" width="18" height="16" rx="2"/>
+    <line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="13" y2="16"/>
+  </svg>
+);
+const ISchool = ({ c = '#0d5c4e', s = 13 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+    <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+  </svg>
+);
+const IHeartPulse = ({ c = '#0d5c4e', s = 13 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+    <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+  </svg>
+);
+const ISave = ({ c = '#fff', s = 13 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5">
+    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+    <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+  </svg>
+);
+const ICheck = ({ c = '#fff', s = 13 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5">
+    <polyline points="20 6 9 17 4 12"/>
+  </svg>
+);
+const IUpload = ({ c = '#0d5c4e', s = 12 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5">
+    <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+  </svg>
+);
+const IGlobe = ({ c = '#0d5c4e', s = 26 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5">
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+  </svg>
+);
+const IEyeOff = ({ c = '#9ca3af', s = 11 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+    <line x1="1" y1="1" x2="23" y2="23"/>
+  </svg>
+);
+const IHome = ({ c = '#9ca3af', s = 13 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+    <polyline points="9 22 9 12 15 12 15 22"/>
+  </svg>
+);
+const IChevron = ({ c = '#9ca3af', s = 13 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
+    <polyline points="6 9 12 15 18 9"/>
+  </svg>
+);
+
+// ─── PField: campo de formulario con estilo handoff ───────────────────────────
+
+function PField({ label, value, onChange, type = 'text', placeholder, icon, fullWidth, readOnly, required, prefix }: {
+  label: string; value: string; onChange?: (v: string) => void;
+  type?: string; placeholder?: string; icon?: React.ReactNode;
+  fullWidth?: boolean; readOnly?: boolean; required?: boolean; prefix?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const active = focused && !readOnly;
+  return (
+    <div style={{ gridColumn: fullWidth ? '1 / -1' : undefined }}>
+      <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>
+        {label}{required && ' *'}
+      </label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: active ? '1.5px solid #0d5c4e' : '1px solid #e5e9e7', borderRadius: 8, padding: '9px 13px', background: readOnly ? '#f3f4f6' : (active ? '#f6fdf9' : '#fafbfa'), transition: 'border-color .15s, background .15s' }}>
+        {icon && <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{icon}</span>}
+        {prefix && <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 700 }}>{prefix}</span>}
+        <input
+          type={type}
+          value={value}
+          onChange={e => onChange?.(e.target.value)}
+          placeholder={placeholder}
+          readOnly={readOnly}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '13.5px', fontWeight: active ? 600 : 400, color: readOnly ? '#9ca3af' : (active ? '#0d5c4e' : (value ? '#374151' : '#9ca3af')), fontFamily: 'inherit', cursor: readOnly ? 'default' : 'text' }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── PSelect: select con estilo handoff ───────────────────────────────────────
+
+function PSelect({ label, value, onChange, options, icon, fullWidth }: {
+  label: string; value: string; onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+  icon?: React.ReactNode; fullWidth?: boolean;
+}) {
+  const [focused, setFocused] = useState(false);
+  const hasValue = value !== '';
+  return (
+    <div style={{ gridColumn: fullWidth ? '1 / -1' : undefined }}>
+      <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>
+        {label}
+      </label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: focused ? '1.5px solid #0d5c4e' : '1px solid #e5e9e7', borderRadius: 8, padding: '9px 13px', background: focused ? '#f6fdf9' : '#fafbfa', transition: 'border-color .15s, background .15s' }}>
+        {icon && <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{icon}</span>}
+        <select
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '13.5px', fontWeight: (focused || hasValue) ? 600 : 400, color: (focused || hasValue) ? '#0d5c4e' : '#9ca3af', fontFamily: 'inherit', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
+        >
+          {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+        <IChevron />
+      </div>
+    </div>
+  );
+}
+
+// ─── SaveBtn ──────────────────────────────────────────────────────────────────
+
+function SaveBtn({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0d5c4e', color: '#fff', fontSize: 13, fontWeight: 600, padding: '9px 20px', borderRadius: 8, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, transition: 'opacity .15s' }}
+    >
+      {children}
+    </button>
+  );
+}
+
 // ─── Profile ─────────────────────────────────────────────────────────────────
 
 export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void; refreshAccount?: () => Promise<void> | void }) {
@@ -32,26 +197,28 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
   const fileRef  = useRef<HTMLInputElement>(null);
   const t        = (msg: string) => toast?.(msg);
 
-  const [loading, setLoading]       = useState(true);
-  const [clinica, setClinica]       = useState<ClinicaFull | null>(null);
-  const [especialidades, setEsps]   = useState<Especialidad[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [activeTab, setActiveTab] = useState<TabId>('personal');
+  const [clinica, setClinica]     = useState<ClinicaFull | null>(null);
+  const [especialidades, setEsps] = useState<Especialidad[]>([]);
 
   // form – datos personales
-  const [nombre,     setNombre]     = useState('');
-  const [apellidoP,  setApellidoP]  = useState('');
-  const [apellidoM,  setApellidoM]  = useState('');
-  const [telefono,   setTelefono]   = useState('');
+  const [nombre,    setNombre]    = useState('');
+  const [apellidoP, setApellidoP] = useState('');
+  const [apellidoM, setApellidoM] = useState('');
+  const [telefono,  setTelefono]  = useState('');
 
   // form – clínica
   const [cNombre,  setCNombre]  = useState('');
   const [cDir,     setCDir]     = useState('');
   const [cTel,     setCTel]     = useState('');
   const [cCorreo,  setCCorreo]  = useState('');
+  const [cRfc,     setCRfc]     = useState('');
+  const [cClues,   setCClues]   = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   // form – médico
-  const [medicoOpen,    setMedicoOpen]    = useState(false);
   const [tieneCedula,   setTieneCedula]   = useState(false);
   const [prefijo,       setPrefijo]       = useState('');
   const [cedula,        setCedula]        = useState('');
@@ -64,15 +231,14 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
   const [savingM, setSavingM] = useState(false);
 
   // stats
-  const [statPacientes,  setStatPacientes]  = useState<number | null>(null);
-  const [statConsultas,  setStatConsultas]  = useState<number | null>(null);
+  const [statPacientes, setStatPacientes] = useState<number | null>(null);
+  const [statConsultas, setStatConsultas] = useState<number | null>(null);
 
   useEffect(() => { loadAll(); }, []);
 
   async function loadAll() {
     setLoading(true);
     try {
-      // Perfil (telefono no está en AccountContext, lo cargamos aparte)
       const { data: pf } = await supabase
         .from('profiles')
         .select('nombre, apellido_paterno, apellido_materno, telefono')
@@ -83,11 +249,10 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
       setApellidoM(pf?.apellido_materno ?? '');
       setTelefono(pf?.telefono ?? '');
 
-      // Clínica + stats
       if (account.clinicaId) {
         const [cliRes, pacRes, conRes] = await Promise.all([
           supabase.from('clinicas')
-            .select('id, nombre, direccion, telefono, correo_contacto, logo_url')
+            .select('id, nombre, direccion, telefono, correo_contacto, logo_url, rfc, clues')
             .eq('id', account.clinicaId)
             .single<ClinicaFull>(),
           supabase.from('pacientes')
@@ -105,12 +270,13 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
           setCDir(cli.direccion ?? '');
           setCTel(cli.telefono ?? '');
           setCCorreo(cli.correo_contacto ?? '');
+          setCRfc(cli.rfc ?? '');
+          setCClues(cli.clues ?? '');
         }
         setStatPacientes(pacRes.count ?? 0);
         setStatConsultas(conRes.count ?? 0);
       }
 
-      // Médico detalles
       const { data: md } = await supabase
         .from('medico_detalles')
         .select('prefijo, cedula_profesional, universidad, especialidad_id')
@@ -118,14 +284,12 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
         .maybeSingle<MedicoDetalleFull>();
       if (md) {
         setTieneCedula(true);
-        setMedicoOpen(true);
         setPrefijo(md.prefijo ?? '');
         setCedula(md.cedula_profesional ?? '');
         setUniversidad(md.universidad ?? '');
         setEspecialidadId(md.especialidad_id ? String(md.especialidad_id) : '');
       }
 
-      // Catálogo especialidades
       const { data: esps } = await supabase
         .from('especialidades')
         .select('id, nombre')
@@ -137,8 +301,6 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
       setLoading(false);
     }
   }
-
-  // ── Guardados ───────────────────────────────────────────────────────────────
 
   async function savePersonal() {
     setSavingP(true);
@@ -182,6 +344,8 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
         direccion:        cDir.trim() || null,
         telefono:         cTel.trim() || null,
         correo_contacto:  cCorreo.trim() || null,
+        rfc:              cRfc.trim().toUpperCase() || null,
+        clues:            cClues.trim().toUpperCase() || null,
         logo_url,
       }).eq('id', account.clinicaId);
       if (error) throw error;
@@ -201,15 +365,15 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
     setSavingM(true);
     try {
       const { error } = await supabase.from('medico_detalles').upsert({
-        profile_id:          account.userId,
-        prefijo:             prefijo.trim() || null,
-        cedula_profesional:  cedula.trim(),
-        universidad:         universidad.trim() || null,
-        especialidad_id:     especialidadId ? Number(especialidadId) : null,
+        profile_id:         account.userId,
+        prefijo:            prefijo.trim() || null,
+        cedula_profesional: cedula.trim(),
+        universidad:        universidad.trim() || null,
+        especialidad_id:    especialidadId ? Number(especialidadId) : null,
       }, { onConflict: 'profile_id' });
       if (error) throw error;
       setTieneCedula(true);
-      await refreshAccount?.();   // actualiza puedeEmitirClinico en todo el app sin re-login
+      await refreshAccount?.();
       t(tieneCedula ? 'Perfil profesional actualizado' : '¡Perfil profesional registrado! Ya puedes crear pacientes y recetas.');
     } catch (e: any) {
       t('Error: ' + (e.message ?? String(e)));
@@ -217,8 +381,6 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
       setSavingM(false);
     }
   }
-
-  // ── Handlers ────────────────────────────────────────────────────────────────
 
   function onLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -228,204 +390,240 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
     setLogoPreview(URL.createObjectURL(file));
   }
 
-  // ── Derivados visuales ──────────────────────────────────────────────────────
+  // ── Derivados ───────────────────────────────────────────────────────────────
 
-  const logoDisplay    = logoPreview ?? clinica?.logo_url ?? null;
+  const logoDisplay  = logoPreview ?? clinica?.logo_url ?? null;
   const nombreMostrado = [nombre, apellidoP, apellidoM].filter(Boolean).join(' ') || account.nombreCompleto;
-  const espOptions     = [
+  const rolLabel = account.rol === 'owner' ? 'Propietario' : account.rol === 'medico' ? 'Médico' : 'Asistente';
+  const esOwnerOrMedico = account.rol === 'owner' || account.rol === 'medico';
+  const espOptions = [
     { value: '', label: 'Sin especialidad' },
     ...especialidades.map(e => ({ value: String(e.id), label: e.nombre })),
   ];
-  const esOwnerOrMedico = account.rol === 'owner' || account.rol === 'medico';
-  const rolLabel = account.rol === 'owner' ? 'Propietario' : account.rol === 'medico' ? 'Médico' : 'Asistente';
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  const tabStyle = (id: TabId): React.CSSProperties => ({
+    padding: '12px 16px',
+    fontSize: 13,
+    fontWeight: activeTab === id ? 600 : 500,
+    color: activeTab === id ? '#0d5c4e' : '#9ca3af',
+    border: 'none',
+    borderBottom: activeTab === id ? '2px solid #0d5c4e' : '2px solid transparent',
+    background: 'transparent',
+    cursor: 'pointer',
+    letterSpacing: '0.1px',
+    transition: 'color .15s, border-color .15s',
+    fontFamily: 'inherit',
+  });
 
   if (loading) return (
-    <div className="page-pad" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80 }}>
-      <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid var(--primary-container)', borderTopColor: 'var(--primary)', animation: 'spin .8s linear infinite' }} />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80 }}>
+      <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid #c8e6e0', borderTopColor: '#0d5c4e', animation: 'spin .8s linear infinite' }} />
     </div>
   );
 
   return (
-    <div className="page-pad fade-up" style={{ maxWidth: 980 }}>
-      <h1 className="headline-l" style={{ letterSpacing: '-.5px', marginBottom: 20 }}>Mi perfil</h1>
+    <div className="fade-up" style={{ minHeight: '100%', paddingBottom: 48 }}>
+      <div style={{ width: 'min(100%, 680px)', margin: '0 auto', padding: '0 16px' }}>
 
-      {/* Banner: cédula faltante */}
-      {!account.puedeEmitirClinico && esOwnerOrMedico && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--warning-container)', color: 'var(--on-warning-container)', borderRadius: 'var(--r-md)', padding: '12px 16px', marginBottom: 18 }}>
-          <Icon name="warning" size={22} fill />
-          <span className="body-m" style={{ flex: 1 }}>
-            Completa tu perfil profesional para poder emitir recetas y consultas.
-          </span>
-          <Button variant="tonal" size="sm" onClick={() => {
-            setMedicoOpen(true);
-            setTimeout(() => document.getElementById('seccion-medico')?.scrollIntoView({ behavior: 'smooth' }), 50);
-          }}>
-            Ir al perfil profesional
-          </Button>
+        {/* Breadcrumb */}
+        <div style={{ padding: '14px 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 13, color: '#6b7280' }}>Cuenta</span>
+          <span style={{ fontSize: 13, color: '#9ca3af' }}>›</span>
+          <span style={{ fontSize: 13, color: '#111827', fontWeight: 500 }}>Mi perfil</span>
         </div>
-      )}
 
-      {/* ── Header ── */}
-      <Card variant="elevated" style={{ overflow: 'hidden', marginBottom: 18 }}>
-        <div style={{ height: 120, background: 'linear-gradient(120deg, #00504A, #1E847A)' }} />
-        <div style={{ padding: '0 28px 26px', marginTop: -42 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 20, flexWrap: 'wrap' }}>
-            {logoDisplay
-              ? <img src={logoDisplay} alt="Logo" style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover', border: '4px solid var(--surface-container-low)', background: 'var(--surface-container)' }} />
-              : <Avatar initials={account.iniciales} color="#00796B" size={96} fontSize={36} style={{ border: '4px solid var(--surface-container-low)' }} />
-            }
-            <div style={{ flex: 1, minWidth: 200, paddingBottom: 6 }}>
-              <h2 className="headline-m" style={{ letterSpacing: '-.5px' }}>{nombreMostrado}</h2>
-              <div className="body-l" style={{ color: 'var(--on-surface-variant)' }}>
-                {rolLabel}{account.clinicaNombre ? ` · ${account.clinicaNombre}` : ''}
+        {/* Banner: cédula faltante */}
+        {!account.puedeEmitirClinico && esOwnerOrMedico && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 13 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span style={{ flex: 1 }}>Completa tu perfil profesional para poder emitir recetas y consultas.</span>
+            <button
+              onClick={() => setActiveTab('profesional')}
+              style={{ background: '#0d5c4e', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+            >
+              Ir al perfil profesional
+            </button>
+          </div>
+        )}
+
+        {/* ── Header card ── */}
+        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', overflow: 'hidden', marginBottom: 20 }}>
+          {/* Gradient strip */}
+          <div style={{ height: 5, background: 'linear-gradient(90deg, #0d5c4e 0%, #1a8c78 100%)' }} />
+
+          <div style={{ padding: '24px 24px 16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
+
+              {/* Avatar + online dot */}
+              <div style={{ position: 'relative', flexShrink: 0 }}>
+                {logoDisplay
+                  ? <img src={logoDisplay} alt="Logo" style={{ width: 68, height: 68, borderRadius: '50%', objectFit: 'cover', background: '#d1ece7', border: '3px solid #e8f5f2' }} />
+                  : <div style={{ width: 68, height: 68, borderRadius: '50%', background: '#d1ece7', border: '3px solid #e8f5f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 22, fontWeight: 700, color: '#0d5c4e', letterSpacing: '-0.5px' }}>{account.iniciales}</span>
+                    </div>
+                }
+                <div style={{ position: 'absolute', bottom: 2, right: 2, width: 13, height: 13, background: '#22c55e', borderRadius: '50%', border: '2px solid #fff' }} />
+              </div>
+
+              {/* Name + badge + rol */}
+              <div style={{ flex: 1, minWidth: 180 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
+                  <span style={{ fontSize: 20, fontWeight: 700, color: '#111827', letterSpacing: '-0.3px' }}>{nombreMostrado}</span>
+                  {tieneCedula && (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#dcfce7', color: '#166534', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>
+                      <svg width="6" height="6" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="#16a34a" /></svg>
+                      Médico registrado
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#9ca3af', fontSize: 13 }}>
+                  <IHome />
+                  <span>{rolLabel}{account.clinicaNombre ? ` · ${account.clinicaNombre}` : ''}</span>
+                </div>
+              </div>
+
+              {/* Stat pills */}
+              <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+                {([
+                  [statPacientes, 'Pacientes'],
+                  [statConsultas, 'Consultas'],
+                ] as [number | null, string][]).map(([n, label]) => (
+                  <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8faf9', border: '1px solid #e5e9e7', borderRadius: 10, padding: '10px 18px' }}>
+                    <span style={{ fontSize: 22, fontWeight: 700, color: '#0d5c4e', lineHeight: 1 }}>{n != null ? n : '—'}</span>
+                    <span style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontWeight: 500 }}>{label}</span>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+          </div>
+
+          {/* Tab nav */}
+          <div style={{ display: 'flex', borderTop: '1px solid #f3f4f6', padding: '0 24px' }}>
+            <button style={tabStyle('personal')}    onClick={() => setActiveTab('personal')}>Datos personales</button>
+            <button style={tabStyle('clinica')}     onClick={() => setActiveTab('clinica')}>Mi clínica</button>
+            <button style={tabStyle('profesional')} onClick={() => setActiveTab('profesional')}>Perfil profesional</button>
+          </div>
+        </div>
+
+        {/* ── Tab: Datos personales ── */}
+        {activeTab === 'personal' && (
+          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+              <IUser c="#0d5c4e" s={17} />
+              <span style={{ fontSize: 14.5, fontWeight: 700, color: '#111827' }}>Datos personales</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <PField label="Nombre(s)" value={nombre} onChange={setNombre} icon={<IUser c="#0d5c4e" />} fullWidth required />
+              <PField label="Apellido paterno" value={apellidoP} onChange={setApellidoP} />
+              <PField label="Apellido materno"  value={apellidoM} onChange={setApellidoM} />
+              <PField label="Teléfono"          value={telefono}  onChange={setTelefono}  icon={<IPhone />} type="tel" />
+              <PField label="Correo electrónico" value={account.email ?? ''} icon={<IMail />} readOnly />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+              <SaveBtn onClick={savePersonal} disabled={savingP || !nombre.trim()}>
+                <ISave />{savingP ? 'Guardando…' : 'Guardar'}
+              </SaveBtn>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: Mi clínica ── */}
+        {activeTab === 'clinica' && (
+          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+              <IBuilding c="#0d5c4e" s={17} />
+              <span style={{ fontSize: 14.5, fontWeight: 700, color: '#111827' }}>Mi clínica</span>
+            </div>
+
+            {/* Logo block */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#f8faf9', border: '1px solid #e5e9e7', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 10, background: '#e8f5f2', border: '1.5px solid #c8e6e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                {logoDisplay
+                  ? <img src={logoDisplay} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <IGlobe />
+                }
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 2 }}>Logo de la clínica</div>
+                <div style={{ fontSize: 12.5, color: '#6b7280' }}>PNG / JPG · máx. 2 MB</div>
+              </div>
+              <button
+                onClick={() => fileRef.current?.click()}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fff', color: '#0d5c4e', fontSize: 12.5, fontWeight: 600, padding: '7px 14px', borderRadius: 8, border: '1.5px solid #0d5c4e', cursor: 'pointer' }}
+              >
+                <IUpload />{logoDisplay ? 'Cambiar logo' : 'Subir logo'}
+              </button>
+              <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={onLogoChange} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <PField label="Nombre de la clínica" value={cNombre} onChange={setCNombre} icon={<IBuilding c="#0d5c4e" />} fullWidth required />
+              <PField label="Dirección"             value={cDir}    onChange={setCDir}    icon={<IPin />}  fullWidth />
+              <PField label="Teléfono"              value={cTel}    onChange={setCTel}    icon={<IPhone />} type="tel" />
+              <PField label="Correo de contacto"    value={cCorreo} onChange={setCCorreo} icon={<IMail />}  type="email" />
+              <PField label="RFC del establecimiento" value={cRfc}   onChange={setCRfc}   icon={<IDoc />}  placeholder="XAXX010101000" />
+              <PField label="CLUES"                   value={cClues} onChange={setCClues} prefix="#"       placeholder="OCSSA0000000" />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+              <SaveBtn onClick={saveClinica} disabled={savingC || !account.clinicaId || !cNombre.trim()}>
+                <ISave />{savingC ? 'Guardando…' : 'Guardar'}
+              </SaveBtn>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab: Perfil profesional ── */}
+        {activeTab === 'profesional' && (
+          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', padding: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <IDoc c="#0d5c4e" s={17} />
+                <span style={{ fontSize: 14.5, fontWeight: 700, color: '#111827' }}>
+                  {tieneCedula ? 'Perfil profesional' : '¿Eres médico? Registra tu perfil profesional'}
+                </span>
               </div>
               {tieneCedula && (
-                <div style={{ marginTop: 6 }}>
-                  <Chip label="Médico registrado" icon="verified" selected color="var(--success-container)" size="sm" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#dcfce7', color: '#166534', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>
+                    <svg width="6" height="6" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="#16a34a" /></svg>
+                    Médico activo
+                  </span>
+                  <button style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'transparent', color: '#6b7280', fontSize: 12.5, fontWeight: 500, padding: '4px 10px', borderRadius: 6, border: '1px solid #e5e9e7', cursor: 'default' }}>
+                    <IEyeOff />
+                    Activo
+                  </button>
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Stats */}
-          <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', marginTop: 24 }}>
-            {([
-              ['groups',          statPacientes != null ? String(statPacientes) : '—', 'Pacientes'],
-              ['event_available', statConsultas != null ? String(statConsultas) : '—', 'Consultas'],
-            ] as const).map(([ic, n, l]) => (
-              <div key={l} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--surface-container-highest)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Icon name={ic} size={22} fill />
-                </div>
-                <div>
-                  <div className="title-l" style={{ fontWeight: 800 }}>{n}</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>{l}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Card>
+            {!tieneCedula && (
+              <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>
+                Al registrar tu cédula podrás crear consultas y emitir recetas desde esta cuenta.
+              </p>
+            )}
 
-      {/* ── Grid: personal + clínica ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr)', gap: 18, marginBottom: 18 }} className="dash-grid">
+            <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 16 }}>
+              <PField label="Prefijo"              value={prefijo}    onChange={setPrefijo}    placeholder="Dr., Dra.…" />
+              <PField label="Cédula profesional"   value={cedula}     onChange={setCedula}     icon={<IDoc />} required />
+              <PField label="Universidad / institución" value={universidad} onChange={setUniversidad} icon={<ISchool />} fullWidth />
+              <PSelect label="Especialidad" value={especialidadId} onChange={setEspecialidadId} options={espOptions} icon={<IHeartPulse />} fullWidth />
+            </div>
 
-        {/* Datos personales */}
-        <Card variant="elevated" style={{ padding: 24 }}>
-          <SectionHeader title="Datos personales" icon="person" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <TextField label="Nombre(s)" value={nombre} onChange={setNombre} icon="badge" required />
-            <TextField label="Apellido paterno" value={apellidoP} onChange={setApellidoP} />
-            <TextField label="Apellido materno"  value={apellidoM} onChange={setApellidoM} />
-            <TextField label="Teléfono" value={telefono} onChange={setTelefono} icon="phone" type="tel" />
-            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--outline-variant)' }}>
-              <span className="body-m" style={{ color: 'var(--on-surface-variant)' }}>Correo</span>
-              <span className="title-s">{account.email}</span>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
+              <SaveBtn onClick={saveMedico} disabled={savingM || !cedula.trim()}>
+                <ICheck />{savingM ? 'Guardando…' : tieneCedula ? 'Actualizar' : 'Registrarme como médico'}
+              </SaveBtn>
             </div>
           </div>
-          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="filled" icon="save" onClick={savePersonal} disabled={savingP || !nombre.trim()}>
-              {savingP ? 'Guardando…' : 'Guardar'}
-            </Button>
-          </div>
-        </Card>
+        )}
 
-        {/* Datos de la clínica */}
-        <Card variant="elevated" style={{ padding: 24 }}>
-          <SectionHeader title="Mi clínica" icon="local_hospital" />
-
-          {/* Logo upload */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
-            {logoDisplay
-              ? <img src={logoDisplay} alt="Logo" style={{ width: 64, height: 64, borderRadius: 12, objectFit: 'cover', border: '1px solid var(--outline-variant)' }} />
-              : <div style={{ width: 64, height: 64, borderRadius: 12, background: 'var(--surface-container-highest)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed var(--outline)', flexShrink: 0 }}>
-                  <Icon name="add_photo_alternate" size={28} style={{ color: 'var(--on-surface-variant)' }} />
-                </div>
-            }
-            <div>
-              <Button variant="outlined" size="sm" icon="upload" onClick={() => fileRef.current?.click()}>
-                {logoDisplay ? 'Cambiar logo' : 'Subir logo'}
-              </Button>
-              <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 4 }}>PNG / JPG · máx 2 MB</div>
-            </div>
-            <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={onLogoChange} />
-          </div>
-          <Divider style={{ marginBottom: 16 }} />
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <TextField label="Nombre de la clínica" value={cNombre} onChange={setCNombre} icon="business" required />
-            <TextField label="Dirección"             value={cDir}    onChange={setCDir}    icon="location_on" />
-            <TextField label="Teléfono"              value={cTel}    onChange={setCTel}    icon="phone" type="tel" />
-            <TextField label="Correo de contacto"    value={cCorreo} onChange={setCCorreo} icon="mail" type="email" />
-          </div>
-          <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button variant="filled" icon="save" onClick={saveClinica} disabled={savingC || !account.clinicaId || !cNombre.trim()}>
-              {savingC ? 'Guardando…' : 'Guardar'}
-            </Button>
-          </div>
-        </Card>
-      </div>
-
-      {/* ── Perfil profesional ── */}
-      <div id="seccion-medico">
-        <Card variant="elevated" style={{ padding: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: medicoOpen ? 20 : 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Icon name="medical_information" size={22} style={{ color: 'var(--primary)' }} />
-              <h3 className="title-l" style={{ color: 'var(--on-surface)' }}>
-                {tieneCedula ? 'Perfil profesional' : '¿Eres médico? Registra tu perfil profesional'}
-              </h3>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              {tieneCedula && <Chip label="Médico activo" icon="verified" selected color="var(--success-container)" size="sm" />}
-              <Button
-                variant={medicoOpen ? 'text' : 'tonal'} size="sm"
-                icon={medicoOpen ? 'expand_less' : 'expand_more'}
-                onClick={() => setMedicoOpen(!medicoOpen)}
-              >
-                {medicoOpen ? 'Ocultar' : tieneCedula ? 'Editar' : 'Completar'}
-              </Button>
-            </div>
-          </div>
-
-          {!medicoOpen && !tieneCedula && (
-            <p className="body-m" style={{ color: 'var(--on-surface-variant)', marginTop: 4 }}>
-              Al registrar tu cédula podrás crear consultas y emitir recetas desde esta cuenta.
-            </p>
-          )}
-
-          {medicoOpen && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: 14 }}>
-                <TextField label="Prefijo"              value={prefijo}  onChange={setPrefijo}  placeholder="Dr., Dra.…" />
-                <TextField label="Cédula profesional *" value={cedula}   onChange={setCedula}   icon="badge" required />
-              </div>
-              <TextField label="Universidad / institución" value={universidad} onChange={setUniversidad} icon="school" />
-              <Select
-                label="Especialidad"
-                value={especialidadId}
-                onChange={setEspecialidadId}
-                options={espOptions}
-                icon="local_hospital"
-              />
-              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-                <Button variant="filled" icon={tieneCedula ? 'save' : 'how_to_reg'} onClick={saveMedico} disabled={savingM || !cedula.trim()}>
-                  {savingM ? 'Guardando…' : tieneCedula ? 'Actualizar' : 'Registrarme como médico'}
-                </Button>
-              </div>
-            </div>
-          )}
-        </Card>
       </div>
     </div>
   );
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
-// (sin cambios respecto al original — usa mock temporal hasta que
-//  se decida conectar notificaciones / 2FA reales)
 
 function SettingRow({ icon, title, desc, control }: {
   icon: string; title: string; desc: string; control: React.ReactNode;
@@ -433,10 +631,10 @@ function SettingRow({ icon, title, desc, control }: {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 0', borderBottom: '1px solid var(--outline-variant)' }}>
       <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--surface-container-highest)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Icon name={icon} size={22} />
+        <span className="ms" style={{ fontSize: 22 }}>{icon}</span>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div className="title-s">{title}</div>
+        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)' }}>{title}</div>
         <div style={{ fontSize: 13, color: 'var(--on-surface-variant)', marginTop: 2 }}>{desc}</div>
       </div>
       {control}
@@ -472,9 +670,9 @@ export function Settings({ theme, setTheme, onLogout, navStyle, setNavStyle }: {
     { title: 'Seguridad y privacidad', icon: 'security', rows: [
       { icon: 'encrypted', title: 'Autenticación en dos pasos', desc: 'Protege tu cuenta con un segundo factor', control: <Switch checked={twoFa} onChange={setTwoFa} /> },
       { icon: 'gpp_good', title: 'Cumplimiento NOM-024', desc: 'Expediente clínico electrónico certificado',
-        control: <Chip label="Activo" icon="check" selected color="var(--success-container)" /> },
+        control: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--success-container)', color: 'var(--on-success-container, #166534)', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>Activo</span> },
       { icon: 'history', title: 'Registro de actividad', desc: 'Auditoría de accesos al expediente',
-        control: <Button variant="text" size="sm">Ver</Button> },
+        control: <button style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Ver</button> },
     ]},
   ];
 
@@ -484,24 +682,27 @@ export function Settings({ theme, setTheme, onLogout, navStyle, setNavStyle }: {
       <p className="body-m" style={{ color: 'var(--on-surface-variant)', marginBottom: 24 }}>Administra tu cuenta, preferencias y seguridad</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
         {sections.map((s) => (
-          <Card key={s.title} variant="elevated" style={{ padding: '20px 24px' }}>
-            <SectionHeader title={s.title} icon={s.icon} />
+          <div key={s.title} style={{ background: 'var(--surface-container-low)', borderRadius: 'var(--r-md)', border: '1px solid var(--outline-variant)', padding: '20px 24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+              <span className="ms fill" style={{ fontSize: 20, color: 'var(--primary)' }}>{s.icon}</span>
+              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--on-surface)' }}>{s.title}</span>
+            </div>
             {s.rows.map((r, i) => <SettingRow key={i} {...r} />)}
-          </Card>
+          </div>
         ))}
-        <Card variant="outlined" style={{ padding: '20px 24px' }}>
-          <SectionHeader title="Zona de cuenta" icon="manage_accounts" />
+        <div style={{ background: 'var(--surface-container-low)', borderRadius: 'var(--r-md)', border: '1px solid var(--error-container, #f9dedc)', padding: '20px 24px' }}>
           <SettingRow
             icon="logout"
             title="Cerrar sesión"
             desc="Salir de tu cuenta en este dispositivo"
             control={
-              <Button variant="outlined" icon="logout" style={{ color: 'var(--error)', borderColor: 'var(--error)' }} onClick={onLogout}>
+              <button onClick={onLogout} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', color: 'var(--error)', border: '1px solid var(--error)', borderRadius: 'var(--r-full)', padding: '0 20px', height: 36, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <span className="ms" style={{ fontSize: 18 }}>logout</span>
                 Cerrar sesión
-              </Button>
+              </button>
             }
           />
-        </Card>
+        </div>
       </div>
     </div>
   );

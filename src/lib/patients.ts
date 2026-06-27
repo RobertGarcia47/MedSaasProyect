@@ -141,6 +141,11 @@ export async function actualizarPaciente(
   if (input.telefono !== undefined)          campos.telefono          = input.telefono?.trim()  || null;
   if (input.email !== undefined)             campos.email             = input.email?.trim()     || null;
   if (input.curp !== undefined)              campos.curp              = input.curp?.trim()      || null;
+  if (input.domicilio !== undefined)         campos.domicilio         = input.domicilio?.trim() || null;
+  if (input.municipio !== undefined)         campos.municipio         = input.municipio?.trim() || null;
+  if (input.estado !== undefined)            campos.estado            = input.estado?.trim()    || null;
+  if (input.nss !== undefined)               campos.nss               = input.nss?.trim()       || null;
+  if (input.rfc !== undefined)               campos.rfc               = input.rfc?.trim().toUpperCase() || null;
 
   const { error } = await supabase
     .from('pacientes')
@@ -188,6 +193,11 @@ export interface NuevoPaciente {
   telefono?: string | null;
   email?: string | null;
   curp?: string | null;
+  domicilio?: string | null;
+  municipio?: string | null;
+  estado?: string | null;
+  nss?: string | null;
+  rfc?: string | null;
 }
 
 /**
@@ -213,9 +223,14 @@ export async function createPaciente(
       fecha_nacimiento: input.fecha_nacimiento || null,
       sexo: input.sexo || null,
       grupo_sanguineo: input.grupo_sanguineo || null,
-      telefono: input.telefono?.trim() || null,
-      email: input.email?.trim() || null,
-      curp: input.curp?.trim() || null,
+      telefono:  input.telefono?.trim()  || null,
+      email:     input.email?.trim()     || null,
+      curp:      input.curp?.trim()      || null,
+      domicilio: input.domicilio?.trim() || null,
+      municipio: input.municipio?.trim() || null,
+      estado:    input.estado?.trim()    || null,
+      nss:       input.nss?.trim()       || null,
+      rfc:       input.rfc?.trim().toUpperCase() || null,
     })
     .select('id')
     .single<{ id: string }>();
