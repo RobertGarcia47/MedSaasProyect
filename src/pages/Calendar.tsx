@@ -773,7 +773,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
         {/* Fecha / Hora / Duración */}
         <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.1fr .9fr', gap: 22 }}>
           <div>
-            <label style={FL as React.CSSProperties}>Fecha</label>
+            <FL>Fecha</FL>
             <PickerTrigger
               icon="calendar_today"
               value={dateValLabel(dateVal)}
@@ -782,7 +782,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
             />
           </div>
           <div>
-            <label style={FL as React.CSSProperties}>Hora</label>
+            <FL>Hora</FL>
             <PickerTrigger
               icon="schedule"
               value={timeValLabel(timeVal)}
