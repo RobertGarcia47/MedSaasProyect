@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAccount } from '../context/AccountContext';
 import { createPaciente, fetchPacientesSelect } from '../lib/patients';
-import { createCita } from '../lib/citas';
+import { createCita, encodeMotivoConTipo } from '../lib/citas';
 import { crearInforme, TIPO_INFORME_LABEL } from '../lib/informes';
 import type { TipoInforme } from '../lib/informes';
 import { Icon, Button, Card, IconButton, Dialog, TextField, Select } from '../components';
@@ -12,21 +12,21 @@ import type { SexoEnum, GrupoSanguineo } from '../lib/types';
    WHEEL PICKER — iOS-style scroll-snap drum selector
    ═══════════════════════════════════════════════════════════ */
 
-const IH = 40; // item height px (must match padding-top on the column and pill top)
-const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-const YEARS_CITA = Array.from({ length: 12 }, (_, i) => 2024 + i);      // 2024–2035
+export const IH = 40; // item height px
+export const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+export const YEARS_CITA = Array.from({ length: 12 }, (_, i) => 2024 + i); // 2024–2035
 const YEAR_NOW = new Date().getFullYear();
 const YEARS_NAC  = Array.from({ length: YEAR_NOW - 1939 }, (_, i) => 1940 + i); // 1940–now
 
-function pad(n: number) { return String(n).padStart(2, '0'); }
+export function pad(n: number) { return String(n).padStart(2, '0'); }
 
-type DateVal = { d: number; m: number; y: number }; // m 0-indexed (Jan=0)
-type TimeVal = { h: number; min: number; ap: 'AM' | 'PM' };
+export type DateVal = { d: number; m: number; y: number }; // m 0-indexed (Jan=0)
+export type TimeVal = { h: number; min: number; ap: 'AM' | 'PM' };
 
-const dateValLabel = (v: DateVal) => `${pad(v.d)}/${pad(v.m + 1)}/${v.y}`;
-const timeValLabel = (v: TimeVal) => `${v.h}:${pad(v.min)} ${v.ap}`;
+export const dateValLabel = (v: DateVal) => `${pad(v.d)}/${pad(v.m + 1)}/${v.y}`;
+export const timeValLabel = (v: TimeVal) => `${v.h}:${pad(v.min)} ${v.ap}`;
 
-function dateTimeToISO(d: DateVal, t: TimeVal): string | null {
+export function dateTimeToISO(d: DateVal, t: TimeVal): string | null {
   let h = t.h;
   if (t.ap === 'PM' && h < 12) h += 12;
   if (t.ap === 'AM' && h === 12) h = 0;
@@ -132,7 +132,7 @@ function WheelCol({ items, selectedIdx, flex = 1, onChange }: WheelColProps) {
 }
 
 /* ── WheelPickerSheet ─────────────────────────────────────── */
-interface ColDef {
+export interface ColDef {
   items: string[];
   selectedIdx: number;
   flex?: number;
@@ -144,7 +144,7 @@ interface WheelPickerSheetProps {
   onClose: () => void;
 }
 
-function WheelPickerSheet({ title, columns, onClose }: WheelPickerSheetProps) {
+export function WheelPickerSheet({ title, columns, onClose }: WheelPickerSheetProps) {
   return (
     // Backdrop inside card — click outside sheet closes picker
     <div
@@ -228,7 +228,7 @@ function WheelPickerSheet({ title, columns, onClose }: WheelPickerSheetProps) {
    SHARED NEW-STYLE MODAL UI PRIMITIVES
    ═══════════════════════════════════════════════════════════ */
 
-const FL: React.CSSProperties = {
+export const FL: React.CSSProperties = {
   display: 'block', fontSize: 12, fontWeight: 600, color: '#6E7E79', marginBottom: 7,
 };
 const FI: React.CSSProperties = {
@@ -242,7 +242,7 @@ const FICON: React.CSSProperties = {
   color: '#AAB4B0', fontSize: 19, pointerEvents: 'none', lineHeight: 1,
 };
 
-function Field({ label, icon, required, children }: { label: string; icon: string; required?: boolean; children: React.ReactNode }) {
+export function Field({ label, icon, required, children }: { label: string; icon: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
       <label style={FL}>
@@ -256,7 +256,7 @@ function Field({ label, icon, required, children }: { label: string; icon: strin
   );
 }
 
-function FocusInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
+export function FocusInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   const [f, setF] = useState(false);
   return (
     <input
@@ -268,7 +268,7 @@ function FocusInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
-function FocusSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
+export function FocusSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   const [f, setF] = useState(false);
   return (
     <div style={{ position: 'relative' }}>
@@ -292,7 +292,7 @@ function FocusSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
 }
 
 // Clickable trigger that opens the wheel picker
-function PickerTrigger({ icon, value, active, placeholder, onClick }: {
+export function PickerTrigger({ icon, value, active, placeholder, onClick }: {
   icon: string; value: string; active?: boolean; placeholder?: string; onClick: () => void;
 }) {
   return (
@@ -319,7 +319,7 @@ function PickerTrigger({ icon, value, active, placeholder, onClick }: {
 }
 
 // Outer fixed backdrop + inner card (position:relative for picker overlay)
-function ModalCard({ children }: { children: React.ReactNode }) {
+export function ModalCard({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
       position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
@@ -341,7 +341,7 @@ function ModalCard({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CloseBtn({ onClose }: { onClose: () => void }) {
+export function CloseBtn({ onClose }: { onClose: () => void }) {
   return (
     <button
       onClick={onClose}
@@ -360,7 +360,7 @@ function CloseBtn({ onClose }: { onClose: () => void }) {
   );
 }
 
-function ModalBadge({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
+export function ModalBadge({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 26 }}>
       <div style={{
@@ -379,7 +379,7 @@ function ModalBadge({ icon, title, subtitle }: { icon: string; title: string; su
   );
 }
 
-function ModalFooter({ children }: { children: React.ReactNode }) {
+export function ModalFooter({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
       display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
@@ -390,7 +390,7 @@ function ModalFooter({ children }: { children: React.ReactNode }) {
   );
 }
 
-function CancelBtn({ onClick }: { onClick: () => void }) {
+export function CancelBtn({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
@@ -408,7 +408,7 @@ function CancelBtn({ onClick }: { onClick: () => void }) {
   );
 }
 
-function PrimaryBtn({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
+export function PrimaryBtn({ onClick, disabled, children }: { onClick: () => void; disabled?: boolean; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
@@ -535,7 +535,7 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
   const [dateVal,     setDateVal]    = useState<DateVal>(initDate);
   const [timeVal,     setTimeVal]    = useState<TimeVal>(initTime);
   const [dur,         setDur]        = useState('30');
-  const [motivo,      setMotivo]     = useState('');
+  const [tipo,        setTipo]       = useState('consulta');
   const [pickerOpen,  setPickerOpen] = useState<null | 'date' | 'time'>(null);
   const [saving,      setSaving]     = useState(false);
 
@@ -545,7 +545,7 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
     if (open) {
       setPid(prefill?.patientId || '');
       setDateVal(initDate()); setTimeVal(initTime());
-      setDur('30'); setMotivo(''); setPickerOpen(null); setSaving(false);
+      setDur('30'); setTipo('consulta'); setPickerOpen(null); setSaving(false);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -559,8 +559,10 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
     if (!fecha) { toast?.('Fecha u hora inválida'); return; }
     setSaving(true);
     try {
+      const TIPO_LABELS: Record<string, string> = { consulta: 'Consulta', seguimiento: 'Seguimiento', revision: 'Revisión', urgencia: 'Urgencia' };
       await createCita(account.clinicaId!, account.userId, {
-        paciente_id: pid, fecha, duracion_min: Number(dur) || 30, motivo,
+        paciente_id: pid, fecha, duracion_min: Number(dur) || 30,
+        motivo: encodeMotivoConTipo(tipo, TIPO_LABELS[tipo] ?? tipo),
       });
       toast?.('Cita agendada correctamente');
       onCreated?.(); onClose();
@@ -634,13 +636,14 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
             </Field>
           </div>
 
-          {/* Motivo */}
-          <Field label="Motivo (breve)" icon="subject">
-            <FocusInput
-              value={motivo}
-              onChange={(e) => setMotivo(e.target.value)}
-              placeholder="Ej. Control de presión arterial"
-            />
+          {/* Tipo de cita */}
+          <Field label="Tipo de cita" icon="category">
+            <FocusSelect value={tipo} onChange={(e) => setTipo(e.target.value)}>
+              <option value="consulta">Consulta</option>
+              <option value="seguimiento">Seguimiento</option>
+              <option value="revision">Revisión</option>
+              <option value="urgencia">Urgencia</option>
+            </FocusSelect>
           </Field>
         </div>
       )}

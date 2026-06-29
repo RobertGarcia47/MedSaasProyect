@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from '../context/AccountContext';
 import type { ApptUI } from '../lib/consultas';
 import {
@@ -8,6 +8,15 @@ import {
   checkConflicto, type ConflictoInfo,
 } from '../lib/citas';
 import { fetchPacientesSelect, type PacienteSelect } from '../lib/patients';
+import {
+  IH, MONTHS, YEARS_CITA, pad,
+  type DateVal, type TimeVal, type ColDef,
+  dateValLabel, timeValLabel, dateTimeToISO,
+  WheelPickerSheet,
+  ModalCard, CloseBtn, ModalBadge,
+  Field, FocusInput, FocusSelect, PickerTrigger,
+  ModalFooter, CancelBtn, PrimaryBtn,
+} from './Clinical';
 
 // ── Constantes de layout ───────────────────────────────────────────────────────
 const HOUR_H  = 64;
@@ -62,23 +71,6 @@ function statusLabel(s: ApptUI['status']): string {
   };
   return map[s] ?? s;
 }
-
-// ── Slots de hora y duraciones ────────────────────────────────────────────────
-const TIME_SLOTS: string[] = (() => {
-  const s: string[] = [];
-  for (let h = 7; h <= 23; h++) {
-    s.push(`${String(h).padStart(2, '0')}:00`);
-    if (h < 23) s.push(`${String(h).padStart(2, '0')}:30`);
-  }
-  return s; // 07:00 … 23:00
-})();
-const DURATIONS = [
-  { label: '15 min', value: 15 },
-  { label: '30 min', value: 30 },
-  { label: '45 min', value: 45 },
-  { label: '1 h',    value: 60 },
-  { label: '1 h 30', value: 90 },
-];
 
 // ── Localización ───────────────────────────────────────────────────────────────
 const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -671,7 +663,7 @@ function DayView({ appts, date, onApptClick, onAddClick }: {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// Modal rápido de nueva cita
+// Modal nueva cita — mismo diseño que AppointmentModal en expediente
 // ══════════════════════════════════════════════════════════════════════════════
 function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medicoId }: {
   open: boolean; date: Date | null;
@@ -679,17 +671,16 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
   toast: (m: string) => void;
   clinicaId: string; medicoId: string;
 }) {
-  const [patients,    setPatients]    = useState<PacienteSelect[]>([]);
-  const [query,       setQuery]       = useState('');
-  const [selected,    setSelected]    = useState<PacienteSelect | null>(null);
-  const [dropdown,    setDropdown]    = useState(false);
-  const [startTime,   setStartTime]   = useState('');
-  const [duracionMin, setDuracionMin] = useState(30);
-  const [tipo,        setTipo]        = useState<TipoCita>('consulta');
-  const [saving,      setSaving]      = useState(false);
-  const [error,       setError]       = useState('');
-  const [conflicto,   setConflicto]   = useState<ConflictoInfo | null>(null);
-  const searchRef = useRef<HTMLInputElement>(null);
+  const [patients,   setPatients]   = useState<PacienteSelect[]>([]);
+  const [pid,        setPid]        = useState('');
+  const [dateVal,    setDateVal]    = useState<DateVal>({ d: 1, m: 0, y: 2026 });
+  const [timeVal,    setTimeVal]    = useState<TimeVal>({ h: 9, min: 0, ap: 'AM' });
+  const [dur,        setDur]        = useState('30');
+  const [tipo,       setTipo]       = useState<TipoCita>('consulta');
+  const [pickerOpen, setPickerOpen] = useState<null | 'date' | 'time'>(null);
+  const [saving,     setSaving]     = useState(false);
+  const [error,      setError]      = useState('');
+  const [conflicto,  setConflicto]  = useState<ConflictoInfo | null>(null);
 
   useEffect(() => {
     if (!open || !clinicaId) return;
@@ -697,46 +688,48 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
   }, [open, clinicaId]);
 
   useEffect(() => {
-    if (open) {
-      setQuery(''); setSelected(null); setDropdown(false);
-      setStartTime(''); setDuracionMin(30); setTipo('consulta');
-      setError(''); setSaving(false); setConflicto(null);
-      setTimeout(() => searchRef.current?.focus(), 80);
+    if (open && date) {
+      const now = new Date();
+      setDateVal({ d: date.getDate(), m: date.getMonth(), y: date.getFullYear() });
+      setTimeVal({ h: now.getHours() % 12 || 12, min: 0, ap: now.getHours() >= 12 ? 'PM' : 'AM' });
+      setDur('30'); setTipo('consulta');
+      setPickerOpen(null); setSaving(false); setError(''); setConflicto(null);
     }
-  }, [open]);
+  }, [open, date?.getTime()]);
+
+  useEffect(() => {
+    if (open && !pid && patients.length) setPid(patients[0].id);
+  }, [open, patients]);
 
   if (!open || !date) return null;
 
-  const filtered = query.length >= 1
-    ? patients.filter(p => p.name.toLowerCase().includes(query.toLowerCase())).slice(0, 8)
-    : [];
-
   const dateLabel = cap(date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
-  const iso = isoDate(date);
 
   async function doCreate() {
+    const fecha = dateTimeToISO(dateVal, timeVal);
+    if (!fecha) throw new Error('Fecha u hora inválida');
     await createCita(clinicaId, medicoId, {
-      paciente_id: selected!.id,
-      fecha: localIso(iso, startTime),
-      duracion_min: duracionMin,
+      paciente_id: pid,
+      fecha,
+      duracion_min: Number(dur) || 30,
       motivo: encodeMotivoConTipo(tipo, TIPO_META[tipo].label),
       estado: 'programada',
     });
-    toast('Cita creada correctamente');
+    toast('Cita agendada correctamente');
     onCreated(); onClose();
   }
 
   async function handleCreate() {
-    if (!selected)   { setError('Selecciona un paciente.'); return; }
-    if (!startTime)  { setError('Selecciona una hora de inicio.'); return; }
+    if (!pid) { setError('Selecciona un paciente.'); return; }
+    const fecha = dateTimeToISO(dateVal, timeVal);
+    if (!fecha) { setError('Fecha u hora inválida.'); return; }
     setSaving(true); setError(''); setConflicto(null);
     try {
-      const c = await checkConflicto(clinicaId, medicoId, localIso(iso, startTime), duracionMin);
+      const c = await checkConflicto(clinicaId, medicoId, fecha, Number(dur) || 30);
       if (c) { setConflicto(c); setSaving(false); return; }
       await doCreate();
-    } catch (e: any) {
-      setError(e.message ?? 'Error al crear la cita');
-    } finally { setSaving(false); }
+    } catch (e: any) { setError(e.message ?? 'Error al crear la cita'); }
+    finally { setSaving(false); }
   }
 
   async function handleForceCreate() {
@@ -746,179 +739,120 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
     finally { setSaving(false); }
   }
 
+  // Wheel picker columns
+  const days    = Array.from({ length: 31 }, (_, i) => String(i + 1));
+  const years_c = YEARS_CITA.map(String);
+  const hours   = Array.from({ length: 12 }, (_, i) => String(i + 1));
+  const mins    = Array.from({ length: 60 }, (_, i) => pad(i));
+
+  const dateColumns: ColDef[] = [
+    { items: days,    selectedIdx: dateVal.d - 1,             flex: 1,   onChange: (i) => setDateVal(v => ({ ...v, d: i + 1 })) },
+    { items: MONTHS,  selectedIdx: dateVal.m,                 flex: 1.1, onChange: (i) => setDateVal(v => ({ ...v, m: i })) },
+    { items: years_c, selectedIdx: dateVal.y - YEARS_CITA[0], flex: 1.1, onChange: (i) => setDateVal(v => ({ ...v, y: YEARS_CITA[i] })) },
+  ];
+  const timeColumns: ColDef[] = [
+    { items: hours,       selectedIdx: timeVal.h - 1,                       flex: 1, onChange: (i) => setTimeVal(v => ({ ...v, h: i + 1 })) },
+    { items: mins,        selectedIdx: timeVal.min,                          flex: 1, onChange: (i) => setTimeVal(v => ({ ...v, min: i })) },
+    { items: ['AM','PM'], selectedIdx: timeVal.ap === 'AM' ? 0 : 1,         flex: 1, onChange: (i) => setTimeVal(v => ({ ...v, ap: i === 0 ? 'AM' : 'PM' })) },
+  ];
+
   return (
-    <div
-      onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', backdropFilter: 'blur(3px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{ width: '100%', maxWidth: 430, background: '#fff', borderRadius: 16, padding: 28, boxShadow: '0 24px 64px rgba(0,0,0,0.18)', animation: 'scaleIn .18s cubic-bezier(.2,0,0,1)' }}
-      >
-        {/* Cabecera */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 }}>
-          <div>
-            <div style={{ fontSize: 17, fontWeight: 700, color: '#111827', letterSpacing: '-0.3px' }}>Nueva cita</div>
-            <div style={{ fontSize: 12.5, color: '#9ca3af', marginTop: 3 }}>{dateLabel}</div>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: 0, marginTop: -2 }}>×</button>
-        </div>
+    <ModalCard>
+      <CloseBtn onClose={onClose} />
+      <ModalBadge icon="event_available" title="Nueva cita médica" subtitle={dateLabel} />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Paciente */}
-        <div style={{ marginBottom: 16, position: 'relative' }}>
-          <FL>Paciente *</FL>
-          {selected ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, border: '1.5px solid #0d5c4e', borderRadius: 8, padding: '9px 13px', background: '#f6fdf9' }}>
-              <span style={{ flex: 1, fontSize: 13.5, fontWeight: 600, color: '#0d5c4e' }}>{selected.name}</span>
-              <button onClick={() => { setSelected(null); setQuery(''); setDropdown(false); }} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 18, padding: 0, lineHeight: 1 }}>×</button>
-            </div>
-          ) : (
-            <div style={{ border: '1px solid #e5e9e7', borderRadius: 8, background: '#fafbfa' }}>
-              <input
-                ref={searchRef}
-                value={query}
-                onChange={e => { setQuery(e.target.value); setDropdown(true); }}
-                onFocus={() => setDropdown(true)}
-                onBlur={() => setTimeout(() => setDropdown(false), 150)}
-                placeholder="Buscar paciente…"
-                style={{ width: '100%', border: 'none', background: 'transparent', outline: 'none', padding: '9px 13px', fontSize: 13.5, fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box' }}
-              />
-            </div>
-          )}
-          {dropdown && !selected && filtered.length > 0 && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e5e9e7', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.1)', zIndex: 10, overflow: 'hidden', marginTop: 4 }}>
-              {filtered.map(p => (
-                <button
-                  key={p.id}
-                  onMouseDown={e => { e.preventDefault(); setSelected(p); setQuery(p.name); setDropdown(false); setError(''); }}
-                  style={{ display: 'block', width: '100%', padding: '10px 14px', textAlign: 'left', border: 'none', background: 'transparent', cursor: 'pointer', fontSize: 13.5, color: '#374151', fontFamily: 'inherit' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#f8faf9'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
-                >
-                  {p.name}
-                </button>
-              ))}
-            </div>
-          )}
+        <Field label="Paciente" icon="person" required>
+          <FocusSelect value={pid} onChange={e => { setPid(e.target.value); setError(''); setConflicto(null); }}>
+            {patients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </FocusSelect>
+        </Field>
+
+        {/* Fecha / Hora / Duración */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.1fr .9fr', gap: 22 }}>
+          <div>
+            <label style={FL as React.CSSProperties}>Fecha</label>
+            <PickerTrigger
+              icon="calendar_today"
+              value={dateValLabel(dateVal)}
+              active={pickerOpen === 'date'}
+              onClick={() => setPickerOpen('date')}
+            />
+          </div>
+          <div>
+            <label style={FL as React.CSSProperties}>Hora</label>
+            <PickerTrigger
+              icon="schedule"
+              value={timeValLabel(timeVal)}
+              active={pickerOpen === 'time'}
+              onClick={() => setPickerOpen('time')}
+            />
+          </div>
+          <Field label="Duración (min)" icon="timer">
+            <FocusSelect value={dur} onChange={e => setDur(e.target.value)}>
+              {['15','30','45','60','90'].map(d => <option key={d} value={d}>{d}</option>)}
+            </FocusSelect>
+          </Field>
         </div>
 
-        {/* Hora de inicio — chips */}
-        <div style={{ marginBottom: 16 }}>
-          <FL>Hora de inicio</FL>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-            {TIME_SLOTS.map(slot => {
-              const active = slot === startTime;
-              return (
-                <button
-                  key={slot}
-                  type="button"
-                  onClick={() => { setStartTime(slot); setError(''); setConflicto(null); }}
-                  style={{
-                    padding: '5px 10px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    border: `1.5px solid ${active ? '#0d5c4e' : '#e5e9e7'}`,
-                    background: active ? '#0d5c4e' : '#fff',
-                    color: active ? '#fff' : '#374151',
-                    transition: 'all .1s',
-                  }}
-                >
-                  {slot}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Tipo de cita */}
+        <Field label="Tipo de cita" icon="category">
+          <FocusSelect value={tipo} onChange={e => setTipo(e.target.value as TipoCita)}>
+            <option value="consulta">Consulta</option>
+            <option value="seguimiento">Seguimiento</option>
+            <option value="revision">Revisión</option>
+            <option value="urgencia">Urgencia</option>
+          </FocusSelect>
+        </Field>
 
-        {/* Duración — chips */}
-        <div style={{ marginBottom: 16 }}>
-          <FL>Duración</FL>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {DURATIONS.map(d => {
-              const active = d.value === duracionMin;
-              return (
-                <button
-                  key={d.value}
-                  type="button"
-                  onClick={() => setDuracionMin(d.value)}
-                  style={{
-                    padding: '5px 14px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                    border: `1.5px solid ${active ? '#0d5c4e' : '#e5e9e7'}`,
-                    background: active ? '#0d5c4e' : '#fff',
-                    color: active ? '#fff' : '#374151',
-                    transition: 'all .1s',
-                  }}
-                >
-                  {d.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Tipo */}
-        <div style={{ marginBottom: error ? 12 : 24 }}>
-          <FL>Tipo de cita</FL>
-          <div style={{ position: 'relative' }}>
-            <select
-              value={tipo}
-              onChange={e => setTipo(e.target.value as TipoCita)}
-              style={{ width: '100%', border: '1px solid #e5e9e7', borderRadius: 8, padding: '9px 13px', fontSize: 13.5, background: '#fafbfa', outline: 'none', fontFamily: 'inherit', color: '#374151', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none', boxSizing: 'border-box', paddingRight: 36 }}
-            >
-              <option value="consulta">Consulta</option>
-              <option value="seguimiento">Seguimiento</option>
-              <option value="revision">Revisión</option>
-              <option value="urgencia">Urgencia</option>
-            </select>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-              <polyline points="6 9 12 15 18 9"/>
-            </svg>
-          </div>
-        </div>
-
-        {error && (
-          <div style={{ fontSize: 12.5, color: '#dc2626', background: '#fee2e2', padding: '8px 12px', borderRadius: 6, marginBottom: 16 }}>
-            {error}
-          </div>
-        )}
-
-        {/* Aviso de conflicto de horario */}
-        {conflicto && (
-          <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '12px 14px', marginBottom: 16 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>
-              Horario ocupado
-            </div>
-            <div style={{ fontSize: 12, color: '#78350f', lineHeight: 1.5, marginBottom: 10 }}>
-              Ya existe una cita con <strong>{conflicto.pacienteName}</strong> de {conflicto.start} a {conflicto.end} en este horario.
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => setConflicto(null)}
-                style={{ flex: 1, padding: '7px', border: '1px solid #fcd34d', borderRadius: 7, background: '#fff', color: '#92400e', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
-              >
-                Cambiar horario
-              </button>
-              <button
-                onClick={handleForceCreate}
-                disabled={saving}
-                style={{ flex: 1, padding: '7px', border: 'none', borderRadius: 7, background: '#b45309', color: '#fff', fontSize: 12, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}
-              >
-                {saving ? 'Creando…' : 'Agendar de todas formas'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {!conflicto && (
-          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-            <button onClick={onClose} style={{ background: 'transparent', border: '1px solid #e5e9e7', color: '#6b7280', fontSize: 13, fontWeight: 600, padding: '9px 20px', borderRadius: 8, cursor: 'pointer' }}>
-              Cancelar
-            </button>
-            <button onClick={handleCreate} disabled={saving} style={{ background: '#0d5c4e', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, padding: '9px 20px', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
-              {saving ? 'Verificando…' : 'Crear cita'}
-            </button>
-          </div>
-        )}
       </div>
-    </div>
+
+      {/* Error */}
+      {error && (
+        <div style={{ fontSize: 12.5, color: '#dc2626', background: '#fee2e2', padding: '8px 12px', borderRadius: 8, marginTop: 16 }}>
+          {error}
+        </div>
+      )}
+
+      {/* Conflicto de horario */}
+      {conflicto && (
+        <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '13px 16px', marginTop: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>Horario ocupado</div>
+          <div style={{ fontSize: 12.5, color: '#78350f', lineHeight: 1.5, marginBottom: 12 }}>
+            Ya existe una cita con <strong>{conflicto.pacienteName}</strong> de {conflicto.start} a {conflicto.end}.
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => setConflicto(null)} style={{ flex: 1, padding: '8px', border: '1px solid #fcd34d', borderRadius: 8, background: '#fff', color: '#92400e', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Cambiar horario
+            </button>
+            <button onClick={handleForceCreate} disabled={saving} style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 8, background: '#b45309', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'inherit' }}>
+              {saving ? 'Agendando…' : 'Agendar de todas formas'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <ModalFooter>
+        <CancelBtn onClick={onClose} />
+        {!conflicto && (
+          <PrimaryBtn onClick={handleCreate} disabled={saving || !pid}>
+            {saving ? 'Verificando…' : 'Agendar Ahora'}
+          </PrimaryBtn>
+        )}
+      </ModalFooter>
+
+      {/* Wheel picker de fecha/hora */}
+      {pickerOpen && (
+        <WheelPickerSheet
+          key={pickerOpen}
+          title={pickerOpen === 'date' ? 'Fecha' : 'Hora'}
+          columns={pickerOpen === 'date' ? dateColumns : timeColumns}
+          onClose={() => setPickerOpen(null)}
+        />
+      )}
+    </ModalCard>
   );
 }
 
