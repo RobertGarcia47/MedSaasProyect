@@ -8,7 +8,7 @@ import {
   checkConflicto, type ConflictoInfo,
 } from '../lib/citas';
 import { fetchPacientesSelect, type PacienteSelect } from '../lib/patients';
-import { Button } from '../components';
+import { Button, Segmented } from '../components';
 import {
   IH, MONTHS, YEARS_CITA, pad,
   type DateVal, type TimeVal, type ColDef,
@@ -936,52 +936,48 @@ export function Calendar({ go, toast, dataVersion = 0 }: {
   return (
     <div className="page-pad fade-up" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
-      {/* ── Encabezado (misma altura y posición que el de Dashboard → sin salto al cambiar) ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+      {/* ── Header compartido (misma altura que Dashboard): a la izquierda título + navegador
+              de mes; a la derecha el toggle de vista + Nueva cita ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 16 }}>
+
+        {/* Izquierda: fecha + (Agenda · navegador) */}
         <div>
           <div className="body-m" style={{ color: 'var(--on-surface-variant)', textTransform: 'capitalize' }}>
             {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </div>
-          <h1 className="headline-l" style={{ letterSpacing: '-.5px', marginTop: 2 }}>Agenda</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', marginTop: 2 }}>
+            <h1 className="headline-l" style={{ letterSpacing: '-.5px' }}>Agenda</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <button onClick={() => nav(-1)} aria-label="Anterior" style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--outline-variant)', background: 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-surface-variant)' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <span style={{ minWidth: 150, textAlign: 'center', fontSize: 14, fontWeight: 600, color: 'var(--on-surface)', padding: '0 4px' }}>
+                  {navTitle()}
+                </span>
+                <button onClick={() => nav(1)} aria-label="Siguiente" style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid var(--outline-variant)', background: 'var(--surface)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-surface-variant)' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+              <button onClick={goToday} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--outline-variant)', background: 'var(--surface)', fontSize: 13, fontWeight: 600, color: 'var(--on-surface)', cursor: 'pointer' }}>
+                Hoy
+              </button>
+            </div>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
+
+        {/* Derecha: toggle de vista (segmentado) + Nueva cita */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Segmented
+            value={view}
+            onChange={(v: string) => setView(v as CalView)}
+            options={[
+              { value: 'mes',    label: 'Mes'    },
+              { value: 'semana', label: 'Semana' },
+              { value: 'dia',    label: 'Día'    },
+            ]}
+          />
           <Button variant="filled" icon="add" onClick={() => openNew(current)}>Nueva cita</Button>
-        </div>
-      </div>
-
-      {/* ── Controles: navegación + Hoy + selector de vista ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
-
-        {/* Navegación */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-          <button onClick={() => nav(-1)} aria-label="Anterior" style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid #e5e9e7', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#374151' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <span style={{ minWidth: 210, textAlign: 'center', fontSize: 14, fontWeight: 600, color: '#111827', padding: '0 8px' }}>
-            {navTitle()}
-          </span>
-          <button onClick={() => nav(1)} aria-label="Siguiente" style={{ width: 34, height: 34, borderRadius: 8, border: '1px solid #e5e9e7', background: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#374151' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-        </div>
-
-        <button onClick={goToday} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid #e5e9e7', background: '#fff', fontSize: 13, fontWeight: 600, color: '#374151', cursor: 'pointer' }}>
-          Hoy
-        </button>
-
-        <div style={{ flex: 1 }} />
-
-        {/* Selector de vista */}
-        <div style={{ display: 'flex', background: '#f3f4f6', borderRadius: 8, padding: 3, gap: 2 }}>
-          {(['mes', 'semana', 'dia'] as CalView[]).map(v => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              style={{ padding: '6px 14px', borderRadius: 6, border: 'none', fontSize: 13, fontWeight: 600, cursor: 'pointer', background: view === v ? '#fff' : 'transparent', color: view === v ? '#0d5c4e' : '#6b7280', boxShadow: view === v ? '0 1px 4px rgba(0,0,0,0.08)' : 'none', transition: 'all .15s' }}
-            >
-              {v === 'mes' ? 'Mes' : v === 'semana' ? 'Semana' : 'Día'}
-            </button>
-          ))}
         </div>
       </div>
 

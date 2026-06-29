@@ -115,6 +115,13 @@ const IChevron = ({ c = '#9ca3af', s = 13 }) => (
 
 // ─── PField: campo de formulario con estilo handoff ───────────────────────────
 
+const ITrash = ({ c = '#dc2626', s = 15 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+);
+const IPlus = ({ c = '#0d5c4e', s = 14 }) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+);
+
 function PField({ label, value, onChange, type = 'text', placeholder, icon, fullWidth, readOnly, required, prefix }: {
   label: string; value: string; onChange?: (v: string) => void;
   type?: string; placeholder?: string; icon?: React.ReactNode;
@@ -224,6 +231,10 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
   const [cedula,        setCedula]        = useState('');
   const [universidad,   setUniversidad]   = useState('');
   const [especialidadId, setEspecialidadId] = useState('');
+  // cédulas múltiples (medico_cedulas): id de la default espejada + adicionales
+  const [defaultCedulaId, setDefaultCedulaId] = useState<string | null>(null);
+  const [extraCedulas,    setExtraCedulas]    = useState<{ id: string | null; cedula: string; especialidad_id: string }[]>([]);
+  const [savingExtras,    setSavingExtras]    = useState(false);
 
   // saving states
   const [savingP, setSavingP] = useState(false);
@@ -295,6 +306,8 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
         .select('id, nombre')
         .order('nombre');
       setEsps(esps ?? []);
+
+      await reloadCedulas();
     } catch (e: any) {
       t('Error al cargar el perfil: ' + (e.message ?? String(e)));
     } finally {
@@ -360,6 +373,23 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
     }
   }
 
+  // Recarga las cédulas (default + adicionales) desde medico_cedulas
+  async function reloadCedulas() {
+    const { data: ceds } = await supabase
+      .from('medico_cedulas')
+      .select('id, cedula, especialidad_id, es_default')
+      .eq('profile_id', account.userId)
+      .order('created_at');
+    const list = ceds ?? [];
+    const def = list.find((c: any) => c.es_default);
+    setDefaultCedulaId(def?.id ?? null);
+    setExtraCedulas(
+      list.filter((c: any) => !c.es_default).map((c: any) => ({
+        id: c.id, cedula: c.cedula, especialidad_id: c.especialidad_id ? String(c.especialidad_id) : '',
+      }))
+    );
+  }
+
   async function saveMedico() {
     if (!cedula.trim()) { t('La cédula profesional es obligatoria'); return; }
     setSavingM(true);
@@ -372,6 +402,18 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
         especialidad_id:    especialidadId ? Number(especialidadId) : null,
       }, { onConflict: 'profile_id' });
       if (error) throw error;
+
+      // Mantén la cédula DEFAULT espejada en medico_cedulas (fuente de las cédulas múltiples)
+      const defPayload = { cedula: cedula.trim(), especialidad_id: especialidadId ? Number(especialidadId) : null };
+      if (defaultCedulaId) {
+        await supabase.from('medico_cedulas').update(defPayload).eq('id', defaultCedulaId);
+      } else {
+        const { data: ins } = await supabase.from('medico_cedulas')
+          .insert({ profile_id: account.userId, es_default: true, ...defPayload })
+          .select('id').single();
+        if (ins) setDefaultCedulaId((ins as any).id);
+      }
+
       setTieneCedula(true);
       await refreshAccount?.();
       t(tieneCedula ? 'Perfil profesional actualizado' : '¡Perfil profesional registrado! Ya puedes crear pacientes y recetas.');
@@ -379,6 +421,48 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
       t('Error: ' + (e.message ?? String(e)));
     } finally {
       setSavingM(false);
+    }
+  }
+
+  // ── Cédulas adicionales (otras especialidades) ───────────────────────────────
+  function addExtra() {
+    if (extraCedulas.length >= 2) { t('Máximo 3 cédulas en total (1 principal + 2 adicionales)'); return; }
+    setExtraCedulas(prev => [...prev, { id: null, cedula: '', especialidad_id: '' }]);
+  }
+  function updateExtra(idx: number, field: 'cedula' | 'especialidad_id', value: string) {
+    setExtraCedulas(prev => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  }
+  async function removeExtra(idx: number) {
+    const row = extraCedulas[idx];
+    if (row.id) {
+      const { error } = await supabase.from('medico_cedulas').delete().eq('id', row.id);
+      if (error) { t('Error al eliminar: ' + error.message); return; }
+      t('Cédula eliminada');
+    }
+    setExtraCedulas(prev => prev.filter((_, i) => i !== idx));
+  }
+  async function saveExtras() {
+    setSavingExtras(true);
+    try {
+      for (const row of extraCedulas) {
+        const ced = row.cedula.trim();
+        if (!ced) continue; // ignora filas en blanco
+        const payload = { cedula: ced, especialidad_id: row.especialidad_id ? Number(row.especialidad_id) : null };
+        if (row.id) {
+          const { error } = await supabase.from('medico_cedulas').update(payload).eq('id', row.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('medico_cedulas')
+            .insert({ profile_id: account.userId, es_default: false, ...payload });
+          if (error) throw error;
+        }
+      }
+      await reloadCedulas();
+      t('Cédulas adicionales guardadas');
+    } catch (e: any) {
+      t('Error: ' + (e.message ?? String(e)));
+    } finally {
+      setSavingExtras(false);
     }
   }
 
@@ -615,6 +699,42 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
                 <ICheck />{savingM ? 'Guardando…' : tieneCedula ? 'Actualizar' : 'Registrarme como médico'}
               </SaveBtn>
             </div>
+
+            {tieneCedula && (
+              <div style={{ marginTop: 28, paddingTop: 22, borderTop: '1px solid #e5e9e7' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0d3d2e' }}>Otras cédulas / especialidades</h3>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#6b7280' }}>{1 + extraCedulas.length} / 3</span>
+                </div>
+                <p style={{ fontSize: 12.5, color: '#6b7280', marginBottom: 16 }}>
+                  Si tienes cédulas adicionales por otras especialidades, agrégalas aquí (hasta 2 más). La principal es la de arriba.
+                </p>
+
+                {extraCedulas.length === 0 && (
+                  <p style={{ fontSize: 13, color: '#9ca3af', marginBottom: 4 }}>Aún no has agregado cédulas adicionales.</p>
+                )}
+
+                {extraCedulas.map((row, idx) => (
+                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', gap: 12, alignItems: 'flex-end', marginBottom: 12 }}>
+                    <PField label={`Cédula ${idx + 2}`} value={row.cedula} onChange={v => updateExtra(idx, 'cedula', v)} icon={<IDoc />} />
+                    <PSelect label="Especialidad" value={row.especialidad_id} onChange={v => updateExtra(idx, 'especialidad_id', v)} options={espOptions} icon={<IHeartPulse />} />
+                    <button onClick={() => removeExtra(idx)} title="Eliminar cédula" style={{ height: 40, width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fecaca', background: '#fff5f5', borderRadius: 8, cursor: 'pointer' }}>
+                      <ITrash />
+                    </button>
+                  </div>
+                ))}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, gap: 12, flexWrap: 'wrap' }}>
+                  <button onClick={addExtra} disabled={extraCedulas.length >= 2}
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', color: extraCedulas.length >= 2 ? '#9ca3af' : '#0d5c4e', border: `1px solid ${extraCedulas.length >= 2 ? '#e5e9e7' : '#0d5c4e'}`, borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: extraCedulas.length >= 2 ? 'not-allowed' : 'pointer' }}>
+                    <IPlus c={extraCedulas.length >= 2 ? '#9ca3af' : '#0d5c4e'} /> Agregar otra cédula
+                  </button>
+                  <SaveBtn onClick={saveExtras} disabled={savingExtras}>
+                    <ICheck />{savingExtras ? 'Guardando…' : 'Guardar cédulas'}
+                  </SaveBtn>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -625,19 +745,29 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
-function SettingRow({ icon, title, desc, control }: {
-  icon: string; title: string; desc: string; control: React.ReactNode;
+function SettingRow({ icon, title, desc, control, last }: {
+  icon: string; title: string; desc: string; control: React.ReactNode; last?: boolean;
 }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px 0', borderBottom: '1px solid var(--outline-variant)' }}>
-      <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--surface-container-highest)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <span className="ms" style={{ fontSize: 22 }}>{icon}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 0', borderBottom: last ? 'none' : '1px solid var(--outline-variant)' }}>
+      <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <span className="ms" style={{ fontSize: 20 }}>{icon}</span>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)' }}>{title}</div>
+        <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--on-surface)' }}>{title}</div>
         <div style={{ fontSize: 13, color: 'var(--on-surface-variant)', marginTop: 2 }}>{desc}</div>
       </div>
       {control}
+    </div>
+  );
+}
+
+// Encabezado de sección dentro de cada tab de Configuración
+function SectionHead({ icon, title }: { icon: string; title: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 20 }}>
+      <span className="ms" style={{ fontSize: 21, color: 'var(--primary)' }}>{icon}</span>
+      <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--on-surface)' }}>{title}</span>
     </div>
   );
 }
@@ -649,59 +779,122 @@ export function Settings({ theme, setTheme, onLogout, navStyle, setNavStyle }: {
   navStyle: string;
   setNavStyle: (s: string) => void;
 }) {
-  const [notif,      setNotif]      = useState(true);
-  const [emailNotif, setEmailNotif] = useState(true);
-  const [twoFa,      setTwoFa]      = useState(false);
-  const [lang,       setLang]       = useState('Español');
+  const [tab,         setTab]         = useState('apariencia');
+  const [notif,       setNotif]       = useState(true);
+  const [emailNotif,  setEmailNotif]  = useState(true);
+  const [twoFa,       setTwoFa]       = useState(false);
+  const [lang,        setLang]        = useState('Español');
+  const [logoutHover, setLogoutHover] = useState(false);
 
-  const sections = [
-    { title: 'Apariencia', icon: 'palette', rows: [
-      { icon: 'dark_mode', title: 'Tema oscuro', desc: 'Cambia entre modo día y noche',
-        control: <Switch checked={theme === 'dark'} onChange={(v: boolean) => setTheme(v ? 'dark' : 'light')} /> },
-      { icon: 'nav_bar', title: 'Navegación', desc: 'Elige entre barra superior o barra lateral',
-        control: <Select value={navStyle === 'topnav' ? 'Navbar superior' : 'Barra lateral'} onChange={(v: string) => setNavStyle(v === 'Navbar superior' ? 'topnav' : 'sidebar')} options={['Navbar superior', 'Barra lateral']} style={{ width: 170 }} /> },
-      { icon: 'translate', title: 'Idioma', desc: 'Idioma de la interfaz',
-        control: <Select value={lang} onChange={setLang} options={['Español', 'English']} style={{ width: 150 }} /> },
-    ]},
-    { title: 'Notificaciones', icon: 'notifications', rows: [
-      { icon: 'notifications_active', title: 'Notificaciones push', desc: 'Recordatorios de citas y alertas',  control: <Switch checked={notif}      onChange={setNotif}      /> },
-      { icon: 'mail',                 title: 'Resumen por correo',  desc: 'Recibe tu agenda diaria por email', control: <Switch checked={emailNotif} onChange={setEmailNotif} /> },
-    ]},
-    { title: 'Seguridad y privacidad', icon: 'security', rows: [
-      { icon: 'encrypted', title: 'Autenticación en dos pasos', desc: 'Protege tu cuenta con un segundo factor', control: <Switch checked={twoFa} onChange={setTwoFa} /> },
-      { icon: 'gpp_good', title: 'Cumplimiento NOM-024', desc: 'Expediente clínico electrónico certificado',
-        control: <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--success-container)', color: 'var(--on-success-container, #166534)', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>Activo</span> },
-      { icon: 'history', title: 'Registro de actividad', desc: 'Auditoría de accesos al expediente',
-        control: <button style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Ver</button> },
-    ]},
+  const TABS = [
+    { key: 'apariencia', label: 'Apariencia',             icon: 'palette' },
+    { key: 'notif',      label: 'Notificaciones',         icon: 'notifications' },
+    { key: 'seguridad',  label: 'Seguridad y privacidad', icon: 'security' },
+    { key: 'cuenta',     label: 'Cuenta',                 icon: 'manage_accounts' },
   ];
 
   return (
-    <div className="page-pad fade-up" style={{ maxWidth: 820 }}>
-      <h1 className="headline-l" style={{ letterSpacing: '-.5px', marginBottom: 6 }}>Configuración</h1>
-      <p className="body-m" style={{ color: 'var(--on-surface-variant)', marginBottom: 24 }}>Administra tu cuenta, preferencias y seguridad</p>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        {sections.map((s) => (
-          <div key={s.title} style={{ background: 'var(--surface-container-low)', borderRadius: 'var(--r-md)', border: '1px solid var(--outline-variant)', padding: '20px 24px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-              <span className="ms fill" style={{ fontSize: 20, color: 'var(--primary)' }}>{s.icon}</span>
-              <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--on-surface)' }}>{s.title}</span>
-            </div>
-            {s.rows.map((r, i) => <SettingRow key={i} {...r} />)}
-          </div>
-        ))}
-        <div style={{ background: 'var(--surface-container-low)', borderRadius: 'var(--r-md)', border: '1px solid var(--error-container, #f9dedc)', padding: '20px 24px' }}>
-          <SettingRow
-            icon="logout"
-            title="Cerrar sesión"
-            desc="Salir de tu cuenta en este dispositivo"
-            control={
-              <button onClick={onLogout} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', color: 'var(--error)', border: '1px solid var(--error)', borderRadius: 'var(--r-full)', padding: '0 20px', height: 36, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
-                <span className="ms" style={{ fontSize: 18 }}>logout</span>
-                Cerrar sesión
+    <div className="page-pad fade-up" style={{ maxWidth: 780, margin: '0 auto', width: '100%' }}>
+      {/* Encabezado de la página (fuera de la tarjeta) */}
+      <h1 className="headline-l" style={{ letterSpacing: '-.3px', marginBottom: 6 }}>Configuración</h1>
+      <p className="body-m" style={{ color: 'var(--on-surface-variant)', margin: '0 0 28px' }}>
+        Administra tu apariencia, notificaciones, seguridad y cuenta
+      </p>
+
+      {/* Tarjeta principal — sin overflow:hidden (el indicador de tab usa margin-bottom:-1) */}
+      <div style={{ background: 'var(--surface)', borderRadius: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}>
+
+        {/* Tab bar */}
+        <div style={{ display: 'flex', borderBottom: '1px solid var(--outline-variant)', padding: '0 20px', overflowX: 'auto' }}>
+          {TABS.map((t) => {
+            const active = tab === t.key;
+            return (
+              <button
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 7, padding: '18px 14px', marginBottom: -1,
+                  border: 'none', background: 'transparent', cursor: 'pointer', whiteSpace: 'nowrap',
+                  fontFamily: 'var(--font-body)', fontWeight: 500, fontSize: 14,
+                  color: active ? 'var(--primary)' : 'var(--on-surface-variant)',
+                  borderBottom: `2px solid ${active ? 'var(--primary)' : 'transparent'}`,
+                  transition: 'color .18s',
+                }}
+              >
+                <span className="ms" style={{ fontSize: 18 }}>{t.icon}</span>
+                {t.label}
               </button>
-            }
-          />
+            );
+          })}
+        </div>
+
+        {/* Contenido del tab activo */}
+        <div style={{ padding: '32px 36px', minHeight: 280 }}>
+
+          {tab === 'apariencia' && (
+            <>
+              <SectionHead icon="palette" title="Apariencia" />
+              <SettingRow icon="dark_mode" title="Tema oscuro" desc="Cambia entre modo día y noche"
+                control={<Switch checked={theme === 'dark'} onChange={(v: boolean) => setTheme(v ? 'dark' : 'light')} />} />
+              <SettingRow icon="menu" title="Navegación" desc="Elige entre barra superior o barra lateral"
+                control={<Select value={navStyle === 'topnav' ? 'Navbar superior' : 'Barra lateral'} onChange={(v: string) => setNavStyle(v === 'Navbar superior' ? 'topnav' : 'sidebar')} options={['Navbar superior', 'Barra lateral']} style={{ width: 170 }} />} />
+              <SettingRow icon="translate" title="Idioma" desc="Idioma de la interfaz" last
+                control={<Select value={lang} onChange={setLang} options={['Español', 'English', 'Français', 'Português']} style={{ width: 160 }} />} />
+            </>
+          )}
+
+          {tab === 'notif' && (
+            <>
+              <SectionHead icon="notifications" title="Notificaciones" />
+              <SettingRow icon="notifications_active" title="Notificaciones push" desc="Recordatorios de citas y alertas"
+                control={<Switch checked={notif} onChange={setNotif} />} />
+              <SettingRow icon="mail" title="Resumen por correo" desc="Recibe tu agenda diaria por email" last
+                control={<Switch checked={emailNotif} onChange={setEmailNotif} />} />
+            </>
+          )}
+
+          {tab === 'seguridad' && (
+            <>
+              <SectionHead icon="security" title="Seguridad y privacidad" />
+              <SettingRow icon="verified_user" title="Autenticación en dos pasos" desc="Protege tu cuenta con un segundo factor"
+                control={<Switch checked={twoFa} onChange={setTwoFa} />} />
+              <SettingRow icon="verified" title="Cumplimiento NOM-024" desc="Expediente clínico electrónico certificado"
+                control={<span style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)', background: 'var(--primary-container)', padding: '4px 14px', borderRadius: 20, whiteSpace: 'nowrap' }}>Activo</span>} />
+              <SettingRow icon="manage_history" title="Registro de actividad" desc="Auditoría de accesos al expediente" last
+                control={<button style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>Ver</button>} />
+            </>
+          )}
+
+          {tab === 'cuenta' && (
+            <>
+              <SectionHead icon="manage_accounts" title="Cuenta" />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, border: '1.5px solid var(--error-container, #ffd0c8)', borderRadius: 16, padding: '20px 24px', background: 'var(--surface-container-lowest)' }}>
+                <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--error-container, #ffebe6)', color: 'var(--error)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <span className="ms" style={{ fontSize: 20 }}>logout</span>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 500, color: 'var(--on-surface)' }}>Cerrar sesión</div>
+                  <div style={{ fontSize: 13, color: 'var(--on-surface-variant)', marginTop: 2 }}>Salir de tu cuenta en este dispositivo</div>
+                </div>
+                <button
+                  onClick={onLogout}
+                  onMouseEnter={() => setLogoutHover(true)}
+                  onMouseLeave={() => setLogoutHover(false)}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6, borderRadius: 'var(--r-full)',
+                    border: '1.5px solid var(--error)', padding: '0 20px', height: 38, fontSize: 14, fontWeight: 500, cursor: 'pointer',
+                    background: logoutHover ? 'var(--error)' : 'transparent',
+                    color: logoutHover ? 'var(--on-error)' : 'var(--error)',
+                    transition: 'background .18s, color .18s', whiteSpace: 'nowrap',
+                  }}
+                >
+                  <span className="ms" style={{ fontSize: 18 }}>logout</span>
+                  Cerrar sesión
+                </button>
+              </div>
+            </>
+          )}
+
         </div>
       </div>
     </div>
