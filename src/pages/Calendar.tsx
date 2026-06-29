@@ -8,6 +8,7 @@ import {
   checkConflicto, type ConflictoInfo,
 } from '../lib/citas';
 import { fetchPacientesSelect, type PacienteSelect } from '../lib/patients';
+import { Button } from '../components';
 import {
   IH, MONTHS, YEARS_CITA, pad,
   type DateVal, type TimeVal, type ColDef,
@@ -26,11 +27,15 @@ const HOURS   = Array.from({ length: H_END - H_START }, (_, i) => i + H_START);
 
 // ── Tipos de cita ──────────────────────────────────────────────────────────────
 type TipoCita = 'consulta' | 'seguimiento' | 'urgencia' | 'revision';
-const TIPO_META: Record<TipoCita, { text: string; bg: string; label: string }> = {
-  consulta:    { text: '#0d5c4e', bg: '#d1ece7', label: 'Consulta'    },
-  seguimiento: { text: '#1d4ed8', bg: '#dbeafe', label: 'Seguimiento' },
-  urgencia:    { text: '#dc2626', bg: '#fee2e2', label: 'Urgencia'    },
-  revision:    { text: '#b45309', bg: '#fef3c7', label: 'Revisión'    },
+// text  = color fuerte (acento, borde, punto de leyenda)
+// bg    = pastel claro (bloques de cita, leyenda)
+// header= pastel para rellenar el encabezado del modal de detalle
+// ink   = texto oscuro con buen contraste sobre el pastel del header
+const TIPO_META: Record<TipoCita, { text: string; bg: string; header: string; ink: string; label: string }> = {
+  consulta:    { text: '#0d8a6f', bg: '#d6efe8', header: '#cdeae0', ink: '#0c4a3c', label: 'Consulta'    },
+  seguimiento: { text: '#0284c7', bg: '#dbeefc', header: '#d2e9fb', ink: '#075985', label: 'Seguimiento' },
+  urgencia:    { text: '#e11d48', bg: '#fde0e4', header: '#fbd3d9', ink: '#9f1239', label: 'Urgencia'    },
+  revision:    { text: '#c2700a', bg: '#fdf0cd', header: '#fbe9b6', ink: '#8a4d0a', label: 'Revisión'    },
 };
 function tipoFromType(type: string): TipoCita {
   const t = type.toLowerCase() as TipoCita;
@@ -225,32 +230,29 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
         onClick={e => e.stopPropagation()}
         style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 16, boxShadow: '0 24px 64px rgba(0,0,0,0.18)', overflow: 'hidden', animation: 'scaleIn .18s cubic-bezier(.2,0,0,1)' }}
       >
-        {/* Barra de color del tipo */}
-        <div style={{ height: 5, background: meta.text }} />
-
-        {/* Cabecera */}
-        <div style={{ padding: '18px 22px 14px', borderBottom: '1px solid #f3f4f6' }}>
+        {/* Cabecera coloreada según el tipo de cita (color pastel en todo el encabezado) */}
+        <div style={{ background: meta.header, padding: '18px 22px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 7, flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.6px', background: meta.bg, color: meta.text, padding: '2px 9px', borderRadius: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 9, flexWrap: 'wrap' }}>
+                <span style={{ fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.6px', background: meta.ink, color: '#fff', padding: '3px 10px', borderRadius: 5 }}>
                   {meta.label}
                 </span>
-                <span style={{ fontSize: 11, color: appt.status === 'cancelada' ? '#dc2626' : appt.status === 'completada' ? '#059669' : '#9ca3af', fontWeight: 600 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: appt.status === 'cancelada' ? '#b91c1c' : appt.status === 'completada' ? '#047857' : meta.ink, opacity: (appt.status === 'cancelada' || appt.status === 'completada') ? 1 : 0.65 }}>
                   {statusLabel(appt.status)}
                 </span>
               </div>
-              <div style={{ fontSize: 16.5, fontWeight: 700, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: 17, fontWeight: 700, color: meta.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {appt.pacienteName}
               </div>
-              <div style={{ fontSize: 12.5, color: '#6b7280', marginTop: 4 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 500, color: meta.ink, opacity: 0.78, marginTop: 4 }}>
                 {dateLabelEs(appt.date)}&nbsp;·&nbsp;{appt.start} – {appt.end}
               </div>
             </div>
-            <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '0 0 0 12px', flexShrink: 0 }}>×</button>
+            <button onClick={onClose} style={{ background: 'none', border: 'none', color: meta.ink, opacity: 0.55, cursor: 'pointer', fontSize: 22, lineHeight: 1, padding: '0 0 0 12px', flexShrink: 0 }}>×</button>
           </div>
           {appt.reason && appt.reason !== 'Cita' && appt.reason !== meta.label && (
-            <div style={{ marginTop: 10, fontSize: 12.5, color: '#374151', background: '#f8faf9', borderRadius: 6, padding: '7px 10px', lineHeight: 1.5 }}>
+            <div style={{ marginTop: 12, fontSize: 12.5, color: meta.ink, background: 'rgba(255,255,255,0.55)', borderRadius: 7, padding: '8px 11px', lineHeight: 1.5 }}>
               {appt.reason}
             </div>
           )}
@@ -430,10 +432,10 @@ function MonthView({ appts, year, month, onDayClick, onApptClick }: {
             >
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
                 <span style={{
-                  width: 27, height: 27, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 13, fontWeight: isToday ? 700 : (isThisMonth ? 500 : 400),
+                  width: isToday ? 40 : 27, height: isToday ? 40 : 27, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: isToday ? 18 : 13, fontWeight: isToday ? 700 : (isThisMonth ? 500 : 400),
                   color: isToday ? '#fff' : (isThisMonth ? '#374151' : '#c9cdd4'),
-                  background: isToday ? '#0d5c4e' : 'transparent',
+                  background: isToday ? '#0d5c4e' : 'transparent', flexShrink: 0,
                 }}>
                   {cell.getDate()}
                 </span>
@@ -488,9 +490,12 @@ function WeekView({ appts, monday, onApptClick, onDayClick }: {
   const timelineH = HOURS.length * HOUR_H;
 
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      {/* Cabecera días */}
-      <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #e5e9e7', background: '#f8faf9', flexShrink: 0 }}>
+    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', overflow: 'hidden' }}>
+      {/* Scroll único para cabecera + malla: comparten ancho y barra de scroll, de modo
+          que las líneas verticales de los días siempre quedan alineadas. */}
+      <div style={{ overflowY: 'auto', maxHeight: 597 }}>
+      {/* Cabecera días (sticky: se mantiene visible al hacer scroll) */}
+      <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #e5e9e7', background: '#f8faf9', position: 'sticky', top: 0, zIndex: 6 }}>
         <div />
         {weekDays.map(wd => (
           <div
@@ -499,14 +504,13 @@ function WeekView({ appts, monday, onApptClick, onDayClick }: {
             style={{ padding: '12px 8px', textAlign: 'center', borderLeft: '1px solid #e5e9e7', background: wd.iso === today ? '#f0fdf9' : 'transparent', cursor: 'pointer' }}
           >
             <div style={{ fontSize: 11.5, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{wd.label}</div>
-            <div style={{ width: 32, height: 32, borderRadius: '50%', margin: '4px auto 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: wd.iso === today ? 700 : 500, color: wd.iso === today ? '#fff' : '#374151', background: wd.iso === today ? '#0d5c4e' : 'transparent' }}>
+            <div style={{ width: wd.iso === today ? 40 : 32, height: wd.iso === today ? 40 : 32, borderRadius: '50%', margin: '4px auto 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: wd.iso === today ? 18 : 16, fontWeight: wd.iso === today ? 700 : 500, color: wd.iso === today ? '#fff' : '#374151', background: wd.iso === today ? '#0d5c4e' : 'transparent' }}>
               {wd.dayN}
             </div>
           </div>
         ))}
       </div>
-      {/* Timeline */}
-      <div style={{ overflowY: 'auto', maxHeight: 540 }}>
+      {/* Timeline — misma malla que la cabecera (mismas columnas, mismo scrollbar) */}
         <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', height: timelineH }}>
           {/* Etiquetas de hora */}
           <div style={{ position: 'relative' }}>
@@ -583,7 +587,7 @@ function DayView({ appts, date, onApptClick, onAddClick }: {
     <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', overflow: 'hidden' }}>
       {/* Cabecera del día */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '18px 24px', borderBottom: '1px solid #e5e9e7', background: isToday ? '#f0fdf9' : '#f8faf9' }}>
-        <div style={{ width: 48, height: 48, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 700, color: isToday ? '#fff' : '#374151', background: isToday ? '#0d5c4e' : '#e5e9e7', flexShrink: 0 }}>
+        <div style={{ width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: isToday ? '#fff' : '#374151', background: isToday ? '#0d5c4e' : '#e5e9e7', flexShrink: 0 }}>
           {date.getDate()}
         </div>
         <div>
@@ -641,11 +645,13 @@ function DayView({ appts, date, onApptClick, onAddClick }: {
                     zIndex: 2, opacity: cancelled ? 0.65 : 1,
                   }}
                 >
-                  <div style={{ fontSize: 11.5, fontWeight: 700, lineHeight: 1.3 }}>
-                    {a.start} – {a.end}
-                  </div>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginTop: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: cancelled ? 'line-through' : 'none' }}>
-                    {a.pacienteName}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, lineHeight: 1.3, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                      {a.start} – {a.end}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 600, flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textDecoration: cancelled ? 'line-through' : 'none' }}>
+                      {a.pacienteName}
+                    </span>
                   </div>
                   {h >= 80 && (
                     <span style={{ display: 'inline-block', marginTop: 4, fontSize: 9.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', background: `${col.text}22`, padding: '1px 6px', borderRadius: 3, alignSelf: 'flex-start' }}>
@@ -930,7 +936,20 @@ export function Calendar({ go, toast, dataVersion = 0 }: {
   return (
     <div className="page-pad fade-up" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
-      {/* ── Toolbar ── */}
+      {/* ── Encabezado (misma altura y posición que el de Dashboard → sin salto al cambiar) ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+        <div>
+          <div className="body-m" style={{ color: 'var(--on-surface-variant)', textTransform: 'capitalize' }}>
+            {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </div>
+          <h1 className="headline-l" style={{ letterSpacing: '-.5px', marginTop: 2 }}>Agenda</h1>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <Button variant="filled" icon="add" onClick={() => openNew(current)}>Nueva cita</Button>
+        </div>
+      </div>
+
+      {/* ── Controles: navegación + Hoy + selector de vista ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 6 }}>
 
         {/* Navegación */}
@@ -964,14 +983,6 @@ export function Calendar({ go, toast, dataVersion = 0 }: {
             </button>
           ))}
         </div>
-
-        <button
-          onClick={() => openNew(current)}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0d5c4e', color: '#fff', border: 'none', fontSize: 13, fontWeight: 600, padding: '8px 18px', borderRadius: 8, cursor: 'pointer' }}
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nueva cita
-        </button>
       </div>
 
       <Legend />

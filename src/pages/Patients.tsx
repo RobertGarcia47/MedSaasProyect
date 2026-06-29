@@ -212,8 +212,8 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
   useEffect(() => { setConsultasFull(null); setRecetas(null); setInformes(null); setEstudios(null); setOpenConsulta(null); setOpenReceta(null); setOpenInforme(null); }, [dataVersion]);
 
   const tabs = [
-    ['resumen',  'Resumen',   'summarize'],
-    ['timeline', 'Historial', 'history'],
+    ['resumen',  'Expediente', 'summarize'],
+    ['timeline', 'Consultas', 'history'],
     ['recetas',  'Recetas',   'prescriptions'],
     ['informes', 'Informes',  'description'],
     ['labs',     'Laboratorio','labs'],
@@ -284,6 +284,12 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
           </div>
         )}
       </Card>
+
+      {/* Etiqueta de sección: la barra de pestañas es el historial del paciente.
+          (Los botones de arriba abren páginas de acción; aquí se consultan los registros.) */}
+      <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.7px', color: 'var(--on-surface-variant)', marginBottom: 8 }}>
+        Historial
+      </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 4, borderBottom: '1px solid var(--outline-variant)', marginBottom: 20, overflowX: 'auto' }}>
