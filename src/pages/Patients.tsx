@@ -3,6 +3,8 @@ import { useAccount } from '../context/AccountContext';
 import { fetchPacientes, fetchPacienteDetalle, actualizarPaciente, type PacienteUI, type PacienteDetalleUI } from '../lib/patients';
 import type { SexoEnum, GrupoSanguineo } from '../lib/types';
 import { obtenerRecetas, formatFolioReceta, type RecetaUI } from '../lib/recetas';
+import { construirRecetaPdfDesdeReceta, type RecetaPdfData } from '../lib/pdf';
+import { PdfRecetaModal } from '../components/PdfRecetaModal';
 import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, TIPO_INFORME_ICON, TIPO_INFORME_COLOR, VISIBILIDAD_ICON, VISIBILIDAD_LABEL, type InformeUI } from '../lib/informes';
 import { obtenerEstudios, urlDescarga, type EstudioUI } from '../lib/laboratorio';
 import { obtenerConsultas, type ConsultaDetalleUI } from '../lib/consultas';
@@ -176,6 +178,31 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
   // Visor de archivos de laboratorio
   const [archivoModal, setArchivoModal] = useState<{ url: string; nombre: string; tipo: 'pdf' | 'image' } | null>(null);
   const [zoomLevel,    setZoomLevel]    = useState(1);
+
+  // PDF de receta (regenerar desde el historial)
+  const [pdfData,     setPdfData]     = useState<RecetaPdfData | null>(null);
+  const [pdfOpen,     setPdfOpen]     = useState(false);
+  const [pdfBuilding, setPdfBuilding] = useState<string | null>(null); // id de la receta cargando
+
+  const verRecetaPdf = async (r: RecetaUI) => {
+    if (!pac || !clinicaId) return;
+    setPdfBuilding(r.id);
+    try {
+      const data = await construirRecetaPdfDesdeReceta(r, {
+        clinicaId,
+        userId: account.userId,
+        medicoNombre: account.nombreCompleto,
+        pacienteId: pac.id,
+        pacienteNombre: pac.name,
+      });
+      setPdfData(data);
+      setPdfOpen(true);
+    } catch (e) {
+      console.error('No se pudo preparar el PDF de la receta:', e);
+    } finally {
+      setPdfBuilding(null);
+    }
+  };
 
   useEffect(() => {
     if (!id || !clinicaId) { setLoading(false); return; }
@@ -467,39 +494,68 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
             const isOpen = openReceta === r.id;
             return (
               <Card key={r.id} variant="outlined" style={{ padding: 0, overflow: 'hidden' }}>
-                {/* Cabecera acordeón */}
-                <button
-                  onClick={() => setOpenReceta(isOpen ? null : r.id)}
-                  aria-expanded={isOpen}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 14, width: '100%',
-                    padding: '14px 20px', background: isOpen ? 'var(--surface-container)' : 'var(--surface-container-low)',
-                    border: 'none', borderBottom: isOpen ? '1px solid var(--outline-variant)' : 'none',
-                    cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--on-surface)',
-                  }}
-                >
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon name="prescriptions" size={20} fill />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                      <div className="title-s">{r.diagnostico_cie10 || 'Receta'}</div>
-                      {r.folio_num && (
-                        <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, padding: '1px 8px', borderRadius: 999, background: 'var(--primary-container)', color: 'var(--on-primary-container)', fontVariantNumeric: 'tabular-nums' }}>
-                          {formatFolioReceta(r.folio_num, r.fecha_receta, r.created_at)}
-                        </span>
-                      )}
+                {/* Cabecera acordeón (toggle + acción PDF al lado del colapsable) */}
+                <div style={{
+                  display: 'flex', alignItems: 'center',
+                  background: isOpen ? 'var(--surface-container)' : 'var(--surface-container-low)',
+                  borderBottom: isOpen ? '1px solid var(--outline-variant)' : 'none',
+                }}>
+                  <button
+                    onClick={() => setOpenReceta(isOpen ? null : r.id)}
+                    aria-expanded={isOpen}
+                    style={{
+                      flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 14,
+                      padding: '14px 8px 14px 20px', background: 'transparent',
+                      border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--on-surface)',
+                    }}
+                  >
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon name="prescriptions" size={20} fill />
                     </div>
-                    <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginTop: 2 }}>
-                      {(r.fecha_receta
-                        ? new Date(r.fecha_receta + 'T00:00:00')
-                        : new Date(r.created_at)
-                      ).toLocaleDateString('es-MX', { dateStyle: 'medium' })} · {r.medicamentos.length} medicamento(s)
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                        <div className="title-s">{r.diagnostico_cie10 || 'Receta'}</div>
+                        {r.folio_num && (
+                          <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, padding: '1px 8px', borderRadius: 999, background: 'var(--primary-container)', color: 'var(--on-primary-container)', fontVariantNumeric: 'tabular-nums' }}>
+                            {formatFolioReceta(r.folio_num, r.fecha_receta, r.created_at)}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginTop: 2 }}>
+                        {(r.fecha_receta
+                          ? new Date(r.fecha_receta + 'T00:00:00')
+                          : new Date(r.created_at)
+                        ).toLocaleDateString('es-MX', { dateStyle: 'medium' })} · {r.medicamentos.length} medicamento(s)
+                      </div>
                     </div>
-                  </div>
-                  <Icon name="expand_more" size={22}
-                    style={{ color: 'var(--on-surface-variant)', flexShrink: 0, transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'none' }} />
-                </button>
+                  </button>
+                  {/* Acción: regenerar / imprimir PDF */}
+                  <button
+                    onClick={() => verRecetaPdf(r)}
+                    disabled={pdfBuilding === r.id}
+                    title="Ver / Imprimir PDF"
+                    aria-label="Ver o imprimir PDF de la receta"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                      padding: '7px 12px', marginRight: 6, borderRadius: 999,
+                      border: '1px solid var(--outline-variant)', background: 'var(--surface)',
+                      color: 'var(--primary)', cursor: pdfBuilding === r.id ? 'default' : 'pointer',
+                      fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600,
+                    }}
+                  >
+                    <Icon name={pdfBuilding === r.id ? 'progress_activity' : 'picture_as_pdf'} size={18}
+                      style={pdfBuilding === r.id ? { animation: 'spin 1s linear infinite' } : undefined} />
+                    PDF
+                  </button>
+                  <button
+                    onClick={() => setOpenReceta(isOpen ? null : r.id)}
+                    aria-label={isOpen ? 'Colapsar' : 'Expandir'}
+                    style={{ display: 'flex', alignItems: 'center', padding: '14px 20px 14px 6px', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                  >
+                    <Icon name="expand_more" size={22}
+                      style={{ color: 'var(--on-surface-variant)', flexShrink: 0, transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'none' }} />
+                  </button>
+                </div>
                 {/* Cuerpo: solo cuando está desplegada */}
                 {isOpen && (
                   <div style={{ padding: '8px 20px 16px' }}>
@@ -925,6 +981,8 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
           </div>
         </div>
       )}
+
+      <PdfRecetaModal open={pdfOpen} data={pdfData} onClose={() => setPdfOpen(false)} />
     </div>
   );
 }

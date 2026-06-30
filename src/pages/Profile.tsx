@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAccount } from '../context/AccountContext';
 import { Switch, Select } from '../components';
 import type { Especialidad } from '../lib/types';
+import { PLANTILLAS, type Plantilla } from '../lib/pdf';
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────────
 
@@ -779,6 +780,7 @@ export function Settings({ theme, setTheme, onLogout, navStyle, setNavStyle }: {
   navStyle: string;
   setNavStyle: (s: string) => void;
 }) {
+  const account = useAccount();
   const [tab,         setTab]         = useState('apariencia');
   const [notif,       setNotif]       = useState(true);
   const [emailNotif,  setEmailNotif]  = useState(true);
@@ -786,8 +788,33 @@ export function Settings({ theme, setTheme, onLogout, navStyle, setNavStyle }: {
   const [lang,        setLang]        = useState('Español');
   const [logoutHover, setLogoutHover] = useState(false);
 
+  // Plantilla de receta (preferencia por clínica: clinicas.plantilla_receta).
+  const [plantilla,   setPlantilla]   = useState<Plantilla>('teal');
+  const [plantillaMsg, setPlantillaMsg] = useState<string | null>(null);
+  const esEditor = account.rol === 'owner';
+
+  useEffect(() => {
+    if (!account.clinicaId) return;
+    supabase.from('clinicas').select('plantilla_receta').eq('id', account.clinicaId)
+      .maybeSingle<{ plantilla_receta: string | null }>()
+      .then(({ data }) => {
+        const p = data?.plantilla_receta;
+        if (p && ['teal', 'oliva', 'azul'].includes(p)) setPlantilla(p as Plantilla);
+      });
+  }, [account.clinicaId]);
+
+  const guardarPlantilla = async (p: Plantilla) => {
+    const previa = plantilla;
+    setPlantilla(p);
+    setPlantillaMsg(null);
+    const { error } = await supabase.from('clinicas').update({ plantilla_receta: p }).eq('id', account.clinicaId!);
+    if (error) { setPlantilla(previa); setPlantillaMsg('No se pudo guardar (¿permisos?)'); }
+    else { setPlantillaMsg('Guardado'); setTimeout(() => setPlantillaMsg(null), 2000); }
+  };
+
   const TABS = [
     { key: 'apariencia', label: 'Apariencia',             icon: 'palette' },
+    { key: 'recetas',    label: 'Recetas',                icon: 'prescriptions' },
     { key: 'notif',      label: 'Notificaciones',         icon: 'notifications' },
     { key: 'seguridad',  label: 'Seguridad y privacidad', icon: 'security' },
     { key: 'cuenta',     label: 'Cuenta',                 icon: 'manage_accounts' },
@@ -840,6 +867,55 @@ export function Settings({ theme, setTheme, onLogout, navStyle, setNavStyle }: {
                 control={<Select value={navStyle === 'topnav' ? 'Navbar superior' : 'Barra lateral'} onChange={(v: string) => setNavStyle(v === 'Navbar superior' ? 'topnav' : 'sidebar')} options={['Navbar superior', 'Barra lateral']} style={{ width: 170 }} />} />
               <SettingRow icon="translate" title="Idioma" desc="Idioma de la interfaz" last
                 control={<Select value={lang} onChange={setLang} options={['Español', 'English', 'Français', 'Português']} style={{ width: 160 }} />} />
+            </>
+          )}
+
+          {tab === 'recetas' && (
+            <>
+              <SectionHead icon="prescriptions" title="Plantilla de receta" />
+              <p className="body-m" style={{ color: 'var(--on-surface-variant)', margin: '-6px 0 18px', fontSize: 13.5 }}>
+                Elige el diseño con el que se generan los PDF de receta de la clínica. Se aplica a todas las recetas nuevas e impresas.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
+                {PLANTILLAS.map((p) => {
+                  const sel = p.id === plantilla;
+                  return (
+                    <button key={p.id} onClick={() => esEditor && guardarPlantilla(p.id)} disabled={!esEditor}
+                      style={{
+                        textAlign: 'left', cursor: esEditor ? 'pointer' : 'not-allowed',
+                        border: `1.5px solid ${sel ? p.color : 'var(--outline-variant)'}`,
+                        background: sel ? 'var(--surface-container-high)' : 'var(--surface)',
+                        borderRadius: 16, padding: 16, fontFamily: 'var(--font-body)',
+                        boxShadow: sel ? `0 0 0 3px ${p.color}22` : 'none', opacity: esEditor ? 1 : 0.6,
+                      }}>
+                      {/* Mini-vista del membrete */}
+                      <div style={{ borderRadius: 10, overflow: 'hidden', border: '1px solid var(--outline-variant)', marginBottom: 12 }}>
+                        <div style={{ height: 34, background: p.color, display: 'flex', alignItems: 'center', gap: 6, padding: '0 10px' }}>
+                          <span style={{ width: 16, height: 16, borderRadius: 4, background: 'rgba(255,255,255,.9)' }} />
+                          <span style={{ flex: 1, height: 6, borderRadius: 3, background: 'rgba(255,255,255,.55)' }} />
+                        </div>
+                        <div style={{ padding: '8px 10px', background: 'var(--surface)' }}>
+                          <div style={{ height: 5, width: '70%', borderRadius: 3, background: 'var(--outline-variant)', marginBottom: 5 }} />
+                          <div style={{ height: 5, width: '90%', borderRadius: 3, background: 'var(--outline-variant)' }} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ width: 16, height: 16, borderRadius: 5, background: p.color, flexShrink: 0 }} />
+                        <span style={{ flex: 1 }}>
+                          <span style={{ display: 'block', fontSize: 14.5, fontWeight: 700, color: 'var(--on-surface)' }}>{p.nombre}</span>
+                          <span style={{ display: 'block', fontSize: 12, color: 'var(--on-surface-variant)' }}>{p.descripcion}</span>
+                        </span>
+                        {sel && <span className="ms" style={{ fontSize: 20, color: p.color }}>check_circle</span>}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ marginTop: 14, minHeight: 20, display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+                {plantillaMsg === 'Guardado' && <span style={{ color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: 5 }}><span className="ms" style={{ fontSize: 17 }}>check_circle</span>Guardado</span>}
+                {plantillaMsg && plantillaMsg !== 'Guardado' && <span style={{ color: 'var(--error)' }}>{plantillaMsg}</span>}
+                {!esEditor && <span style={{ color: 'var(--on-surface-variant)' }}>Solo el propietario de la clínica puede cambiar la plantilla.</span>}
+              </div>
             </>
           )}
 

@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useAccount } from '../context/AccountContext';
 import { fetchPacientesSelect, getOrCreateExpediente, type PacienteSelect } from '../lib/patients';
 import { crearReceta, fetchCie10, type MedicamentoInput } from '../lib/recetas';
+import { construirRecetaPdf, type RecetaPdfData } from '../lib/pdf';
+import { PdfRecetaModal } from '../components/PdfRecetaModal';
 import { Icon, Button, Card, IconButton } from '../components';
 
 // ── Campo outlined con label flotante ────────────────────────────────────────────
@@ -67,6 +69,8 @@ export function Receta({ go, goBack, toast, patientId }: {
   const [medsErr, setMedsErr]     = useState(false);
   const [saving, setSaving]       = useState(false);
   const [dirty, setDirty]         = useState(false);
+  const [pdfData, setPdfData]     = useState<RecetaPdfData | null>(null);
+  const [pdfOpen, setPdfOpen]     = useState(false);
 
   const puede = account.puedeEmitirClinico && !!account.clinicaId;
 
@@ -99,18 +103,38 @@ export function Receta({ go, goBack, toast, patientId }: {
     setSaving(true);
     try {
       const expId = await getOrCreateExpediente(pid, account.clinicaId!);
-      await crearReceta(expId, {
+      const recetaId = await crearReceta(expId, {
         diagnostico_cie10: dx || null,
         indicaciones: obs && obs !== '<br>' ? obs : null,
         medicamentos,
         fecha_receta: recipeDate || null,
       });
       toast?.('Receta emitida correctamente');
-      go('patient', { id: pid });
+
+      // Arma el PDF (datos ya descifrados) y abre el modal de plantillas.
+      try {
+        const data = await construirRecetaPdf({
+          clinicaId: account.clinicaId!,
+          userId: account.userId,
+          medicoNombre: account.nombreCompleto,
+          pacienteId: pid,
+          pacienteNombre: paciente?.name ?? 'Paciente',
+          expedienteId: expId,
+          recetaId,
+        });
+        setPdfData(data);
+        setPdfOpen(true);
+      } catch (e: any) {
+        // Si falla el armado del PDF, la receta ya quedó guardada: solo avisa.
+        toast?.('Receta guardada. El PDF no se pudo preparar: ' + (e?.message ?? e));
+        go('patient', { id: pid });
+      }
     } catch (e: any) {
       toast?.('Error al emitir: ' + (e?.message ?? String(e)));
     } finally { setSaving(false); }
   };
+
+  const cerrarPdf = () => { setPdfOpen(false); go('patient', { id: pid }); };
 
   if (!puede) {
     return (
@@ -328,6 +352,8 @@ export function Receta({ go, goBack, toast, patientId }: {
           </Card>
         </div>
       </div>
+
+      <PdfRecetaModal open={pdfOpen} data={pdfData} onClose={cerrarPdf} toast={toast} />
     </div>
   );
 }
