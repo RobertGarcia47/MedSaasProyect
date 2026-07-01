@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Component } from 'react';
 import { supabase } from './lib/supabase';
-import { loadAccountContext, type AccountContext } from './lib/db';
+import { loadAccountContext, type AccountContext, type AccentColor, type ThemeMode } from './lib/db';
 import { AccountCtx } from './context/AccountContext';
 import { Icon, Button, IconButton, FAB, Avatar, Divider, Snackbar } from './components';
 import { Login, BrandMark } from './pages/Login';
@@ -297,7 +297,8 @@ export default function App() {
   const [authed,     setAuthed]     = useState(false);
   const [authReady,  setAuthReady]  = useState(false);
   const [authError,  setAuthError]  = useState('');
-  const [theme,     setTheme]     = useState('light');
+  const [theme,     setThemeState]  = useState<ThemeMode>(() => (localStorage.getItem('theme_mode') as ThemeMode) || 'light');
+  const [accent,    setAccentState] = useState<AccentColor>(() => (localStorage.getItem('accent_color') as AccentColor) || 'teal');
   const [route,     setRoute]     = useState<{ name: string; params: any }>({ name: 'dashboard', params: {} });
   const [prevRoute, setPrevRoute] = useState<{ name: string; params: any } | null>(null);
   const [navStyle,  setNavStyle]  = useState('topnav');
@@ -308,6 +309,19 @@ export default function App() {
   const [pmenu,     setPmenu]     = useState(false);
   const [dataVersion, setDataVersion] = useState(0); // se incrementa tras un write para refrescar listas
   const bumpData = () => setDataVersion((v) => v + 1);
+
+  // Tema oscuro/claro y color de acento: aplican al instante (localStorage) y se
+  // guardan en `profiles` para que la preferencia siga al usuario entre dispositivos.
+  const setTheme = (t: ThemeMode) => {
+    setThemeState(t);
+    localStorage.setItem('theme_mode', t);
+    if (account) supabase.from('profiles').update({ theme_mode: t }).eq('id', account.userId).then();
+  };
+  const setAccent = (a: AccentColor) => {
+    setAccentState(a);
+    localStorage.setItem('accent_color', a);
+    if (account) supabase.from('profiles').update({ accent_color: a }).eq('id', account.userId).then();
+  };
 
   // Aplica el guard: sesión → perfil → onboarding_completed → trial (§6.1).
   const resolveSession = async () => {
@@ -328,6 +342,10 @@ export default function App() {
       setAccount(load.account);
       setAuthed(true);
       setAuthError('');
+      // La DB manda sobre lo local (sincroniza entre dispositivos).
+      const { accent_color, theme_mode } = load.account.profile;
+      if (accent_color) { setAccentState(accent_color); localStorage.setItem('accent_color', accent_color); }
+      if (theme_mode) { setThemeState(theme_mode); localStorage.setItem('theme_mode', theme_mode); }
     } catch (e: any) {
       console.error('Error al resolver la sesión:', e);
       setAuthError('No se pudo cargar tu cuenta. Intenta de nuevo.');
@@ -352,6 +370,7 @@ export default function App() {
   }, []);
 
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
+  useEffect(() => { document.documentElement.setAttribute('data-accent', accent); }, [accent]);
 
   const go = (name: string, params: any = {}) => {
     setPrevRoute(route);
@@ -415,7 +434,7 @@ export default function App() {
     case 'prescriptions':page = <Prescriptions {...pageProps} />; break;
     case 'reports':      page = <Reports      {...pageProps} />; break;
     case 'profile':      page = <Profile      {...pageProps} />; break;
-    case 'settings':     page = <Settings theme={theme} setTheme={setTheme} onLogout={onLogout} navStyle={navStyle} setNavStyle={setNavStyle} />; break;
+    case 'settings':     page = <Settings theme={theme} setTheme={setTheme} accent={accent} setAccent={setAccent} onLogout={onLogout} navStyle={navStyle} setNavStyle={setNavStyle} />; break;
     default:             page = <Dashboard    {...pageProps} />;
   }
 

@@ -3,8 +3,9 @@ import { useAccount } from '../context/AccountContext';
 import { fetchPacientes, fetchPacienteDetalle, actualizarPaciente, type PacienteUI, type PacienteDetalleUI } from '../lib/patients';
 import type { SexoEnum, GrupoSanguineo } from '../lib/types';
 import { obtenerRecetas, formatFolioReceta, type RecetaUI } from '../lib/recetas';
-import { construirRecetaPdfDesdeReceta, type RecetaPdfData } from '../lib/pdf';
+import { construirRecetaPdfDesdeReceta, construirInformePdfDesdeInforme, type RecetaPdfData, type InformePdfData } from '../lib/pdf';
 import { PdfRecetaModal } from '../components/PdfRecetaModal';
+import { PdfInformeModal } from '../components/PdfInformeModal';
 import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, TIPO_INFORME_ICON, TIPO_INFORME_COLOR, VISIBILIDAD_ICON, VISIBILIDAD_LABEL, type InformeUI } from '../lib/informes';
 import { obtenerEstudios, urlDescarga, type EstudioUI } from '../lib/laboratorio';
 import { obtenerConsultas, type ConsultaDetalleUI } from '../lib/consultas';
@@ -201,6 +202,31 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
       console.error('No se pudo preparar el PDF de la receta:', e);
     } finally {
       setPdfBuilding(null);
+    }
+  };
+
+  // PDF de informe (reimprimir desde el historial)
+  const [pdfInformeData,     setPdfInformeData]     = useState<InformePdfData | null>(null);
+  const [pdfInformeOpen,     setPdfInformeOpen]     = useState(false);
+  const [pdfInformeBuilding, setPdfInformeBuilding] = useState<string | null>(null); // id del informe cargando
+
+  const verInformePdf = async (inf: InformeUI) => {
+    if (!pac || !clinicaId) return;
+    setPdfInformeBuilding(inf.id);
+    try {
+      const data = await construirInformePdfDesdeInforme(inf, {
+        clinicaId,
+        userId: account.userId,
+        medicoNombre: account.nombreCompleto,
+        pacienteId: pac.id,
+        pacienteNombre: pac.name,
+      });
+      setPdfInformeData(data);
+      setPdfInformeOpen(true);
+    } catch (e) {
+      console.error('No se pudo preparar el PDF del informe:', e);
+    } finally {
+      setPdfInformeBuilding(null);
     }
   };
 
@@ -610,43 +636,72 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
               : new Date(inf.created_at).toLocaleDateString('es-MX', { dateStyle: 'medium' });
             return (
               <Card key={inf.id} variant="outlined" style={{ padding: 0, overflow: 'hidden' }}>
-                {/* Cabecera acordeón */}
-                <button
-                  onClick={() => setOpenInforme(isOpen ? null : inf.id)}
-                  aria-expanded={isOpen}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 14, width: '100%',
-                    padding: '14px 20px', background: isOpen ? 'var(--surface-container)' : 'var(--surface-container-low)',
-                    border: 'none', borderBottom: isOpen ? '1px solid var(--outline-variant)' : 'none',
-                    cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--on-surface)',
-                  }}
-                >
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: tipoCfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon name={tipoIcon} size={20} style={{ color: tipoCfg.color }} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                      <div className="title-s" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inf.titulo}</div>
-                      {inf.folio_num && (
-                        <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, padding: '1px 8px', borderRadius: 999, background: 'var(--surface-container-highest)', color: 'var(--on-surface-variant)', fontVariantNumeric: 'tabular-nums' }}>
-                          {formatFolio(inf.folio_num, inf.fecha_informe, inf.created_at)}
-                        </span>
-                      )}
+                {/* Cabecera acordeón (toggle + acción PDF al lado del colapsable) */}
+                <div style={{
+                  display: 'flex', alignItems: 'center',
+                  background: isOpen ? 'var(--surface-container)' : 'var(--surface-container-low)',
+                  borderBottom: isOpen ? '1px solid var(--outline-variant)' : 'none',
+                }}>
+                  <button
+                    onClick={() => setOpenInforme(isOpen ? null : inf.id)}
+                    aria-expanded={isOpen}
+                    style={{
+                      flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 14,
+                      padding: '14px 8px 14px 20px', background: 'transparent',
+                      border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--on-surface)',
+                    }}
+                  >
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: tipoCfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon name={tipoIcon} size={20} style={{ color: tipoCfg.color }} />
                     </div>
-                    <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      <span>{TIPO_INFORME_LABEL[inf.tipo] ?? inf.tipo}</span>
-                      <span>·</span>
-                      <span>{fechaDisplay}</span>
-                      {inf.visibilidad && inf.visibilidad !== 'expediente' && (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                          · <Icon name={VISIBILIDAD_ICON[inf.visibilidad]} size={13} style={{ marginLeft: 4 }} />{VISIBILIDAD_LABEL[inf.visibilidad]}
-                        </span>
-                      )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                        <div className="title-s" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{inf.titulo}</div>
+                        {inf.folio_num && (
+                          <span style={{ flexShrink: 0, fontSize: 11.5, fontWeight: 600, padding: '1px 8px', borderRadius: 999, background: 'var(--surface-container-highest)', color: 'var(--on-surface-variant)', fontVariantNumeric: 'tabular-nums' }}>
+                            {formatFolio(inf.folio_num, inf.fecha_informe, inf.created_at)}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span>{TIPO_INFORME_LABEL[inf.tipo] ?? inf.tipo}</span>
+                        <span>·</span>
+                        <span>{fechaDisplay}</span>
+                        {inf.visibilidad && inf.visibilidad !== 'expediente' && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            · <Icon name={VISIBILIDAD_ICON[inf.visibilidad]} size={13} style={{ marginLeft: 4 }} />{VISIBILIDAD_LABEL[inf.visibilidad]}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                  <Icon name="expand_more" size={22}
-                    style={{ color: 'var(--on-surface-variant)', flexShrink: 0, transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'none' }} />
-                </button>
+                  </button>
+                  {/* Acción: regenerar / reimprimir PDF */}
+                  <button
+                    onClick={() => verInformePdf(inf)}
+                    disabled={pdfInformeBuilding === inf.id}
+                    title="Ver / Reimprimir PDF"
+                    aria-label="Ver o reimprimir PDF del informe"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
+                      padding: '7px 12px', marginRight: 6, borderRadius: 999,
+                      border: '1px solid var(--outline-variant)', background: 'var(--surface)',
+                      color: 'var(--primary)', cursor: pdfInformeBuilding === inf.id ? 'default' : 'pointer',
+                      fontFamily: 'var(--font-body)', fontSize: 12.5, fontWeight: 600,
+                    }}
+                  >
+                    <Icon name={pdfInformeBuilding === inf.id ? 'progress_activity' : 'picture_as_pdf'} size={18}
+                      style={pdfInformeBuilding === inf.id ? { animation: 'spin 1s linear infinite' } : undefined} />
+                    PDF
+                  </button>
+                  <button
+                    onClick={() => setOpenInforme(isOpen ? null : inf.id)}
+                    aria-label={isOpen ? 'Colapsar' : 'Expandir'}
+                    style={{ display: 'flex', alignItems: 'center', padding: '14px 20px 14px 6px', background: 'transparent', border: 'none', cursor: 'pointer' }}
+                  >
+                    <Icon name="expand_more" size={22}
+                      style={{ color: 'var(--on-surface-variant)', flexShrink: 0, transition: 'transform .2s', transform: isOpen ? 'rotate(180deg)' : 'none' }} />
+                  </button>
+                </div>
                 {/* Cuerpo desplegable */}
                 {isOpen && (
                   <div style={{ padding: '14px 20px 18px' }}>
@@ -983,6 +1038,7 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
       )}
 
       <PdfRecetaModal open={pdfOpen} data={pdfData} onClose={() => setPdfOpen(false)} />
+      <PdfInformeModal open={pdfInformeOpen} data={pdfInformeData} onClose={() => setPdfInformeOpen(false)} />
     </div>
   );
 }

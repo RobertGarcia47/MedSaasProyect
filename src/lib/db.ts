@@ -10,12 +10,17 @@ import { supabase } from './supabase';
 
 export type Rol = 'owner' | 'medico' | 'asistente';
 
+export type AccentColor = 'teal' | 'blue' | 'indigo';
+export type ThemeMode = 'light' | 'dark';
+
 export interface Profile {
   id: string;
   nombre: string | null;
   apellido_paterno: string | null;
   apellido_materno: string | null;
   onboarding_completed: boolean;
+  accent_color: AccentColor;
+  theme_mode: ThemeMode;
 }
 
 export interface Suscripcion {
@@ -64,7 +69,7 @@ export async function loadAccountContext(): Promise<AccountLoad | null> {
   // 1. Perfil (lo crea el trigger on_auth_user_created en el alta).
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('id, nombre, apellido_paterno, apellido_materno, onboarding_completed')
+    .select('id, nombre, apellido_paterno, apellido_materno, onboarding_completed, accent_color, theme_mode')
     .eq('id', user.id)
     .maybeSingle<Profile>();
   if (profileError) throw profileError;

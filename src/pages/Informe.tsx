@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useAccount } from '../context/AccountContext';
 import { fetchPacientesSelect, getOrCreateExpediente, type PacienteSelect } from '../lib/patients';
 import { crearInforme, type TipoInforme, type VisibilidadInforme } from '../lib/informes';
+import { construirInformePdf, type InformePdfData } from '../lib/pdf';
+import { PdfInformeModal } from '../components/PdfInformeModal';
 import { Icon, Button, Card } from '../components';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -88,6 +90,8 @@ export function Informe({ go, goBack, toast, patientId }: {
   const [plantillaOpen, setPlantOpen] = useState(false);
   const [dirty,       setDirty]       = useState(false);
   const [saving,      setSaving]      = useState(false);
+  const [pdfData,     setPdfData]     = useState<InformePdfData | null>(null);
+  const [pdfOpen,     setPdfOpen]     = useState(false);
 
   const puede = account.puedeEmitirClinico && !!account.clinicaId;
 
@@ -135,7 +139,7 @@ export function Informe({ go, goBack, toast, patientId }: {
     setSaving(true);
     try {
       const expId = await getOrCreateExpediente(pid, account.clinicaId!);
-      await crearInforme(expId, {
+      const informeId = await crearInforme(expId, {
         tipo:           tipoId,
         titulo:         titulo.trim(),
         cuerpo:         cuerpo && cuerpo !== '<br>' ? cuerpo : null,
@@ -144,11 +148,31 @@ export function Informe({ go, goBack, toast, patientId }: {
         fecha_informe:  fecha || null,
       });
       toast?.('Informe guardado correctamente');
-      go('patient', { id: pid });
+
+      // Arma el PDF (datos ya descifrados) y abre el modal de vista previa.
+      try {
+        const data = await construirInformePdf({
+          clinicaId: account.clinicaId!,
+          userId: account.userId,
+          medicoNombre: account.nombreCompleto,
+          pacienteId: pid,
+          pacienteNombre: paciente?.name ?? 'Paciente',
+          expedienteId: expId,
+          informeId,
+        });
+        setPdfData(data);
+        setPdfOpen(true);
+      } catch (e: any) {
+        // Si falla el armado del PDF, el informe ya quedó guardado: solo avisa.
+        toast?.('Informe guardado. El PDF no se pudo preparar: ' + (e?.message ?? e));
+        go('patient', { id: pid });
+      }
     } catch (e: any) {
       toast?.('Error al guardar: ' + (e?.message ?? String(e)));
     } finally { setSaving(false); }
   };
+
+  const cerrarPdf = () => { setPdfOpen(false); go('patient', { id: pid }); };
 
   if (!puede) {
     return (
@@ -481,6 +505,8 @@ export function Informe({ go, goBack, toast, patientId }: {
       <style>{`
         [contenteditable]:empty:before { content: attr(data-ph); color: var(--on-surface-variant); opacity: .55; pointer-events: none; }
       `}</style>
+
+      <PdfInformeModal open={pdfOpen} data={pdfData} onClose={cerrarPdf} toast={toast} />
     </div>
   );
 }

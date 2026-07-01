@@ -4,6 +4,13 @@ import { useAccount } from '../context/AccountContext';
 import { Switch, Select } from '../components';
 import type { Especialidad } from '../lib/types';
 import { PLANTILLAS, type Plantilla } from '../lib/pdf';
+import type { AccentColor, ThemeMode } from '../lib/db';
+
+const ACENTOS: { id: AccentColor; nombre: string; desc: string; color: string }[] = [
+  { id: 'teal',   nombre: 'Verde clínico', desc: 'Identidad base de MedSaaS',   color: '#006A60' },
+  { id: 'blue',   nombre: 'Azul médico',   desc: 'Tono azulado, hospitalario',  color: '#2D5DA0' },
+  { id: 'indigo', nombre: 'Morado',        desc: 'Tono violeta, distintivo',    color: '#5450A8' },
+];
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────────
 
@@ -773,9 +780,11 @@ function SectionHead({ icon, title }: { icon: string; title: string }) {
   );
 }
 
-export function Settings({ theme, setTheme, onLogout, navStyle, setNavStyle }: {
-  theme: string;
-  setTheme: (t: string) => void;
+export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyle, setNavStyle }: {
+  theme: ThemeMode;
+  setTheme: (t: ThemeMode) => void;
+  accent: AccentColor;
+  setAccent: (a: AccentColor) => void;
   onLogout: () => void;
   navStyle: string;
   setNavStyle: (s: string) => void;
@@ -867,6 +876,39 @@ export function Settings({ theme, setTheme, onLogout, navStyle, setNavStyle }: {
                 control={<Select value={navStyle === 'topnav' ? 'Navbar superior' : 'Barra lateral'} onChange={(v: string) => setNavStyle(v === 'Navbar superior' ? 'topnav' : 'sidebar')} options={['Navbar superior', 'Barra lateral']} style={{ width: 170 }} />} />
               <SettingRow icon="translate" title="Idioma" desc="Idioma de la interfaz" last
                 control={<Select value={lang} onChange={setLang} options={['Español', 'English', 'Français', 'Português']} style={{ width: 160 }} />} />
+
+              <div style={{ marginTop: 26, paddingTop: 22, borderTop: '1px solid var(--outline-variant)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
+                  <span className="ms" style={{ fontSize: 20, color: 'var(--primary)' }}>colors</span>
+                  <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--on-surface)' }}>Color de acento</span>
+                </div>
+                <p className="body-m" style={{ color: 'var(--on-surface-variant)', margin: '0 0 16px', fontSize: 13.5 }}>
+                  Elige el tono con el que se resalta la interfaz. Es una preferencia personal: cada usuario ve la suya.
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 }}>
+                  {ACENTOS.map((a) => {
+                    const sel = a.id === accent;
+                    return (
+                      <button key={a.id} onClick={() => setAccent(a.id)}
+                        style={{
+                          textAlign: 'left', cursor: 'pointer',
+                          border: `1.5px solid ${sel ? a.color : 'var(--outline-variant)'}`,
+                          background: sel ? 'var(--surface-container-high)' : 'var(--surface)',
+                          borderRadius: 16, padding: 14, fontFamily: 'var(--font-body)',
+                          boxShadow: sel ? `0 0 0 3px ${a.color}22` : 'none',
+                          display: 'flex', alignItems: 'center', gap: 10,
+                        }}>
+                        <span style={{ width: 30, height: 30, borderRadius: '50%', background: a.color, flexShrink: 0 }} />
+                        <span style={{ flex: 1 }}>
+                          <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--on-surface)' }}>{a.nombre}</span>
+                          <span style={{ display: 'block', fontSize: 12, color: 'var(--on-surface-variant)' }}>{a.desc}</span>
+                        </span>
+                        {sel && <span className="ms" style={{ fontSize: 20, color: a.color }}>check_circle</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </>
           )}
 

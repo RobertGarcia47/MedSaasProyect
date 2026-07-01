@@ -4,6 +4,7 @@
 
 import { supabase } from './supabase';
 import { obtenerRecetas, formatFolioReceta, type RecetaUI } from './recetas';
+import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, type InformeUI } from './informes';
 
 /** Base del API de reportes. En local: http://localhost:5128 (perfil http). */
 const API_URL = ((import.meta.env.VITE_REPORTES_API_URL as string) || 'http://localhost:5128').replace(/\/+$/, '');
@@ -50,6 +51,26 @@ export interface RecetaPdfData {
   medicamentos: RecetaPdfMedicamento[];
   indicaciones: string[];
   /** Plantilla de color (preferencia de clínica). El API la usa para renderizar. */
+  plantilla: Plantilla;
+}
+
+// ── Forma del payload de informe (espeja InformePdfRequest del API) ───────────
+/** Bloque de contenido ya aplanado desde el HTML del editor. */
+export interface InformePdfBloque {
+  tipo: 'h3' | 'p' | 'li';
+  texto: string;
+}
+
+export interface InformePdfData {
+  medico: RecetaPdfData['medico'];
+  clinica: RecetaPdfData['clinica'];
+  paciente: RecetaPdfData['paciente'];
+  folio?: string | null;
+  fechaEmision?: string | null;
+  tipoInforme?: string | null;
+  titulo: string;
+  bloques: InformePdfBloque[];
+  /** Plantilla de color (misma preferencia de clínica que la receta). */
   plantilla: Plantilla;
 }
 
@@ -100,6 +121,27 @@ export function htmlAIndicaciones(html: string | null): string[] {
     ? Array.from(blocks).map((b) => b.textContent?.trim() ?? '')
     : (doc.body.textContent ?? '').split('\n');
   return lines.map((s) => s.trim()).filter(Boolean);
+}
+
+/** Convierte el HTML del editor de informes (h3/p/ul/ol/li) en bloques tipados para el PDF. */
+export function htmlAInformeBloques(html: string | null): InformePdfBloque[] {
+  if (!html) return [];
+  if (typeof DOMParser === 'undefined') return htmlAIndicaciones(html).map((texto) => ({ tipo: 'p' as const, texto }));
+
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const bloques: InformePdfBloque[] = [];
+  const nodos = doc.body.querySelectorAll('h3, p, li');
+  nodos.forEach((n) => {
+    const texto = n.textContent?.trim() ?? '';
+    if (!texto) return;
+    const tipo: InformePdfBloque['tipo'] = n.tagName === 'H3' ? 'h3' : n.tagName === 'LI' ? 'li' : 'p';
+    bloques.push({ tipo, texto });
+  });
+  if (bloques.length === 0) {
+    const texto = (doc.body.textContent ?? '').trim();
+    if (texto) bloques.push({ tipo: 'p', texto });
+  }
+  return bloques;
 }
 
 // ── Carga del membrete (médico + clínica) desde Supabase ──────────────────────
@@ -236,10 +278,84 @@ export async function construirRecetaPdfDesdeReceta(
   };
 }
 
+// ── Construcción del payload completo de un informe ───────────────────────────
+/**
+ * Arma el PDF de un informe recién creado. Releemos el informe guardado
+ * (obtener_informes) para que el folio y el cuerpo (descifrado) vengan de la
+ * fuente de verdad, igual que construirRecetaPdf.
+ */
+export async function construirInformePdf(params: {
+  clinicaId: string;
+  userId: string;
+  medicoNombre: string;
+  pacienteId: string;
+  pacienteNombre: string;
+  expedienteId: string;
+  informeId: string;
+}): Promise<InformePdfData> {
+  const informes = await obtenerInformes(params.expedienteId);
+  const creado =
+    informes.find((i) => i.id === params.informeId) ??
+    [...informes].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))[0];
+  if (!creado) throw new Error('No se encontró el informe recién creado.');
+
+  return construirInformePdfDesdeInforme(creado, {
+    clinicaId: params.clinicaId,
+    userId: params.userId,
+    medicoNombre: params.medicoNombre,
+    pacienteId: params.pacienteId,
+    pacienteNombre: params.pacienteNombre,
+  });
+}
+
+/**
+ * Arma el payload del PDF a partir de un informe YA guardado (InformeUI de
+ * obtener_informes). Usado por el botón "Reimprimir" del historial del expediente.
+ */
+export async function construirInformePdfDesdeInforme(
+  informe: InformeUI,
+  ctx: { clinicaId: string; userId: string; medicoNombre: string; pacienteId: string; pacienteNombre: string },
+): Promise<InformePdfData> {
+  const [membrete, { data: pac }] = await Promise.all([
+    cargarMembrete(ctx.clinicaId, ctx.userId, ctx.medicoNombre),
+    supabase.from('pacientes').select('sexo, fecha_nacimiento').eq('id', ctx.pacienteId)
+      .maybeSingle<{ sexo: string | null; fecha_nacimiento: string | null }>(),
+  ]);
+
+  return {
+    medico: membrete.medico,
+    clinica: membrete.clinica,
+    plantilla: membrete.plantilla,
+    paciente: {
+      nombre: ctx.pacienteNombre,
+      edadSexo: edadSexoTexto(pac?.fecha_nacimiento ?? null, pac?.sexo ?? null),
+    },
+    folio: formatFolio(informe.folio_num, informe.fecha_informe, informe.created_at),
+    fechaEmision: fechaCorta(informe.fecha_informe) ?? fechaCorta(informe.created_at),
+    tipoInforme: TIPO_INFORME_LABEL[informe.tipo] ?? informe.tipo,
+    titulo: informe.titulo,
+    bloques: htmlAInformeBloques(informe.cuerpo),
+  };
+}
+
 // ── Llamadas al API ───────────────────────────────────────────────────────────
 /** Genera el PDF de receta (usa data.plantilla, la preferencia de la clínica). Devuelve el Blob. */
 export async function generarRecetaPdf(data: RecetaPdfData): Promise<Blob> {
   const res = await fetch(`${API_URL}/reportes/receta`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const detalle = await res.text().catch(() => '');
+    throw new Error(`El servicio de PDF respondió ${res.status}. ${detalle.slice(0, 200)}`);
+  }
+  return res.blob();
+}
+
+/** Genera el PDF de informe (usa data.plantilla, la preferencia de la clínica). Devuelve el Blob. */
+export async function generarInformePdf(data: InformePdfData): Promise<Blob> {
+  const res = await fetch(`${API_URL}/reportes/informe`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),
