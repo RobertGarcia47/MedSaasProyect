@@ -24,23 +24,17 @@ const ROL_LABEL: Record<string, string> = {
   asistente: 'Asistente',
 };
 
-// Color de avatar determinista por id de usuario (no hay columna de color en el esquema).
-const AVATAR_COLORS = ['#006A60', '#3F6375', '#7A5AE0', '#1E6E52', '#8A5A00', '#6750A4', '#00696D', '#984061'];
-function avatarColor(seed: string): string {
-  let h = 5381;
-  for (let i = 0; i < seed.length; i++) h = ((h << 5) + h + seed.charCodeAt(i)) & 0xffffffff;
-  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
-}
-
 // Identidad mostrada en el shell — todo sale del perfil real de Supabase.
+// El avatar del usuario en sesión usa el acento del tema (var(--primary) por defecto en
+// Avatar), a diferencia de los avatares de pacientes/citas que sí llevan color fijo por hash
+// para distinguirse entre sí.
 function doctorFromAccount(account: AccountContext | null) {
-  if (!account) return { name: 'Usuario', specialty: '', email: '', initials: '··', color: AVATAR_COLORS[0] };
+  if (!account) return { name: 'Usuario', specialty: '', email: '', initials: '··' };
   return {
     name: account.nombreCompleto,
     specialty: account.clinicaNombre || ROL_LABEL[account.rol ?? ''] || 'Clínica',
     email: account.email,
     initials: account.iniciales,
-    color: avatarColor(account.userId),
   };
 }
 
@@ -97,7 +91,7 @@ function Sidebar({ route, go, collapsed, setCollapsed, onLogout, doctor }) {
 
       {!collapsed ? (
         <div style={{ background: 'var(--surface-container-high)', borderRadius: 'var(--r-lg)', padding: 14, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-          <Avatar initials={doctor.initials} color={doctor.color} size={40} />
+          <Avatar initials={doctor.initials} size={40} />
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="title-s" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doctor.name}</div>
             <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doctor.specialty}</div>
@@ -137,7 +131,7 @@ function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor }) {
         <IconButton name={theme === 'dark' ? 'light_mode' : 'dark_mode'} tooltip="Tema" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
         <IconButton name="notifications" tooltip="Notificaciones" />
         <div onClick={openProfileMenu} style={{ cursor: 'pointer', marginLeft: 4 }}>
-          <Avatar initials={doctor.initials} color={doctor.color} size={40} />
+          <Avatar initials={doctor.initials} size={40} />
         </div>
       </div>
     </header>
@@ -164,7 +158,7 @@ function AppBar({ theme, setTheme, onMenu, openProfileMenu, doctor }) {
       </div>
       <Divider style={{ width: 1, height: 32 }} />
       <div onClick={openProfileMenu} className="state-layer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '4px 6px 4px 4px', borderRadius: 'var(--r-full)', cursor: 'pointer' }}>
-        <Avatar initials={doctor.initials} color={doctor.color} size={40} />
+        <Avatar initials={doctor.initials} size={40} />
         <div className="appbar-user" style={{ lineHeight: 1.15 }}>
           <div className="title-s">{doctor.name}</div>
           <div style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>{doctor.specialty}</div>
@@ -192,7 +186,7 @@ function ProfileMenu({ open, onClose, go, theme, setTheme, onLogout, doctor }) {
         boxShadow: 'var(--elev-3)', padding: 8, animation: 'scaleIn .18s ease', transformOrigin: 'top right',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12 }}>
-          <Avatar initials={doctor.initials} color={doctor.color} size={44} />
+          <Avatar initials={doctor.initials} size={44} />
           <div style={{ minWidth: 0 }}>
             <div className="title-s">{doctor.name}</div>
             <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doctor.email}</div>

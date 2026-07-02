@@ -190,14 +190,14 @@ export function Laboratorio({ go, goBack, toast, patientId }: {
           <RailCard icon="science" title="Detalles del estudio">
             {/* Tipo de estudio */}
             <div style={{ position: 'relative', marginBottom: 12 }}>
-              <div style={{ border: `1px solid ${tipoErr ? '#BA1A1A' : 'var(--outline-variant)'}`, borderRadius: 12, padding: '10px 12px 8px', background: 'var(--surface)', position: 'relative' }}>
-                <span style={{ position: 'absolute', top: -8, left: 11, padding: '0 5px', background: 'var(--surface)', fontSize: 11.5, fontWeight: 600, color: tipoErr ? '#BA1A1A' : 'var(--on-surface-variant)' }}>Tipo de estudio *</span>
+              <div style={{ border: `1px solid ${tipoErr ? 'var(--error)' : 'var(--outline-variant)'}`, borderRadius: 12, padding: '10px 12px 8px', background: 'var(--surface)', position: 'relative' }}>
+                <span style={{ position: 'absolute', top: -8, left: 11, padding: '0 5px', background: 'var(--surface)', fontSize: 11.5, fontWeight: 600, color: tipoErr ? 'var(--error)' : 'var(--on-surface-variant)' }}>Tipo de estudio *</span>
                 <input type="text" value={tipoEstudio} placeholder="Ej. Biometría hemática"
                   onClick={() => setTipoOpen(true)}
                   onChange={(e) => { setTipo(e.target.value); setTipoErr(false); setDirty(true); setTipoOpen(true); }}
                   style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', color: 'var(--on-surface)', fontSize: 15, fontWeight: 500, fontFamily: 'var(--font-body)' }} />
               </div>
-              {tipoErr && <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 12, color: '#BA1A1A' }}><Icon name="error" size={14} />Campo obligatorio.</div>}
+              {tipoErr && <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 4, fontSize: 12, color: 'var(--error)' }}><Icon name="error" size={14} />Campo obligatorio.</div>}
               {tipoOpen && (
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--surface-container-high)', borderRadius: 12, boxShadow: 'var(--elev-3)', zIndex: 30, maxHeight: 260, overflowY: 'auto', padding: 6 }}>
                   {tipos
@@ -255,7 +255,7 @@ export function Laboratorio({ go, goBack, toast, patientId }: {
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
 
           {/* Archivo adjunto */}
-          <Card variant="outlined" style={{ padding: '18px 22px', borderRadius: 20, border: archivoErr ? '1px solid #F4C9C5' : undefined }}>
+          <Card variant="outlined" style={{ padding: '18px 22px', borderRadius: 20, border: archivoErr ? '1px solid var(--error)' : undefined }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
               <Icon name="attach_file" size={19} style={{ color: 'var(--primary)' }} />
               <span style={{ fontSize: 16, fontWeight: 600 }}>Archivo del estudio *</span>
@@ -279,14 +279,14 @@ export function Laboratorio({ go, goBack, toast, patientId }: {
               </div>
             ) : (
               <button onClick={() => fileRef.current?.click()}
-                style={{ width: '100%', border: `2px dashed ${archivoErr ? '#BA1A1A' : 'var(--outline-variant)'}`, borderRadius: 16, padding: '36px 24px', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--on-surface-variant)', fontFamily: 'var(--font-body)' }}>
-                <Icon name="upload_file" size={40} style={{ color: archivoErr ? '#BA1A1A' : 'var(--primary)', opacity: .7 }} />
-                <div style={{ fontSize: 15, fontWeight: 500, color: archivoErr ? '#BA1A1A' : 'var(--on-surface)' }}>Haz clic para adjuntar el resultado</div>
+                style={{ width: '100%', border: `2px dashed ${archivoErr ? 'var(--error)' : 'var(--outline-variant)'}`, borderRadius: 16, padding: '36px 24px', background: 'transparent', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, color: 'var(--on-surface-variant)', fontFamily: 'var(--font-body)' }}>
+                <Icon name="upload_file" size={40} style={{ color: archivoErr ? 'var(--error)' : 'var(--primary)', opacity: .7 }} />
+                <div style={{ fontSize: 15, fontWeight: 500, color: archivoErr ? 'var(--error)' : 'var(--on-surface)' }}>Haz clic para adjuntar el resultado</div>
                 <div style={{ fontSize: 12.5 }}>PDF, JPG, PNG o WEBP · máx. 20 MB</div>
               </button>
             )}
             {archivoErr && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 12.5, color: '#BA1A1A' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 12.5, color: 'var(--error)' }}>
                 <Icon name="error" size={15} />Adjunta el archivo del estudio.
               </div>
             )}
@@ -299,7 +299,7 @@ export function Laboratorio({ go, goBack, toast, patientId }: {
               <span style={{ fontSize: 16, fontWeight: 600 }}>Notas clínicas</span>
               <span style={{ fontSize: 13, color: 'var(--on-surface-variant)', marginLeft: 4 }}>— opcional</span>
               <div style={{ flex: 1 }} />
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500, background: '#EAF6F3', color: '#0B5C57' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500, background: 'var(--primary-container)', color: 'var(--on-primary-container)' }}>
                 <Icon name="lock" size={14} />Cifradas
               </span>
             </div>

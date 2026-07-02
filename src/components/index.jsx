@@ -169,7 +169,7 @@ export function Avatar({ initials, color, size = 40, fontSize, style = {} }) {
     <div style={{
       width: size, height: size, borderRadius: '50%', flexShrink: 0,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: color || 'var(--primary)', color: '#fff', fontWeight: 700,
+      background: color || 'var(--primary)', color: color ? '#fff' : 'var(--on-primary)', fontWeight: 700,
       fontFamily: 'var(--font-display)', fontSize: fontSize || size * 0.38, letterSpacing: '.3px',
       boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.12)', ...style,
     }}>{initials}</div>

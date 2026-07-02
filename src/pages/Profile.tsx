@@ -36,86 +36,86 @@ type TabId = 'personal' | 'clinica' | 'profesional';
 
 // ─── Inline SVGs (Feather/Heroicons style) ────────────────────────────────────
 
-const IUser = ({ c = '#9ca3af', s = 13 }) => (
+const IUser = ({ c = 'var(--on-surface-variant)', s = 13 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
   </svg>
 );
-const IPhone = ({ c = '#9ca3af', s = 13 }) => (
+const IPhone = ({ c = 'var(--on-surface-variant)', s = 13 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
     <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6.29 6.29l.97-.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
   </svg>
 );
-const IMail = ({ c = '#9ca3af', s = 13 }) => (
+const IMail = ({ c = 'var(--on-surface-variant)', s = 13 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
     <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
     <polyline points="22,6 12,13 2,6"/>
   </svg>
 );
-const IBuilding = ({ c = '#9ca3af', s = 13 }) => (
+const IBuilding = ({ c = 'var(--on-surface-variant)', s = 13 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
     <rect x="2" y="7" width="20" height="14" rx="2"/>
     <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
   </svg>
 );
-const IPin = ({ c = '#9ca3af', s = 13 }) => (
+const IPin = ({ c = 'var(--on-surface-variant)', s = 13 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>
   </svg>
 );
-const IDoc = ({ c = '#9ca3af', s = 13 }) => (
+const IDoc = ({ c = 'var(--on-surface-variant)', s = 13 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
     <rect x="3" y="4" width="18" height="16" rx="2"/>
     <line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="13" y2="16"/>
   </svg>
 );
-const ISchool = ({ c = '#0d5c4e', s = 13 }) => (
+const ISchool = ({ c = 'var(--primary)', s = 13 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
     <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
     <path d="M6 12v5c3 3 9 3 12 0v-5"/>
   </svg>
 );
-const IHeartPulse = ({ c = '#0d5c4e', s = 13 }) => (
+const IHeartPulse = ({ c = 'var(--primary)', s = 13 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
     <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
   </svg>
 );
-const ISave = ({ c = '#fff', s = 13 }) => (
+const ISave = ({ c = 'var(--on-primary)', s = 13 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5">
     <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
     <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
   </svg>
 );
-const ICheck = ({ c = '#fff', s = 13 }) => (
+const ICheck = ({ c = 'var(--on-primary)', s = 13 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5">
     <polyline points="20 6 9 17 4 12"/>
   </svg>
 );
-const IUpload = ({ c = '#0d5c4e', s = 12 }) => (
+const IUpload = ({ c = 'var(--primary)', s = 12 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5">
     <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
     <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
   </svg>
 );
-const IGlobe = ({ c = '#0d5c4e', s = 26 }) => (
+const IGlobe = ({ c = 'var(--primary)', s = 26 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="1.5">
     <circle cx="12" cy="12" r="10"/>
     <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
   </svg>
 );
-const IEyeOff = ({ c = '#9ca3af', s = 11 }) => (
+const IEyeOff = ({ c = 'var(--on-surface-variant)', s = 11 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
     <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
     <line x1="1" y1="1" x2="23" y2="23"/>
   </svg>
 );
-const IHome = ({ c = '#9ca3af', s = 13 }) => (
+const IHome = ({ c = 'var(--on-surface-variant)', s = 13 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
     <polyline points="9 22 9 12 15 12 15 22"/>
   </svg>
 );
-const IChevron = ({ c = '#9ca3af', s = 13 }) => (
+const IChevron = ({ c = 'var(--on-surface-variant)', s = 13 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2">
     <polyline points="6 9 12 15 18 9"/>
   </svg>
@@ -123,10 +123,10 @@ const IChevron = ({ c = '#9ca3af', s = 13 }) => (
 
 // ─── PField: campo de formulario con estilo handoff ───────────────────────────
 
-const ITrash = ({ c = '#dc2626', s = 15 }) => (
+const ITrash = ({ c = 'var(--error)', s = 15 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
 );
-const IPlus = ({ c = '#0d5c4e', s = 14 }) => (
+const IPlus = ({ c = 'var(--primary)', s = 14 }) => (
   <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 );
 
@@ -139,12 +139,12 @@ function PField({ label, value, onChange, type = 'text', placeholder, icon, full
   const active = focused && !readOnly;
   return (
     <div style={{ gridColumn: fullWidth ? '1 / -1' : undefined }}>
-      <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>
+      <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 600, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>
         {label}{required && ' *'}
       </label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: active ? '1.5px solid #0d5c4e' : '1px solid #e5e9e7', borderRadius: 8, padding: '9px 13px', background: readOnly ? '#f3f4f6' : (active ? '#f6fdf9' : '#fafbfa'), transition: 'border-color .15s, background .15s' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: active ? '1.5px solid var(--primary)' : '1px solid var(--outline-variant)', borderRadius: 8, padding: '9px 13px', background: readOnly ? 'var(--surface-container)' : 'var(--surface-container-highest)', transition: 'border-color .15s, background .15s' }}>
         {icon && <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{icon}</span>}
-        {prefix && <span style={{ fontSize: 12, color: '#9ca3af', fontWeight: 700 }}>{prefix}</span>}
+        {prefix && <span style={{ fontSize: 12, color: 'var(--on-surface-variant)', fontWeight: 700 }}>{prefix}</span>}
         <input
           type={type}
           value={value}
@@ -153,7 +153,7 @@ function PField({ label, value, onChange, type = 'text', placeholder, icon, full
           readOnly={readOnly}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '13.5px', fontWeight: active ? 600 : 400, color: readOnly ? '#9ca3af' : (active ? '#0d5c4e' : (value ? '#374151' : '#9ca3af')), fontFamily: 'inherit', cursor: readOnly ? 'default' : 'text' }}
+          style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '13.5px', fontWeight: active ? 600 : 400, color: readOnly ? 'var(--on-surface-variant)' : (active ? 'var(--primary)' : (value ? 'var(--on-surface)' : 'var(--on-surface-variant)')), fontFamily: 'inherit', cursor: readOnly ? 'default' : 'text' }}
         />
       </div>
     </div>
@@ -171,17 +171,17 @@ function PSelect({ label, value, onChange, options, icon, fullWidth }: {
   const hasValue = value !== '';
   return (
     <div style={{ gridColumn: fullWidth ? '1 / -1' : undefined }}>
-      <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>
+      <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 600, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>
         {label}
       </label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: focused ? '1.5px solid #0d5c4e' : '1px solid #e5e9e7', borderRadius: 8, padding: '9px 13px', background: focused ? '#f6fdf9' : '#fafbfa', transition: 'border-color .15s, background .15s' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: focused ? '1.5px solid var(--primary)' : '1px solid var(--outline-variant)', borderRadius: 8, padding: '9px 13px', background: 'var(--surface-container-highest)', transition: 'border-color .15s, background .15s' }}>
         {icon && <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{icon}</span>}
         <select
           value={value}
           onChange={e => onChange(e.target.value)}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
-          style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '13.5px', fontWeight: (focused || hasValue) ? 600 : 400, color: (focused || hasValue) ? '#0d5c4e' : '#9ca3af', fontFamily: 'inherit', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
+          style={{ flex: 1, border: 'none', background: 'transparent', outline: 'none', fontSize: '13.5px', fontWeight: (focused || hasValue) ? 600 : 400, color: (focused || hasValue) ? 'var(--primary)' : 'var(--on-surface-variant)', fontFamily: 'inherit', cursor: 'pointer', appearance: 'none', WebkitAppearance: 'none' }}
         >
           {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -198,7 +198,7 @@ function SaveBtn({ onClick, disabled, children }: { onClick: () => void; disable
     <button
       onClick={onClick}
       disabled={disabled}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#0d5c4e', color: '#fff', fontSize: 13, fontWeight: 600, padding: '9px 20px', borderRadius: 8, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, transition: 'opacity .15s' }}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 600, padding: '9px 20px', borderRadius: 8, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, transition: 'opacity .15s' }}
     >
       {children}
     </button>
@@ -497,9 +497,9 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
     padding: '12px 16px',
     fontSize: 13,
     fontWeight: activeTab === id ? 600 : 500,
-    color: activeTab === id ? '#0d5c4e' : '#9ca3af',
+    color: activeTab === id ? 'var(--primary)' : 'var(--on-surface-variant)',
     border: 'none',
-    borderBottom: activeTab === id ? '2px solid #0d5c4e' : '2px solid transparent',
+    borderBottom: activeTab === id ? '2px solid var(--primary)' : '2px solid transparent',
     background: 'transparent',
     cursor: 'pointer',
     letterSpacing: '0.1px',
@@ -509,7 +509,7 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', paddingTop: 80 }}>
-      <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid #c8e6e0', borderTopColor: '#0d5c4e', animation: 'spin .8s linear infinite' }} />
+      <div style={{ width: 36, height: 36, borderRadius: '50%', border: '3px solid var(--primary-container)', borderTopColor: 'var(--primary)', animation: 'spin .8s linear infinite' }} />
     </div>
   );
 
@@ -519,19 +519,19 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
 
         {/* Breadcrumb */}
         <div style={{ padding: '14px 0 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span style={{ fontSize: 13, color: '#6b7280' }}>Cuenta</span>
-          <span style={{ fontSize: 13, color: '#9ca3af' }}>›</span>
-          <span style={{ fontSize: 13, color: '#111827', fontWeight: 500 }}>Mi perfil</span>
+          <span style={{ fontSize: 13, color: 'var(--on-surface-variant)' }}>Cuenta</span>
+          <span style={{ fontSize: 13, color: 'var(--on-surface-variant)' }}>›</span>
+          <span style={{ fontSize: 13, color: 'var(--on-surface)', fontWeight: 500 }}>Mi perfil</span>
         </div>
 
         {/* Banner: cédula faltante */}
         {!account.puedeEmitirClinico && esOwnerOrMedico && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 13 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'var(--warning-container)', border: '1px solid var(--warning)', color: 'var(--on-warning-container)', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 13 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             <span style={{ flex: 1 }}>Completa tu perfil profesional para poder emitir recetas y consultas.</span>
             <button
               onClick={() => setActiveTab('profesional')}
-              style={{ background: '#0d5c4e', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+              style={{ background: 'var(--primary)', color: 'var(--on-primary)', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
             >
               Ir al perfil profesional
             </button>
@@ -539,9 +539,9 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
         )}
 
         {/* ── Header card ── */}
-        <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', overflow: 'hidden', marginBottom: 20 }}>
+        <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--outline-variant)', overflow: 'hidden', marginBottom: 20 }}>
           {/* Gradient strip */}
-          <div style={{ height: 5, background: 'linear-gradient(90deg, #0d5c4e 0%, #1a8c78 100%)' }} />
+          <div style={{ height: 5, background: 'linear-gradient(90deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 65%, white) 100%)' }} />
 
           <div style={{ padding: '24px 24px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
@@ -549,26 +549,26 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
               {/* Avatar + online dot */}
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 {logoDisplay
-                  ? <img src={logoDisplay} alt="Logo" style={{ width: 68, height: 68, borderRadius: '50%', objectFit: 'cover', background: '#d1ece7', border: '3px solid #e8f5f2' }} />
-                  : <div style={{ width: 68, height: 68, borderRadius: '50%', background: '#d1ece7', border: '3px solid #e8f5f2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 22, fontWeight: 700, color: '#0d5c4e', letterSpacing: '-0.5px' }}>{account.iniciales}</span>
+                  ? <img src={logoDisplay} alt="Logo" style={{ width: 68, height: 68, borderRadius: '50%', objectFit: 'cover', background: 'var(--primary-container)', border: '3px solid var(--surface)' }} />
+                  : <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--primary-container)', border: '3px solid var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--primary)', letterSpacing: '-0.5px' }}>{account.iniciales}</span>
                     </div>
                 }
-                <div style={{ position: 'absolute', bottom: 2, right: 2, width: 13, height: 13, background: '#22c55e', borderRadius: '50%', border: '2px solid #fff' }} />
+                <div style={{ position: 'absolute', bottom: 2, right: 2, width: 13, height: 13, background: 'var(--success)', borderRadius: '50%', border: '2px solid var(--surface)' }} />
               </div>
 
               {/* Name + badge + rol */}
               <div style={{ flex: 1, minWidth: 180 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 5 }}>
-                  <span style={{ fontSize: 20, fontWeight: 700, color: '#111827', letterSpacing: '-0.3px' }}>{nombreMostrado}</span>
+                  <span style={{ fontSize: 20, fontWeight: 700, color: 'var(--on-surface)', letterSpacing: '-0.3px' }}>{nombreMostrado}</span>
                   {tieneCedula && (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#dcfce7', color: '#166534', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>
-                      <svg width="6" height="6" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="#16a34a" /></svg>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--success-container)', color: 'var(--on-success-container)', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>
+                      <svg width="6" height="6" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="var(--success)" /></svg>
                       Médico registrado
                     </span>
                   )}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#9ca3af', fontSize: 13 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--on-surface-variant)', fontSize: 13 }}>
                   <IHome />
                   <span>{rolLabel}{account.clinicaNombre ? ` · ${account.clinicaNombre}` : ''}</span>
                 </div>
@@ -580,9 +580,9 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
                   [statPacientes, 'Pacientes'],
                   [statConsultas, 'Consultas'],
                 ] as [number | null, string][]).map(([n, label]) => (
-                  <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8faf9', border: '1px solid #e5e9e7', borderRadius: 10, padding: '10px 18px' }}>
-                    <span style={{ fontSize: 22, fontWeight: 700, color: '#0d5c4e', lineHeight: 1 }}>{n != null ? n : '—'}</span>
-                    <span style={{ fontSize: 11, color: '#9ca3af', marginTop: 2, fontWeight: 500 }}>{label}</span>
+                  <div key={label} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'var(--surface-container-low)', border: '1px solid var(--outline-variant)', borderRadius: 10, padding: '10px 18px' }}>
+                    <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--primary)', lineHeight: 1 }}>{n != null ? n : '—'}</span>
+                    <span style={{ fontSize: 11, color: 'var(--on-surface-variant)', marginTop: 2, fontWeight: 500 }}>{label}</span>
                   </div>
                 ))}
               </div>
@@ -591,7 +591,7 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
           </div>
 
           {/* Tab nav */}
-          <div style={{ display: 'flex', borderTop: '1px solid #f3f4f6', padding: '0 24px' }}>
+          <div style={{ display: 'flex', borderTop: '1px solid var(--outline-variant)', padding: '0 24px' }}>
             <button style={tabStyle('personal')}    onClick={() => setActiveTab('personal')}>Datos personales</button>
             <button style={tabStyle('clinica')}     onClick={() => setActiveTab('clinica')}>Mi clínica</button>
             <button style={tabStyle('profesional')} onClick={() => setActiveTab('profesional')}>Perfil profesional</button>
@@ -600,13 +600,13 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
 
         {/* ── Tab: Datos personales ── */}
         {activeTab === 'personal' && (
-          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', padding: 24 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--outline-variant)', padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-              <IUser c="#0d5c4e" s={17} />
-              <span style={{ fontSize: 14.5, fontWeight: 700, color: '#111827' }}>Datos personales</span>
+              <IUser c="var(--primary)" s={17} />
+              <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--on-surface)' }}>Datos personales</span>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <PField label="Nombre(s)" value={nombre} onChange={setNombre} icon={<IUser c="#0d5c4e" />} fullWidth required />
+              <PField label="Nombre(s)" value={nombre} onChange={setNombre} icon={<IUser c="var(--primary)" />} fullWidth required />
               <PField label="Apellido paterno" value={apellidoP} onChange={setApellidoP} />
               <PField label="Apellido materno"  value={apellidoM} onChange={setApellidoM} />
               <PField label="Teléfono"          value={telefono}  onChange={setTelefono}  icon={<IPhone />} type="tel" />
@@ -622,27 +622,27 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
 
         {/* ── Tab: Mi clínica ── */}
         {activeTab === 'clinica' && (
-          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', padding: 24 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--outline-variant)', padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-              <IBuilding c="#0d5c4e" s={17} />
-              <span style={{ fontSize: 14.5, fontWeight: 700, color: '#111827' }}>Mi clínica</span>
+              <IBuilding c="var(--primary)" s={17} />
+              <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--on-surface)' }}>Mi clínica</span>
             </div>
 
             {/* Logo block */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#f8faf9', border: '1px solid #e5e9e7', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
-              <div style={{ width: 52, height: 52, borderRadius: 10, background: '#e8f5f2', border: '1.5px solid #c8e6e0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface-container-low)', border: '1px solid var(--outline-variant)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 10, background: 'var(--primary-container)', border: '1.5px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
                 {logoDisplay
                   ? <img src={logoDisplay} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   : <IGlobe />
                 }
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, color: '#9ca3af', marginBottom: 2 }}>Logo de la clínica</div>
-                <div style={{ fontSize: 12.5, color: '#6b7280' }}>PNG / JPG · máx. 2 MB</div>
+                <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginBottom: 2 }}>Logo de la clínica</div>
+                <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>PNG / JPG · máx. 2 MB</div>
               </div>
               <button
                 onClick={() => fileRef.current?.click()}
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#fff', color: '#0d5c4e', fontSize: 12.5, fontWeight: 600, padding: '7px 14px', borderRadius: 8, border: '1.5px solid #0d5c4e', cursor: 'pointer' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--surface)', color: 'var(--primary)', fontSize: 12.5, fontWeight: 600, padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--primary)', cursor: 'pointer' }}
               >
                 <IUpload />{logoDisplay ? 'Cambiar logo' : 'Subir logo'}
               </button>
@@ -650,7 +650,7 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <PField label="Nombre de la clínica" value={cNombre} onChange={setCNombre} icon={<IBuilding c="#0d5c4e" />} fullWidth required />
+              <PField label="Nombre de la clínica" value={cNombre} onChange={setCNombre} icon={<IBuilding c="var(--primary)" />} fullWidth required />
               <PField label="Dirección"             value={cDir}    onChange={setCDir}    icon={<IPin />}  fullWidth />
               <PField label="Teléfono"              value={cTel}    onChange={setCTel}    icon={<IPhone />} type="tel" />
               <PField label="Correo de contacto"    value={cCorreo} onChange={setCCorreo} icon={<IMail />}  type="email" />
@@ -667,21 +667,21 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
 
         {/* ── Tab: Perfil profesional ── */}
         {activeTab === 'profesional' && (
-          <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', padding: 24 }}>
+          <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--outline-variant)', padding: 24 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <IDoc c="#0d5c4e" s={17} />
-                <span style={{ fontSize: 14.5, fontWeight: 700, color: '#111827' }}>
+                <IDoc c="var(--primary)" s={17} />
+                <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--on-surface)' }}>
                   {tieneCedula ? 'Perfil profesional' : '¿Eres médico? Registra tu perfil profesional'}
                 </span>
               </div>
               {tieneCedula && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: '#dcfce7', color: '#166534', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>
-                    <svg width="6" height="6" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="#16a34a" /></svg>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--success-container)', color: 'var(--on-success-container)', fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 20 }}>
+                    <svg width="6" height="6" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="var(--success)" /></svg>
                     Médico activo
                   </span>
-                  <button style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'transparent', color: '#6b7280', fontSize: 12.5, fontWeight: 500, padding: '4px 10px', borderRadius: 6, border: '1px solid #e5e9e7', cursor: 'default' }}>
+                  <button style={{ display: 'inline-flex', alignItems: 'center', gap: 5, background: 'transparent', color: 'var(--on-surface-variant)', fontSize: 12.5, fontWeight: 500, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--outline-variant)', cursor: 'default' }}>
                     <IEyeOff />
                     Activo
                   </button>
@@ -690,7 +690,7 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
             </div>
 
             {!tieneCedula && (
-              <p style={{ fontSize: 13, color: '#6b7280', marginBottom: 20 }}>
+              <p style={{ fontSize: 13, color: 'var(--on-surface-variant)', marginBottom: 20 }}>
                 Al registrar tu cédula podrás crear consultas y emitir recetas desde esta cuenta.
               </p>
             )}
@@ -709,24 +709,24 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
             </div>
 
             {tieneCedula && (
-              <div style={{ marginTop: 28, paddingTop: 22, borderTop: '1px solid #e5e9e7' }}>
+              <div style={{ marginTop: 28, paddingTop: 22, borderTop: '1px solid var(--outline-variant)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 700, color: '#0d3d2e' }}>Otras cédulas / especialidades</h3>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: '#6b7280' }}>{1 + extraCedulas.length} / 3</span>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--on-surface)' }}>Otras cédulas / especialidades</h3>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)' }}>{1 + extraCedulas.length} / 3</span>
                 </div>
-                <p style={{ fontSize: 12.5, color: '#6b7280', marginBottom: 16 }}>
+                <p style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginBottom: 16 }}>
                   Si tienes cédulas adicionales por otras especialidades, agrégalas aquí (hasta 2 más). La principal es la de arriba.
                 </p>
 
                 {extraCedulas.length === 0 && (
-                  <p style={{ fontSize: 13, color: '#9ca3af', marginBottom: 4 }}>Aún no has agregado cédulas adicionales.</p>
+                  <p style={{ fontSize: 13, color: 'var(--on-surface-variant)', marginBottom: 4 }}>Aún no has agregado cédulas adicionales.</p>
                 )}
 
                 {extraCedulas.map((row, idx) => (
                   <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', gap: 12, alignItems: 'flex-end', marginBottom: 12 }}>
                     <PField label={`Cédula ${idx + 2}`} value={row.cedula} onChange={v => updateExtra(idx, 'cedula', v)} icon={<IDoc />} />
                     <PSelect label="Especialidad" value={row.especialidad_id} onChange={v => updateExtra(idx, 'especialidad_id', v)} options={espOptions} icon={<IHeartPulse />} />
-                    <button onClick={() => removeExtra(idx)} title="Eliminar cédula" style={{ height: 40, width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #fecaca', background: '#fff5f5', borderRadius: 8, cursor: 'pointer' }}>
+                    <button onClick={() => removeExtra(idx)} title="Eliminar cédula" style={{ height: 40, width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--error)', background: 'var(--error-container)', borderRadius: 8, cursor: 'pointer' }}>
                       <ITrash />
                     </button>
                   </div>
@@ -734,8 +734,8 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, gap: 12, flexWrap: 'wrap' }}>
                   <button onClick={addExtra} disabled={extraCedulas.length >= 2}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', color: extraCedulas.length >= 2 ? '#9ca3af' : '#0d5c4e', border: `1px solid ${extraCedulas.length >= 2 ? '#e5e9e7' : '#0d5c4e'}`, borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: extraCedulas.length >= 2 ? 'not-allowed' : 'pointer' }}>
-                    <IPlus c={extraCedulas.length >= 2 ? '#9ca3af' : '#0d5c4e'} /> Agregar otra cédula
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', color: extraCedulas.length >= 2 ? 'var(--on-surface-variant)' : 'var(--primary)', border: `1px solid ${extraCedulas.length >= 2 ? 'var(--outline-variant)' : 'var(--primary)'}`, borderRadius: 8, padding: '8px 14px', fontSize: 13, fontWeight: 600, cursor: extraCedulas.length >= 2 ? 'not-allowed' : 'pointer' }}>
+                    <IPlus c={extraCedulas.length >= 2 ? 'var(--on-surface-variant)' : 'var(--primary)'} /> Agregar otra cédula
                   </button>
                   <SaveBtn onClick={saveExtras} disabled={savingExtras}>
                     <ICheck />{savingExtras ? 'Guardando…' : 'Guardar cédulas'}

@@ -115,7 +115,7 @@ function dateLabelEs(iso: string): string {
 function Spinner() {
   return (
     <div style={{ padding: 48, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid #c8e6e0', borderTopColor: '#0d5c4e', animation: 'spin .8s linear infinite' }} />
+      <div style={{ width: 32, height: 32, borderRadius: '50%', border: '3px solid var(--primary-container)', borderTopColor: 'var(--primary)', animation: 'spin .8s linear infinite' }} />
     </div>
   );
 }
@@ -125,7 +125,7 @@ function Legend() {
   return (
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '10px 0 4px' }}>
       {(Object.entries(TIPO_META) as [TipoCita, typeof TIPO_META[TipoCita]][]).map(([key, m]) => (
-        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#6b7280', fontWeight: 500 }}>
+        <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--on-surface-variant)', fontWeight: 500 }}>
           <span style={{ width: 10, height: 10, borderRadius: 3, background: m.bg, border: `1.5px solid ${m.text}`, flexShrink: 0 }} />
           {m.label}
         </div>
@@ -137,7 +137,7 @@ function Legend() {
 // ── Campo label reutilizable ───────────────────────────────────────────────────
 function FL({ children }: { children: string }) {
   return (
-    <label style={{ display: 'block', fontSize: 10.5, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>
+    <label style={{ display: 'block', fontSize: 10.5, fontWeight: 600, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>
       {children}
     </label>
   );
@@ -224,11 +224,11 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
   return (
     <div
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(17,24,39,0.45)', backdropFilter: 'blur(3px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+      style={{ position: 'fixed', inset: 0, background: 'var(--scrim)', backdropFilter: 'blur(3px)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: '100%', maxWidth: 400, background: '#fff', borderRadius: 16, boxShadow: '0 24px 64px rgba(0,0,0,0.18)', overflow: 'hidden', animation: 'scaleIn .18s cubic-bezier(.2,0,0,1)' }}
+        style={{ width: '100%', maxWidth: 400, background: 'var(--surface-container-high)', borderRadius: 16, boxShadow: 'var(--elev-3)', overflow: 'hidden', animation: 'scaleIn .18s cubic-bezier(.2,0,0,1)' }}
       >
         {/* Cabecera coloreada según el tipo de cita (color pastel en todo el encabezado) */}
         <div style={{ background: meta.header, padding: '18px 22px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
@@ -238,7 +238,7 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
                 <span style={{ fontSize: 10.5, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.6px', background: meta.ink, color: '#fff', padding: '3px 10px', borderRadius: 5 }}>
                   {meta.label}
                 </span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: appt.status === 'cancelada' ? '#b91c1c' : appt.status === 'completada' ? '#047857' : meta.ink, opacity: (appt.status === 'cancelada' || appt.status === 'completada') ? 1 : 0.65 }}>
+                <span style={{ fontSize: 11, fontWeight: 600, color: appt.status === 'cancelada' ? 'var(--error)' : appt.status === 'completada' ? 'var(--success)' : meta.ink, opacity: (appt.status === 'cancelada' || appt.status === 'completada') ? 1 : 0.65 }}>
                   {statusLabel(appt.status)}
                 </span>
               </div>
@@ -279,7 +279,7 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
               {!isClosed && (
                 <button
                   onClick={() => setMode('reagendar')}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1px solid #e5e9e7', borderRadius: 10, background: '#fff', color: '#374151', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1px solid var(--outline-variant)', borderRadius: 10, background: 'var(--surface)', color: 'var(--on-surface)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
                     <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
@@ -293,7 +293,7 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
               {!isClosed && (
                 <button
                   onClick={() => setMode('cancelar')}
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1px solid #fecaca', borderRadius: 10, background: '#fff5f5', color: '#dc2626', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1px solid var(--error)', borderRadius: 10, background: 'var(--error-container)', color: 'var(--on-error-container)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
                     <circle cx="12" cy="12" r="10"/>
@@ -311,34 +311,34 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
               <div style={{ marginBottom: 13 }}>
                 <FL>Nueva fecha</FL>
                 <input type="date" value={newDate} onChange={e => { setNewDate(e.target.value); setError(''); }}
-                  style={{ width: '100%', border: '1px solid #e5e9e7', borderRadius: 8, padding: '9px 13px', fontSize: 13.5, background: '#fafbfa', outline: 'none', fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', border: '1px solid var(--outline-variant)', borderRadius: 8, padding: '9px 13px', fontSize: 13.5, background: 'var(--surface-container-highest)', outline: 'none', fontFamily: 'inherit', color: 'var(--on-surface)', boxSizing: 'border-box' }} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: error ? 12 : 18 }}>
                 <div>
                   <FL>Hora inicio</FL>
                   <input type="time" value={newStart} onChange={e => { setNewStart(e.target.value); setError(''); }}
-                    style={{ width: '100%', border: '1px solid #e5e9e7', borderRadius: 8, padding: '9px 13px', fontSize: 13.5, background: '#fafbfa', outline: 'none', fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', border: '1px solid var(--outline-variant)', borderRadius: 8, padding: '9px 13px', fontSize: 13.5, background: 'var(--surface-container-highest)', outline: 'none', fontFamily: 'inherit', color: 'var(--on-surface)', boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <FL>Hora fin</FL>
                   <input type="time" value={newEnd} onChange={e => { setNewEnd(e.target.value); setError(''); }}
-                    style={{ width: '100%', border: '1px solid #e5e9e7', borderRadius: 8, padding: '9px 13px', fontSize: 13.5, background: '#fafbfa', outline: 'none', fontFamily: 'inherit', color: '#374151', boxSizing: 'border-box' }} />
+                    style={{ width: '100%', border: '1px solid var(--outline-variant)', borderRadius: 8, padding: '9px 13px', fontSize: 13.5, background: 'var(--surface-container-highest)', outline: 'none', fontFamily: 'inherit', color: 'var(--on-surface)', boxSizing: 'border-box' }} />
                 </div>
               </div>
-              {error && <div style={{ fontSize: 12.5, color: '#dc2626', background: '#fee2e2', padding: '8px 12px', borderRadius: 6, marginBottom: 14 }}>{error}</div>}
+              {error && <div style={{ fontSize: 12.5, color: 'var(--on-error-container)', background: 'var(--error-container)', padding: '8px 12px', borderRadius: 6, marginBottom: 14 }}>{error}</div>}
 
               {/* Aviso conflicto reagendar */}
               {conflicto && (
-                <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '11px 13px', marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, fontWeight: 700, color: '#92400e', marginBottom: 3 }}>Horario ocupado</div>
-                  <div style={{ fontSize: 11.5, color: '#78350f', lineHeight: 1.5, marginBottom: 9 }}>
+                <div style={{ background: 'var(--warning-container)', border: '1px solid var(--warning)', borderRadius: 8, padding: '11px 13px', marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--on-warning-container)', marginBottom: 3 }}>Horario ocupado</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--on-warning-container)', lineHeight: 1.5, marginBottom: 9 }}>
                     Ya hay una cita con <strong>{conflicto.pacienteName}</strong> de {conflicto.start} a {conflicto.end}.
                   </div>
                   <div style={{ display: 'flex', gap: 7 }}>
-                    <button onClick={() => setConflicto(null)} style={{ flex: 1, padding: '7px', border: '1px solid #fcd34d', borderRadius: 6, background: '#fff', color: '#92400e', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
+                    <button onClick={() => setConflicto(null)} style={{ flex: 1, padding: '7px', border: '1px solid var(--warning)', borderRadius: 6, background: 'var(--surface)', color: 'var(--on-warning-container)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer' }}>
                       Cambiar horario
                     </button>
-                    <button onClick={handleForceReagendar} disabled={saving} style={{ flex: 1, padding: '7px', border: 'none', borderRadius: 6, background: '#b45309', color: '#fff', fontSize: 11.5, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                    <button onClick={handleForceReagendar} disabled={saving} style={{ flex: 1, padding: '7px', border: 'none', borderRadius: 6, background: 'var(--warning)', color: 'var(--on-warning)', fontSize: 11.5, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                       {saving ? 'Guardando…' : 'Reagendar igual'}
                     </button>
                   </div>
@@ -347,10 +347,10 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
 
               {!conflicto && (
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={() => { setMode('view'); setError(''); setConflicto(null); }} style={{ flex: 1, padding: '9px', border: '1px solid #e5e9e7', borderRadius: 8, background: '#fff', color: '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                  <button onClick={() => { setMode('view'); setError(''); setConflicto(null); }} style={{ flex: 1, padding: '9px', border: '1px solid var(--outline-variant)', borderRadius: 8, background: 'var(--surface)', color: 'var(--on-surface-variant)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                     Volver
                   </button>
-                  <button onClick={handleReagendar} disabled={saving} style={{ flex: 2, padding: '9px', border: 'none', borderRadius: 8, background: '#0d5c4e', color: '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                  <button onClick={handleReagendar} disabled={saving} style={{ flex: 2, padding: '9px', border: 'none', borderRadius: 8, background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                     {saving ? 'Verificando…' : 'Confirmar reagendamiento'}
                   </button>
                 </div>
@@ -361,18 +361,18 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
           {/* Cancelar */}
           {mode === 'cancelar' && (
             <div>
-              <div style={{ background: '#fff5f5', border: '1px solid #fecaca', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
-                <div style={{ fontSize: 13.5, fontWeight: 700, color: '#dc2626', marginBottom: 4 }}>¿Cancelar esta cita?</div>
-                <div style={{ fontSize: 12.5, color: '#6b7280', lineHeight: 1.5 }}>
+              <div style={{ background: 'var(--error-container)', border: '1px solid var(--error)', borderRadius: 10, padding: '14px 16px', marginBottom: 16 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--on-error-container)', marginBottom: 4 }}>¿Cancelar esta cita?</div>
+                <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
                   La cita quedará marcada como cancelada. El paciente no será notificado automáticamente.
                 </div>
               </div>
-              {error && <div style={{ fontSize: 12.5, color: '#dc2626', background: '#fee2e2', padding: '8px 12px', borderRadius: 6, marginBottom: 14 }}>{error}</div>}
+              {error && <div style={{ fontSize: 12.5, color: 'var(--on-error-container)', background: 'var(--error-container)', padding: '8px 12px', borderRadius: 6, marginBottom: 14 }}>{error}</div>}
               <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={() => { setMode('view'); setError(''); }} style={{ flex: 1, padding: '9px', border: '1px solid #e5e9e7', borderRadius: 8, background: '#fff', color: '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+                <button onClick={() => { setMode('view'); setError(''); }} style={{ flex: 1, padding: '9px', border: '1px solid var(--outline-variant)', borderRadius: 8, background: 'var(--surface)', color: 'var(--on-surface-variant)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
                   No, volver
                 </button>
-                <button onClick={handleCancelar} disabled={saving} style={{ flex: 1, padding: '9px', border: 'none', borderRadius: 8, background: '#dc2626', color: '#fff', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
+                <button onClick={handleCancelar} disabled={saving} style={{ flex: 1, padding: '9px', border: 'none', borderRadius: 8, background: 'var(--error)', color: 'var(--on-error)', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1 }}>
                   {saving ? 'Cancelando…' : 'Sí, cancelar'}
                 </button>
               </div>
@@ -396,11 +396,11 @@ function MonthView({ appts, year, month, onDayClick, onApptClick }: {
   const cells = buildMonthGrid(year, month);
 
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', overflow: 'hidden' }}>
+    <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--outline-variant)', overflow: 'hidden' }}>
       {/* Cabecera días */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: '#f8faf9', borderBottom: '1px solid #e5e9e7' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: 'var(--surface-container-low)', borderBottom: '1px solid var(--outline-variant)' }}>
         {DAYS_S.map(d => (
-          <div key={d} style={{ padding: '10px 8px', textAlign: 'center', fontSize: 11.5, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+          <div key={d} style={{ padding: '10px 8px', textAlign: 'center', fontSize: 11.5, fontWeight: 700, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
             {d}
           </div>
         ))}
@@ -420,22 +420,22 @@ function MonthView({ appts, year, month, onDayClick, onApptClick }: {
               onClick={() => onDayClick(cell)}
               style={{
                 minHeight: 112,
-                borderRight: idx % 7 !== 6 ? '1px solid #f3f4f6' : 'none',
-                borderBottom: idx < 35     ? '1px solid #f3f4f6' : 'none',
+                borderRight: idx % 7 !== 6 ? '1px solid var(--outline-variant)' : 'none',
+                borderBottom: idx < 35     ? '1px solid var(--outline-variant)' : 'none',
                 padding: '8px 6px 6px',
-                background: isThisMonth ? '#fff' : '#f9fafb',
+                background: isThisMonth ? 'var(--surface)' : 'var(--surface-container-low)',
                 cursor: 'pointer',
                 transition: 'background .12s',
               }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isThisMonth ? '#f8faf9' : '#f3f4f6'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = isThisMonth ? '#fff' : '#f9fafb'; }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = isThisMonth ? 'var(--surface-container-low)' : 'var(--surface-container)'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = isThisMonth ? 'var(--surface)' : 'var(--surface-container-low)'; }}
             >
               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4 }}>
                 <span style={{
                   width: isToday ? 40 : 27, height: isToday ? 40 : 27, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: isToday ? 18 : 13, fontWeight: isToday ? 700 : (isThisMonth ? 500 : 400),
-                  color: isToday ? '#fff' : (isThisMonth ? '#374151' : '#c9cdd4'),
-                  background: isToday ? '#0d5c4e' : 'transparent', flexShrink: 0,
+                  color: isToday ? 'var(--on-primary)' : (isThisMonth ? 'var(--on-surface)' : 'var(--on-surface-variant)'),
+                  background: isToday ? 'var(--primary)' : 'transparent', flexShrink: 0,
                 }}>
                   {cell.getDate()}
                 </span>
@@ -460,7 +460,7 @@ function MonthView({ appts, year, month, onDayClick, onApptClick }: {
                   );
                 })}
                 {extra > 0 && (
-                  <div style={{ fontSize: 10, color: '#9ca3af', padding: '1px 5px', fontWeight: 600 }}>
+                  <div style={{ fontSize: 10, color: 'var(--on-surface-variant)', padding: '1px 5px', fontWeight: 600 }}>
                     +{extra} más
                   </div>
                 )}
@@ -490,21 +490,21 @@ function WeekView({ appts, monday, onApptClick, onDayClick }: {
   const timelineH = HOURS.length * HOUR_H;
 
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', overflow: 'hidden' }}>
+    <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--outline-variant)', overflow: 'hidden' }}>
       {/* Scroll único para cabecera + malla: comparten ancho y barra de scroll, de modo
           que las líneas verticales de los días siempre quedan alineadas. */}
       <div style={{ overflowY: 'auto', maxHeight: 597 }}>
       {/* Cabecera días (sticky: se mantiene visible al hacer scroll) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid #e5e9e7', background: '#f8faf9', position: 'sticky', top: 0, zIndex: 6 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '60px repeat(7, 1fr)', borderBottom: '1px solid var(--outline-variant)', background: 'var(--surface-container-low)', position: 'sticky', top: 0, zIndex: 6 }}>
         <div />
         {weekDays.map(wd => (
           <div
             key={wd.iso}
             onClick={() => onDayClick(wd.d)}
-            style={{ padding: '12px 8px', textAlign: 'center', borderLeft: '1px solid #e5e9e7', background: wd.iso === today ? '#f0fdf9' : 'transparent', cursor: 'pointer' }}
+            style={{ padding: '12px 8px', textAlign: 'center', borderLeft: '1px solid var(--outline-variant)', background: wd.iso === today ? 'var(--surface-container)' : 'transparent', cursor: 'pointer' }}
           >
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{wd.label}</div>
-            <div style={{ width: wd.iso === today ? 40 : 32, height: wd.iso === today ? 40 : 32, borderRadius: '50%', margin: '4px auto 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: wd.iso === today ? 18 : 16, fontWeight: wd.iso === today ? 700 : 500, color: wd.iso === today ? '#fff' : '#374151', background: wd.iso === today ? '#0d5c4e' : 'transparent' }}>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{wd.label}</div>
+            <div style={{ width: wd.iso === today ? 40 : 32, height: wd.iso === today ? 40 : 32, borderRadius: '50%', margin: '4px auto 0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: wd.iso === today ? 18 : 16, fontWeight: wd.iso === today ? 700 : 500, color: wd.iso === today ? 'var(--on-primary)' : 'var(--on-surface)', background: wd.iso === today ? 'var(--primary)' : 'transparent' }}>
               {wd.dayN}
             </div>
           </div>
@@ -516,7 +516,7 @@ function WeekView({ appts, monday, onApptClick, onDayClick }: {
           <div style={{ position: 'relative' }}>
             {HOURS.map(h => (
               <div key={h} style={{ height: HOUR_H, position: 'relative' }}>
-                <span style={{ position: 'absolute', top: -7, right: 10, fontSize: 11, color: '#c9cdd4', fontWeight: 500 }}>{h}:00</span>
+                <span style={{ position: 'absolute', top: -7, right: 10, fontSize: 11, color: 'var(--on-surface-variant)', fontWeight: 500, opacity: .7 }}>{h}:00</span>
               </div>
             ))}
           </div>
@@ -525,11 +525,11 @@ function WeekView({ appts, monday, onApptClick, onDayClick }: {
             const dayAppts = appts.filter(a => a.date === wd.iso);
             const isToday  = wd.iso === today;
             return (
-              <div key={wd.iso} style={{ position: 'relative', borderLeft: '1px solid #e5e9e7', background: isToday ? '#f8fdf9' : '#fff' }}>
-                {HOURS.map(h => <div key={h} style={{ height: HOUR_H, borderTop: '1px solid #f3f4f6' }} />)}
+              <div key={wd.iso} style={{ position: 'relative', borderLeft: '1px solid var(--outline-variant)', background: isToday ? 'var(--surface-container-low)' : 'var(--surface)' }}>
+                {HOURS.map(h => <div key={h} style={{ height: HOUR_H, borderTop: '1px solid var(--outline-variant)' }} />)}
                 {/* Línea "ahora" */}
                 {isToday && nowMin >= H_START * 60 && nowMin < H_END * 60 && (
-                  <div style={{ position: 'absolute', top: (nowMin - H_START * 60) * (HOUR_H / 60), left: 0, right: 0, height: 1.5, background: '#dc2626', zIndex: 4 }} />
+                  <div style={{ position: 'absolute', top: (nowMin - H_START * 60) * (HOUR_H / 60), left: 0, right: 0, height: 1.5, background: 'var(--error)', zIndex: 4 }} />
                 )}
                 {/* Bloques de cita */}
                 {dayAppts.map(a => {
@@ -584,22 +584,22 @@ function DayView({ appts, date, onApptClick, onAddClick }: {
   const timelineH = HOURS.length * HOUR_H;
 
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #e5e9e7', overflow: 'hidden' }}>
+    <div style={{ background: 'var(--surface)', borderRadius: 12, border: '1px solid var(--outline-variant)', overflow: 'hidden' }}>
       {/* Cabecera del día */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '18px 24px', borderBottom: '1px solid #e5e9e7', background: isToday ? '#f0fdf9' : '#f8faf9' }}>
-        <div style={{ width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: isToday ? '#fff' : '#374151', background: isToday ? '#0d5c4e' : '#e5e9e7', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '18px 24px', borderBottom: '1px solid var(--outline-variant)', background: isToday ? 'var(--surface-container)' : 'var(--surface-container-low)' }}>
+        <div style={{ width: 40, height: 40, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: isToday ? 'var(--on-primary)' : 'var(--on-surface)', background: isToday ? 'var(--primary)' : 'var(--surface-container-highest)', flexShrink: 0 }}>
           {date.getDate()}
         </div>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>{dayName}</div>
-          <div style={{ fontSize: 12.5, color: '#9ca3af', marginTop: 1 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--on-surface)' }}>{dayName}</div>
+          <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginTop: 1 }}>
             {appts.filter(a => a.status !== 'cancelada').length} cita{appts.filter(a => a.status !== 'cancelada').length !== 1 ? 's' : ''}
           </div>
         </div>
         <div style={{ marginLeft: 'auto' }}>
           <button
             onClick={onAddClick}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', color: '#0d5c4e', fontSize: 13, fontWeight: 600, padding: '7px 14px', borderRadius: 8, border: '1.5px solid #0d5c4e', cursor: 'pointer' }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'transparent', color: 'var(--primary)', fontSize: 13, fontWeight: 600, padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--primary)', cursor: 'pointer' }}
           >
             + Agregar cita
           </button>
@@ -607,22 +607,22 @@ function DayView({ appts, date, onApptClick, onAddClick }: {
       </div>
       {/* Timeline */}
       <div style={{ overflowY: 'auto', maxHeight: 560 }}>
-        <div style={{ display: 'flex', height: timelineH, background: isToday ? '#f8fdf9' : '#fff' }}>
+        <div style={{ display: 'flex', height: timelineH, background: isToday ? 'var(--surface-container-low)' : 'var(--surface)' }}>
           {/* Etiquetas hora */}
           <div style={{ width: 64, flexShrink: 0, position: 'relative' }}>
             {HOURS.map(h => (
               <div key={h} style={{ height: HOUR_H, position: 'relative' }}>
-                <span style={{ position: 'absolute', top: -7, right: 12, fontSize: 11, color: '#c9cdd4', fontWeight: 500 }}>{h}:00</span>
+                <span style={{ position: 'absolute', top: -7, right: 12, fontSize: 11, color: 'var(--on-surface-variant)', fontWeight: 500, opacity: .7 }}>{h}:00</span>
               </div>
             ))}
           </div>
           {/* Área de eventos */}
-          <div style={{ flex: 1, position: 'relative', borderLeft: '1px solid #e5e9e7' }}>
-            {HOURS.map(h => <div key={h} style={{ height: HOUR_H, borderTop: '1px solid #f3f4f6' }} />)}
+          <div style={{ flex: 1, position: 'relative', borderLeft: '1px solid var(--outline-variant)' }}>
+            {HOURS.map(h => <div key={h} style={{ height: HOUR_H, borderTop: '1px solid var(--outline-variant)' }} />)}
             {/* Línea "ahora" */}
             {isToday && nowMin >= H_START * 60 && nowMin < H_END * 60 && (
-              <div style={{ position: 'absolute', top: (nowMin - H_START * 60) * (HOUR_H / 60), left: 0, right: 0, height: 2, background: '#dc2626', zIndex: 5 }}>
-                <span style={{ position: 'absolute', left: -5, top: -4, width: 10, height: 10, borderRadius: '50%', background: '#dc2626' }} />
+              <div style={{ position: 'absolute', top: (nowMin - H_START * 60) * (HOUR_H / 60), left: 0, right: 0, height: 2, background: 'var(--error)', zIndex: 5 }}>
+                <span style={{ position: 'absolute', left: -5, top: -4, width: 10, height: 10, borderRadius: '50%', background: 'var(--error)' }} />
               </div>
             )}
             {/* Bloques de cita */}
@@ -817,23 +817,23 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
 
       {/* Error */}
       {error && (
-        <div style={{ fontSize: 12.5, color: '#dc2626', background: '#fee2e2', padding: '8px 12px', borderRadius: 8, marginTop: 16 }}>
+        <div style={{ fontSize: 12.5, color: 'var(--on-error-container)', background: 'var(--error-container)', padding: '8px 12px', borderRadius: 8, marginTop: 16 }}>
           {error}
         </div>
       )}
 
       {/* Conflicto de horario */}
       {conflicto && (
-        <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10, padding: '13px 16px', marginTop: 16 }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>Horario ocupado</div>
-          <div style={{ fontSize: 12.5, color: '#78350f', lineHeight: 1.5, marginBottom: 12 }}>
+        <div style={{ background: 'var(--warning-container)', border: '1px solid var(--warning)', borderRadius: 10, padding: '13px 16px', marginTop: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--on-warning-container)', marginBottom: 4 }}>Horario ocupado</div>
+          <div style={{ fontSize: 12.5, color: 'var(--on-warning-container)', lineHeight: 1.5, marginBottom: 12 }}>
             Ya existe una cita con <strong>{conflicto.pacienteName}</strong> de {conflicto.start} a {conflicto.end}.
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button onClick={() => setConflicto(null)} style={{ flex: 1, padding: '8px', border: '1px solid #fcd34d', borderRadius: 8, background: '#fff', color: '#92400e', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+            <button onClick={() => setConflicto(null)} style={{ flex: 1, padding: '8px', border: '1px solid var(--warning)', borderRadius: 8, background: 'var(--surface)', color: 'var(--on-warning-container)', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
               Cambiar horario
             </button>
-            <button onClick={handleForceCreate} disabled={saving} style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 8, background: '#b45309', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'inherit' }}>
+            <button onClick={handleForceCreate} disabled={saving} style={{ flex: 1, padding: '8px', border: 'none', borderRadius: 8, background: 'var(--warning)', color: 'var(--on-warning)', fontSize: 12.5, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: 'inherit' }}>
               {saving ? 'Agendando…' : 'Agendar de todas formas'}
             </button>
           </div>

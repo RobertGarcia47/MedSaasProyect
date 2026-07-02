@@ -314,7 +314,7 @@ function WaitingRoom({ appts }: { appts: ApptUI[] }) {
           <Icon name="chair" size={20} style={{ color: 'var(--warning)' }} />
           <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 14, color: 'var(--on-warning-container)' }}>Sala de espera</span>
         </div>
-        <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--warning)', color: '#fff', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <span style={{ width: 22, height: 22, borderRadius: '50%', background: 'var(--warning)', color: 'var(--on-warning)', fontWeight: 700, fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           {enEspera.length}
         </span>
       </div>

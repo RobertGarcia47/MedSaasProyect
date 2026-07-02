@@ -29,6 +29,7 @@
   --success-container: #B3F1CF;
   --on-success-container: #002112;
   --warning: #8A5A00;
+  --on-warning: #FFFFFF;
   --warning-container: #FFDDB3;
   --on-warning-container: #2C1700;
 
@@ -92,6 +93,7 @@
   --success-container: #14523A;
   --on-success-container: #B3F1CF;
   --warning: #F8BC6E;
+  --on-warning: #2C1700;
   --warning-container: #683E00;
   --on-warning-container: #FFDDB3;
 

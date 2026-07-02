@@ -119,7 +119,7 @@ function WheelCol({ items, selectedIdx, flex = 1, onChange }: WheelColProps) {
             height: IH, display: 'flex', alignItems: 'center', justifyContent: 'center',
             scrollSnapAlign: 'center', cursor: 'pointer', userSelect: 'none',
             fontSize: 19,
-            color: i === selectedIdx ? '#15211D' : '#838E8A',
+            color: i === selectedIdx ? 'var(--on-surface)' : 'var(--on-surface-variant)',
             fontWeight: i === selectedIdx ? 700 : 500,
             transition: 'color .12s',
           }}
@@ -151,31 +151,31 @@ export function WheelPickerSheet({ title, columns, onClose }: WheelPickerSheetPr
       onClick={onClose}
       style={{
         position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
-        background: 'rgba(15,25,23,.22)', borderRadius: 24,
+        background: 'var(--scrim)', borderRadius: 24,
         display: 'flex', alignItems: 'flex-end', zIndex: 20,
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: '100%', background: '#fff',
+          width: '100%', background: 'var(--surface-container-high)',
           borderTopLeftRadius: 22, borderTopRightRadius: 22,
-          boxShadow: '0 -16px 40px rgba(15,30,28,.16)',
+          boxShadow: '0 -16px 40px var(--shadow)',
           padding: '16px 22px 22px',
         }}
       >
         {/* Sheet header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: '#25352F' }}>{title}</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--on-surface)' }}>{title}</div>
           <button
             onClick={onClose}
             style={{
-              border: 'none', background: 'transparent', color: '#2F9E8B',
+              border: 'none', background: 'transparent', color: 'var(--primary)',
               fontFamily: 'inherit', fontSize: 15, fontWeight: 700,
               cursor: 'pointer', padding: '6px 8px', borderRadius: 9,
               transition: 'background .15s',
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#EAF6F3'; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary-container)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
           >
             Listo
@@ -187,7 +187,7 @@ export function WheelPickerSheet({ title, columns, onClose }: WheelPickerSheetPr
           {/* Center selection pill — visual background only (z-index:0, behind columns) */}
           <div style={{
             position: 'absolute', left: 8, right: 8, top: IH * 2,
-            height: IH, background: '#EEF1F0', borderRadius: 10, zIndex: 0,
+            height: IH, background: 'var(--surface-container-highest)', borderRadius: 10, zIndex: 0,
           }} />
           {/* Columns */}
           <div style={{ position: 'relative', display: 'flex', height: '100%', zIndex: 1 }}>
@@ -196,13 +196,13 @@ export function WheelPickerSheet({ title, columns, onClose }: WheelPickerSheetPr
           {/* Fade top */}
           <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, height: IH * 2,
-            background: 'linear-gradient(#fff, rgba(255,255,255,0))',
+            background: 'linear-gradient(var(--surface-container-high), transparent)',
             pointerEvents: 'none', zIndex: 2,
           }} />
           {/* Fade bottom */}
           <div style={{
             position: 'absolute', bottom: 0, left: 0, right: 0, height: IH * 2,
-            background: 'linear-gradient(rgba(255,255,255,0), #fff)',
+            background: 'linear-gradient(transparent, var(--surface-container-high))',
             pointerEvents: 'none', zIndex: 2,
           }} />
           {/* Click-to-confirm overlay — transparent, above columns, captures click on center row */}
@@ -229,24 +229,24 @@ export function WheelPickerSheet({ title, columns, onClose }: WheelPickerSheetPr
    ═══════════════════════════════════════════════════════════ */
 
 export const FL: React.CSSProperties = {
-  display: 'block', fontSize: 12, fontWeight: 600, color: '#6E7E79', marginBottom: 7,
+  display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', marginBottom: 7,
 };
 const FI: React.CSSProperties = {
   width: '100%', background: 'transparent', border: 'none',
-  borderBottom: '1.6px solid #E4E9E7', outline: 'none',
-  padding: '9px 0 9px 30px', fontSize: 15, color: '#26352F',
+  borderBottom: '1.6px solid var(--outline-variant)', outline: 'none',
+  padding: '9px 0 9px 30px', fontSize: 15, color: 'var(--on-surface)',
   fontFamily: 'inherit', boxSizing: 'border-box', transition: 'border-color .15s',
 };
 const FICON: React.CSSProperties = {
   position: 'absolute', left: 0, top: '50%', transform: 'translateY(-50%)',
-  color: '#AAB4B0', fontSize: 19, pointerEvents: 'none', lineHeight: 1,
+  color: 'var(--on-surface-variant)', fontSize: 19, pointerEvents: 'none', lineHeight: 1,
 };
 
 export function Field({ label, icon, required, children }: { label: string; icon: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div>
       <label style={FL}>
-        {label}{required && <span style={{ color: '#3DAF9B', marginLeft: 2 }}>*</span>}
+        {label}{required && <span style={{ color: 'var(--primary)', marginLeft: 2 }}>*</span>}
       </label>
       <div style={{ position: 'relative' }}>
         <span className="ms" style={FICON}>{icon}</span>
@@ -261,7 +261,7 @@ export function FocusInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
-      style={{ ...FI, borderBottomColor: f ? '#3DAF9B' : '#E4E9E7', ...props.style }}
+      style={{ ...FI, borderBottomColor: f ? 'var(--primary)' : 'var(--outline-variant)', ...props.style }}
       onFocus={() => setF(true)}
       onBlur={() => setF(false)}
     />
@@ -277,15 +277,15 @@ export function FocusSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>
         style={{
           ...FI,
           appearance: 'none',
-          color: '#6B7672', paddingRight: 24, cursor: 'pointer',
-          borderBottomColor: f ? '#3DAF9B' : '#E4E9E7',
+          color: 'var(--on-surface-variant)', paddingRight: 24, cursor: 'pointer',
+          borderBottomColor: f ? 'var(--primary)' : 'var(--outline-variant)',
         } as React.CSSProperties}
         onFocus={() => setF(true)}
         onBlur={() => setF(false)}
       />
       <span className="ms" style={{
         position: 'absolute', right: 2, top: '50%', transform: 'translateY(-50%)',
-        fontSize: 16, color: '#AAB4B0', pointerEvents: 'none',
+        fontSize: 16, color: 'var(--on-surface-variant)', pointerEvents: 'none',
       }}>keyboard_arrow_down</span>
     </div>
   );
@@ -303,14 +303,14 @@ export function PickerTrigger({ icon, value, active, placeholder, onClick }: {
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
       style={{
         position: 'relative', cursor: 'pointer',
-        borderBottom: `1.6px solid ${active ? '#3DAF9B' : '#E4E9E7'}`,
+        borderBottom: `1.6px solid ${active ? 'var(--primary)' : 'var(--outline-variant)'}`,
         transition: 'border-color .15s',
       }}
     >
       <span className="ms" style={{ ...FICON, fontSize: 18 }}>{icon}</span>
       <div style={{
         padding: '9px 0 9px 27px', fontSize: 14.5,
-        color: value ? '#26352F' : '#AEB6B3',
+        color: value ? 'var(--on-surface)' : 'var(--on-surface-variant)',
       }}>
         {value || placeholder || '—'}
       </div>
@@ -323,14 +323,14 @@ export function ModalCard({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
       position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
-      background: 'rgba(22,33,31,.5)', zIndex: 1000,
+      background: 'var(--scrim)', zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 28, overflowY: 'auto', animation: 'fadeIn .2s ease',
     }}>
       <div style={{
         position: 'relative', width: 580, maxWidth: '100%',
-        background: '#fff', borderRadius: 24,
-        boxShadow: '0 30px 70px rgba(15,30,28,.28)',
+        background: 'var(--surface-container-high)', borderRadius: 24,
+        boxShadow: '0 30px 70px var(--shadow)',
         padding: '30px 36px 28px',
         animation: 'scaleIn .25s cubic-bezier(.2,0,0,1)',
         fontFamily: 'var(--font-body, system-ui, sans-serif)',
@@ -348,12 +348,12 @@ export function CloseBtn({ onClose }: { onClose: () => void }) {
       style={{
         position: 'absolute', top: 22, right: 22,
         width: 36, height: 36, border: 'none', borderRadius: 10,
-        background: 'transparent', color: '#9AA6A2',
+        background: 'transparent', color: 'var(--on-surface-variant)',
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 20, transition: 'background .15s, color .15s',
       }}
-      onMouseEnter={(e) => { const b = e.currentTarget as HTMLButtonElement; b.style.background = '#F1F4F3'; b.style.color = '#5A6864'; }}
-      onMouseLeave={(e) => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'transparent'; b.style.color = '#9AA6A2'; }}
+      onMouseEnter={(e) => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'var(--surface-container-highest)'; b.style.color = 'var(--on-surface)'; }}
+      onMouseLeave={(e) => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'transparent'; b.style.color = 'var(--on-surface-variant)'; }}
     >
       <span className="ms">close</span>
     </button>
@@ -365,15 +365,15 @@ export function ModalBadge({ icon, title, subtitle }: { icon: string; title: str
     <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 26 }}>
       <div style={{
         width: 50, height: 50, borderRadius: 15, flexShrink: 0,
-        background: 'linear-gradient(145deg,#8FE0CC,#62CDB4)',
-        boxShadow: '0 8px 18px rgba(86,201,176,.35)',
+        background: 'linear-gradient(145deg, var(--primary-container), var(--primary))',
+        boxShadow: '0 8px 18px color-mix(in srgb, var(--primary) 35%, transparent)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <span className="ms" style={{ fontSize: 26, color: '#0E4A40' }}>{icon}</span>
+        <span className="ms" style={{ fontSize: 26, color: 'var(--on-primary-container)' }}>{icon}</span>
       </div>
       <div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: '#25352F', letterSpacing: '-.3px', lineHeight: 1.2 }}>{title}</div>
-        <div style={{ fontSize: 13, color: '#8A9591', marginTop: 2 }}>{subtitle}</div>
+        <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--on-surface)', letterSpacing: '-.3px', lineHeight: 1.2 }}>{title}</div>
+        <div style={{ fontSize: 13, color: 'var(--on-surface-variant)', marginTop: 2 }}>{subtitle}</div>
       </div>
     </div>
   );
@@ -383,7 +383,7 @@ export function ModalFooter({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
       display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
-      gap: 8, marginTop: 30, paddingTop: 22, borderTop: '1px solid #EEF2F1',
+      gap: 8, marginTop: 30, paddingTop: 22, borderTop: '1px solid var(--outline-variant)',
     }}>
       {children}
     </div>
@@ -395,12 +395,12 @@ export function CancelBtn({ onClick }: { onClick: () => void }) {
     <button
       onClick={onClick}
       style={{
-        fontSize: 14.5, fontWeight: 600, color: '#5A6864',
+        fontSize: 14.5, fontWeight: 600, color: 'var(--on-surface-variant)',
         padding: '11px 18px', borderRadius: 11, border: 'none',
         background: 'transparent', cursor: 'pointer',
         transition: 'background .15s', fontFamily: 'inherit',
       }}
-      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = '#F2F5F4'; }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--surface-container-highest)'; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
     >
       Cancelar
@@ -415,10 +415,10 @@ export function PrimaryBtn({ onClick, disabled, children }: { onClick: () => voi
       disabled={disabled}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 8,
-        background: disabled ? '#B2D8D2' : 'linear-gradient(145deg,#3FB8A2,#2F9E8B)',
-        color: '#fff', fontSize: 14.5, fontWeight: 600,
+        background: disabled ? 'var(--outline-variant)' : 'linear-gradient(145deg, color-mix(in srgb, var(--primary) 85%, white), var(--primary))',
+        color: disabled ? 'var(--on-surface-variant)' : 'var(--on-primary)', fontSize: 14.5, fontWeight: 600,
         padding: '12px 22px', borderRadius: 12, border: 'none',
-        boxShadow: disabled ? 'none' : '0 10px 22px rgba(47,158,139,.32)',
+        boxShadow: disabled ? 'none' : '0 10px 22px color-mix(in srgb, var(--primary) 32%, transparent)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'transform .15s, box-shadow .15s', fontFamily: 'inherit',
       }}
@@ -426,13 +426,13 @@ export function PrimaryBtn({ onClick, disabled, children }: { onClick: () => voi
         if (!disabled) {
           const b = e.currentTarget as HTMLButtonElement;
           b.style.transform = 'translateY(-1px)';
-          b.style.boxShadow = '0 14px 28px rgba(47,158,139,.42)';
+          b.style.boxShadow = '0 14px 28px color-mix(in srgb, var(--primary) 42%, transparent)';
         }
       }}
       onMouseLeave={(e) => {
         const b = e.currentTarget as HTMLButtonElement;
         b.style.transform = '';
-        b.style.boxShadow = disabled ? 'none' : '0 10px 22px rgba(47,158,139,.32)';
+        b.style.boxShadow = disabled ? 'none' : '0 10px 22px color-mix(in srgb, var(--primary) 32%, transparent)';
       }}
     >
       <span className="ms" style={{ fontSize: 18 }}>check</span>

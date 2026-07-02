@@ -211,7 +211,7 @@ export function Informe({ go, goBack, toast, patientId }: {
           <Icon name="folder_shared" size={18} />{paciente ? paciente.name : 'Expediente'}
         </button>
         <div style={{ width: 1, height: 32, background: 'var(--outline-variant)', flexShrink: 0 }} />
-        <div style={{ width: 40, height: 40, borderRadius: 12, background: '#D6F0EC', color: '#0B5C57', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Icon name="clinical_notes" size={22} fill />
         </div>
         <div style={{ minWidth: 0 }}>
@@ -222,7 +222,7 @@ export function Informe({ go, goBack, toast, patientId }: {
           </div>
         </div>
         <div style={{ flex: 1 }} />
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, background: '#EAF6F3', color: '#0B5C57', whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, background: 'var(--primary-container)', color: 'var(--on-primary-container)', whiteSpace: 'nowrap' }}>
           <Icon name="lock" size={16} />Cifrado
         </span>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, background: dirty ? 'var(--surface-container-highest)' : 'var(--surface-container)', color: 'var(--on-surface-variant)' }}>
@@ -307,7 +307,7 @@ export function Informe({ go, goBack, toast, patientId }: {
                 <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--surface-container-high)', borderRadius: 12, boxShadow: '0 8px 24px rgba(16,40,80,.12)', zIndex: 30, maxHeight: 320, overflowY: 'auto', padding: 6 }}>
                   {TIPOS.map((t) => (
                     <button key={t.id} onClick={() => { setTipoId(t.id); setTipoOpen(false); setDirty(true); }} className="state-layer"
-                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', padding: '10px 12px', borderRadius: 8, position: 'relative', background: t.id === tipoId ? '#F3FAF8' : 'transparent', fontFamily: 'var(--font-body)' }}>
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', padding: '10px 12px', borderRadius: 8, position: 'relative', background: t.id === tipoId ? 'color-mix(in srgb, var(--primary) 8%, var(--surface))' : 'transparent', fontFamily: 'var(--font-body)' }}>
                       <div style={{ width: 30, height: 30, borderRadius: 8, background: t.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <Icon name={t.icon} size={16} style={{ color: t.color }} />
                       </div>
@@ -343,8 +343,8 @@ export function Informe({ go, goBack, toast, patientId }: {
             </div>
             {/* Médico autor */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, padding: '10px 12px', background: 'var(--surface-container-low)', borderRadius: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: '#D6F0EC', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Icon name="stethoscope" size={18} style={{ color: '#0B5C57' }} />
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon name="stethoscope" size={18} style={{ color: 'var(--on-primary-container)' }} />
               </div>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)' }}>{account.nombreCompleto || 'Médico'}</div>
@@ -366,11 +366,11 @@ export function Informe({ go, goBack, toast, patientId }: {
                 const sel = visibilidad === v.id;
                 return (
                   <button key={v.id} onClick={() => setVisibilidad(v.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 12px', borderRadius: 12, border: `1px solid ${sel ? '#0E8C86' : 'var(--outline-variant)'}`, background: sel ? '#F3FAF8' : 'var(--surface)', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
-                    <Icon name={sel ? 'radio_button_checked' : 'radio_button_unchecked'} size={20} style={{ color: sel ? '#0E8C86' : 'var(--outline-variant)', flexShrink: 0 }} />
-                    <Icon name={v.icon} size={18} style={{ color: sel ? '#0B5C57' : 'var(--on-surface-variant)', flexShrink: 0 }} />
+                    style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', padding: '10px 12px', borderRadius: 12, border: `1px solid ${sel ? 'var(--primary)' : 'var(--outline-variant)'}`, background: sel ? 'color-mix(in srgb, var(--primary) 8%, var(--surface))' : 'var(--surface)', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)' }}>
+                    <Icon name={sel ? 'radio_button_checked' : 'radio_button_unchecked'} size={20} style={{ color: sel ? 'var(--primary)' : 'var(--outline-variant)', flexShrink: 0 }} />
+                    <Icon name={v.icon} size={18} style={{ color: sel ? 'var(--on-primary-container)' : 'var(--on-surface-variant)', flexShrink: 0 }} />
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: sel ? '#0B5C57' : 'var(--on-surface)' }}>{v.label}</div>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: sel ? 'var(--on-primary-container)' : 'var(--on-surface)' }}>{v.label}</div>
                       <div style={{ fontSize: 11.5, color: 'var(--on-surface-variant)' }}>{v.desc}</div>
                     </div>
                   </button>
@@ -384,10 +384,10 @@ export function Informe({ go, goBack, toast, patientId }: {
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
 
           {/* 1. Título */}
-          <Card variant="outlined" style={{ padding: '18px 22px', borderRadius: 20, border: tituloError ? '1px solid #F4C9C5' : undefined }}>
+          <Card variant="outlined" style={{ padding: '18px 22px', borderRadius: 20, border: tituloError ? '1px solid var(--error)' : undefined }}>
             <div style={{ position: 'relative' }}>
-              <div style={{ border: `1px solid ${tituloError ? '#BA1A1A' : 'var(--outline-variant)'}`, borderRadius: 12, padding: '10px 14px 8px', background: 'var(--surface)' }}>
-                <span style={{ position: 'absolute', top: -8, left: 11, padding: '0 5px', background: 'var(--surface)', fontSize: 11.5, fontWeight: 600, color: tituloError ? '#BA1A1A' : 'var(--on-surface-variant)' }}>
+              <div style={{ border: `1px solid ${tituloError ? 'var(--error)' : 'var(--outline-variant)'}`, borderRadius: 12, padding: '10px 14px 8px', background: 'var(--surface)' }}>
+                <span style={{ position: 'absolute', top: -8, left: 11, padding: '0 5px', background: 'var(--surface)', fontSize: 11.5, fontWeight: 600, color: tituloError ? 'var(--error)' : 'var(--on-surface-variant)' }}>
                   Título del informe *
                 </span>
                 <input
@@ -399,7 +399,7 @@ export function Informe({ go, goBack, toast, patientId }: {
                 />
               </div>
               {tituloError && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5, fontSize: 12.5, color: '#BA1A1A' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 5, fontSize: 12.5, color: 'var(--error)' }}>
                   <Icon name="error" size={15} />El título del informe es obligatorio.
                 </div>
               )}
@@ -412,7 +412,7 @@ export function Informe({ go, goBack, toast, patientId }: {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 22px', borderBottom: '1px solid var(--outline-variant)' }}>
               <Icon name="edit_note" size={20} style={{ color: 'var(--primary)' }} />
               <span style={{ fontSize: 16, fontWeight: 600, color: 'var(--on-surface)' }}>Contenido</span>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500, background: '#EAF6F3', color: '#0B5C57' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 500, background: 'var(--primary-container)', color: 'var(--on-primary-container)' }}>
                 <Icon name="lock" size={14} />Cifrado
               </span>
               <div style={{ flex: 1 }} />
@@ -490,8 +490,8 @@ export function Informe({ go, goBack, toast, patientId }: {
                 const sel = tags.includes(tag.id);
                 return (
                   <button key={tag.id} onClick={() => toggleTag(tag.id)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, border: `1px solid ${sel ? '#0E8C86' : 'var(--outline-variant)'}`, background: sel ? '#D6F0EC' : 'var(--surface-container-low)', color: sel ? '#0B5C57' : 'var(--on-surface)', cursor: 'pointer', fontSize: 12.5, fontWeight: 500, fontFamily: 'var(--font-body)' }}>
-                    <Icon name={tag.icon} size={16} style={{ color: sel ? '#0B5C57' : 'var(--on-surface-variant)' }} />
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999, border: `1px solid ${sel ? 'var(--primary)' : 'var(--outline-variant)'}`, background: sel ? 'var(--primary-container)' : 'var(--surface-container-low)', color: sel ? 'var(--on-primary-container)' : 'var(--on-surface)', cursor: 'pointer', fontSize: 12.5, fontWeight: 500, fontFamily: 'var(--font-body)' }}>
+                    <Icon name={tag.icon} size={16} style={{ color: sel ? 'var(--on-primary-container)' : 'var(--on-surface-variant)' }} />
                     {tag.label}
                   </button>
                 );
