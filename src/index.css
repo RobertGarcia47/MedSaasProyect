@@ -205,9 +205,25 @@ body { transition: background-color .35s ease, color .35s ease; }
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes scaleIn { from { transform: scale(.97); } to { transform: scale(1); } }
 @keyframes spin    { to { transform: rotate(360deg); } }
+@keyframes blink   { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(1.35); } }
 
 .fade-up { animation: fadeUp .45s cubic-bezier(.2,0,0,1) both; }
 @media (prefers-reduced-motion: reduce) { .fade-up { animation: none; } }
+
+/* ---------- autofill (detección + restyle) ---------- */
+/* Truco estándar: el navegador dispara esta animación al autocompletar un campo;
+   TextField la escucha (onAnimationStart) para sincronizar el valor real al estado
+   de React (si no, el label flotante no sube y el texto autocompletado se encima). */
+@keyframes autofill-start { from {} to {} }
+input:-webkit-autofill, textarea:-webkit-autofill {
+  animation-name: autofill-start;
+  animation-duration: 1ms;
+  -webkit-text-fill-color: var(--on-surface);
+  caret-color: var(--on-surface);
+  -webkit-box-shadow: 0 0 0 1000px var(--surface-container-highest) inset;
+  box-shadow: 0 0 0 1000px var(--surface-container-highest) inset;
+  transition: background-color 9999s ease-in-out 0s;
+}
 
 /* ---------- utilities ---------- */
 .scroll-y { overflow-y: auto; }

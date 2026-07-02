@@ -177,11 +177,55 @@ export function Avatar({ initials, color, size = 40, fontSize, style = {} }) {
 }
 
 /* ---------- TextField ---------- */
-export function TextField({ label, value, onChange, type = 'text', icon, trailingIcon, onTrailingClick, placeholder, required, error, helper, style = {}, multiline, rows = 3, autoFocus }) {
+export function TextField({ label, value, onChange, type = 'text', icon, trailingIcon, onTrailingClick, placeholder, required, error, helper, style = {}, multiline, rows = 3, autoFocus, staticLabel }) {
   const [focus, setFocus] = useState(false);
   const filled = value !== undefined && value !== '';
   const active = focus || filled;
   const Comp = multiline ? 'textarea' : 'input';
+
+  // Etiqueta fija arriba del campo (no flota sobre el texto) — evita que se
+  // encime con el valor que el navegador autocompleta (correo/contraseña guardados).
+  if (staticLabel) {
+    return (
+      <div style={{ ...style }}>
+        {label && (
+          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: error ? 'var(--error)' : 'var(--on-surface-variant)', marginBottom: 6 }}>
+            {label}{required && ' *'}
+          </label>
+        )}
+        <div style={{
+          position: 'relative', display: 'flex', alignItems: multiline ? 'flex-start' : 'center',
+          background: 'var(--surface-container-highest)', borderRadius: 'var(--r-xs)',
+          border: `1.5px solid ${error ? 'var(--error)' : focus ? 'var(--primary)' : 'var(--outline-variant)'}`,
+          padding: icon ? '0 12px' : '0 16px', minHeight: 52, transition: 'border-color .15s',
+        }}>
+          {icon && <Icon name={icon} size={20} style={{ color: focus ? 'var(--primary)' : 'var(--on-surface-variant)', marginRight: 10, marginTop: multiline ? 14 : 0 }} />}
+          <Comp
+            type={type} value={value} autoFocus={autoFocus} rows={multiline ? rows : undefined}
+            onChange={(e) => onChange && onChange(e.target.value)}
+            onAnimationStart={(e) => { if (e.animationName === 'autofill-start' && onChange) onChange(e.target.value); }}
+            onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
+            placeholder={placeholder}
+            style={{
+              flex: 1, minWidth: 0, width: '100%', border: 'none', outline: 'none', background: 'transparent',
+              color: 'var(--on-surface)', fontSize: 15, fontFamily: 'var(--font-body)', resize: 'vertical',
+              padding: '14px 0', lineHeight: 1.4,
+            }}
+          />
+          {trailingIcon && (
+            <span onMouseDown={(e) => { e.preventDefault(); onTrailingClick && onTrailingClick(); }}
+              style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', marginLeft: 8, flexShrink: 0 }}>
+              <Icon name={trailingIcon} size={20} style={{ color: 'var(--on-surface-variant)' }} />
+            </span>
+          )}
+        </div>
+        {(helper || error) && (
+          <div style={{ fontSize: 12, color: error ? 'var(--error)' : 'var(--on-surface-variant)', marginTop: 4 }}>{error || helper}</div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={{ ...style }}>
       <div style={{
@@ -203,6 +247,7 @@ export function TextField({ label, value, onChange, type = 'text', icon, trailin
           <Comp
             type={type} value={value} autoFocus={autoFocus} rows={multiline ? rows : undefined}
             onChange={(e) => onChange && onChange(e.target.value)}
+            onAnimationStart={(e) => { if (e.animationName === 'autofill-start' && onChange) onChange(e.target.value); }}
             onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
             placeholder={active ? placeholder : ''}
             style={{

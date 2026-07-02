@@ -212,6 +212,7 @@ function LoginForm({ onLogin, authError, onClearAuthError }) {
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <TextField
+          staticLabel
           label="Nueva contraseña"
           icon="lock"
           type={showNew ? 'text' : 'password'}
@@ -221,6 +222,7 @@ function LoginForm({ onLogin, authError, onClearAuthError }) {
           onTrailingClick={() => setShowNew(!showNew)}
         />
         <TextField
+          staticLabel
           label="Confirmar contraseña"
           icon="lock_open"
           type={showNew2 ? 'text' : 'password'}
@@ -256,6 +258,7 @@ function LoginForm({ onLogin, authError, onClearAuthError }) {
       </p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <TextField
+          staticLabel
           label="Correo electrónico"
           icon="mail"
           type="email"
@@ -305,10 +308,10 @@ function LoginForm({ onLogin, authError, onClearAuthError }) {
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }} onKeyDown={handleKeyDown}>
-        {isReg && <TextField label="Nombre completo" icon="badge" value={name} onChange={setName} />}
-        <TextField label="Correo electrónico" icon="mail" type="email" value={email} onChange={(v) => { setEmail(v); clearError(); }} placeholder="nombre@clinica.mx" />
-        <TextField label="Contraseña" icon="lock" type={showPwd ? 'text' : 'password'} value={pwd} onChange={(v) => { setPwd(v); clearError(); }}
-          trailingIcon={showPwd ? 'visibility_off' : 'visibility'} onTrailingClick={() => setShowPwd(!showPwd)} />
+        {isReg && <TextField staticLabel label="Nombre completo" icon="badge" value={name} onChange={setName} placeholder="Dra. Ana García" />}
+        <TextField staticLabel label="Correo electrónico" icon="mail" type="email" value={email} onChange={(v) => { setEmail(v); clearError(); }} placeholder="nombre@clinica.mx" />
+        <TextField staticLabel label="Contraseña" icon="lock" type={showPwd ? 'text' : 'password'} value={pwd} onChange={(v) => { setPwd(v); clearError(); }}
+          placeholder="••••••••" trailingIcon={showPwd ? 'visibility_off' : 'visibility'} onTrailingClick={() => setShowPwd(!showPwd)} />
 
         {displayError && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 'var(--r-sm)', background: 'var(--error-container)', color: 'var(--on-error-container)', fontSize: 13.5, fontWeight: 500 }}>
