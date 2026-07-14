@@ -30,6 +30,7 @@ interface MedicoDetalleFull {
   cedula_profesional: string;
   universidad: string | null;
   especialidad_id: number | null;
+  universidad_logo_url: string | null;
 }
 
 type TabId = 'personal' | 'clinica' | 'profesional';
@@ -210,6 +211,7 @@ function SaveBtn({ onClick, disabled, children }: { onClick: () => void; disable
 export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void; refreshAccount?: () => Promise<void> | void }) {
   const account  = useAccount();
   const fileRef  = useRef<HTMLInputElement>(null);
+  const uniFileRef = useRef<HTMLInputElement>(null);
   const t        = (msg: string) => toast?.(msg);
 
   const [loading, setLoading]     = useState(true);
@@ -239,6 +241,9 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
   const [cedula,        setCedula]        = useState('');
   const [universidad,   setUniversidad]   = useState('');
   const [especialidadId, setEspecialidadId] = useState('');
+  const [uniLogoUrl,     setUniLogoUrl]     = useState<string | null>(null);
+  const [uniLogoFile,    setUniLogoFile]    = useState<File | null>(null);
+  const [uniLogoPreview, setUniLogoPreview] = useState<string | null>(null);
   // cédulas múltiples (medico_cedulas): id de la default espejada + adicionales
   const [defaultCedulaId, setDefaultCedulaId] = useState<string | null>(null);
   const [extraCedulas,    setExtraCedulas]    = useState<{ id: string | null; cedula: string; especialidad_id: string }[]>([]);
@@ -298,7 +303,7 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
 
       const { data: md } = await supabase
         .from('medico_detalles')
-        .select('prefijo, cedula_profesional, universidad, especialidad_id')
+        .select('prefijo, cedula_profesional, universidad, especialidad_id, universidad_logo_url')
         .eq('profile_id', account.userId)
         .maybeSingle<MedicoDetalleFull>();
       if (md) {
@@ -307,6 +312,7 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
         setCedula(md.cedula_profesional ?? '');
         setUniversidad(md.universidad ?? '');
         setEspecialidadId(md.especialidad_id ? String(md.especialidad_id) : '');
+        setUniLogoUrl(md.universidad_logo_url ?? null);
       }
 
       const { data: esps } = await supabase
@@ -402,14 +408,31 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
     if (!cedula.trim()) { t('La cédula profesional es obligatoria'); return; }
     setSavingM(true);
     try {
+      let universidad_logo_url = uniLogoUrl;
+
+      if (uniLogoFile) {
+        const path = `${account.userId}/universidad-logo`;
+        const { error: upErr } = await supabase.storage
+          .from('logos')
+          .upload(path, uniLogoFile, { upsert: true });
+        if (upErr) throw upErr;
+        const { data: { publicUrl } } = supabase.storage.from('logos').getPublicUrl(path);
+        universidad_logo_url = publicUrl;
+        setUniLogoFile(null);
+        setUniLogoPreview(null);
+      }
+
       const { error } = await supabase.from('medico_detalles').upsert({
         profile_id:         account.userId,
         prefijo:            prefijo.trim() || null,
         cedula_profesional: cedula.trim(),
         universidad:        universidad.trim() || null,
         especialidad_id:    especialidadId ? Number(especialidadId) : null,
+        universidad_logo_url,
       }, { onConflict: 'profile_id' });
       if (error) throw error;
+
+      setUniLogoUrl(universidad_logo_url);
 
       // Mantén la cédula DEFAULT espejada en medico_cedulas (fuente de las cédulas múltiples)
       const defPayload = { cedula: cedula.trim(), especialidad_id: especialidadId ? Number(especialidadId) : null };
@@ -482,9 +505,18 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
     setLogoPreview(URL.createObjectURL(file));
   }
 
+  function onUniLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { t('El archivo supera 2 MB'); return; }
+    setUniLogoFile(file);
+    setUniLogoPreview(URL.createObjectURL(file));
+  }
+
   // ── Derivados ───────────────────────────────────────────────────────────────
 
   const logoDisplay  = logoPreview ?? clinica?.logo_url ?? null;
+  const uniLogoDisplay = uniLogoPreview ?? uniLogoUrl;
   const nombreMostrado = [nombre, apellidoP, apellidoM].filter(Boolean).join(' ') || account.nombreCompleto;
   const rolLabel = account.rol === 'owner' ? 'Propietario' : account.rol === 'medico' ? 'Médico' : 'Asistente';
   const esOwnerOrMedico = account.rol === 'owner' || account.rol === 'medico';
@@ -694,6 +726,27 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
                 Al registrar tu cédula podrás crear consultas y emitir recetas desde esta cuenta.
               </p>
             )}
+
+            {/* Logo de la universidad */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface-container-low)', border: '1px solid var(--outline-variant)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 10, background: 'var(--primary-container)', border: '1.5px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                {uniLogoDisplay
+                  ? <img src={uniLogoDisplay} alt="Logo universidad" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <ISchool s={24} />
+                }
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginBottom: 2 }}>Logo de la universidad</div>
+                <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>PNG / JPG · máx. 2 MB</div>
+              </div>
+              <button
+                onClick={() => uniFileRef.current?.click()}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--surface)', color: 'var(--primary)', fontSize: 12.5, fontWeight: 600, padding: '7px 14px', borderRadius: 8, border: '1.5px solid var(--primary)', cursor: 'pointer' }}
+              >
+                <IUpload />{uniLogoDisplay ? 'Cambiar logo' : 'Subir logo'}
+              </button>
+              <input ref={uniFileRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={onUniLogoChange} />
+            </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '110px 1fr', gap: 16 }}>
               <PField label="Prefijo"              value={prefijo}    onChange={setPrefijo}    placeholder="Dr., Dra.…" />

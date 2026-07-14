@@ -422,7 +422,7 @@ export function Dashboard({ go, openModal, dataVersion = 0 }: { go: (name: strin
             <StatChip icon="calendar_month"  label="Consultas mes" value={consultasMes}   tone="secondary" onClick={() => go('calendar')} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 2fr)', gap: 18 }} className="dash-grid">
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 18 }} className="dash-grid">
             <TimelineAgenda appts={appts} onView={(pid) => go('patient', { id: pid })} />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minWidth: 0 }}>
