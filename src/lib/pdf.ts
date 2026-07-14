@@ -34,6 +34,7 @@ export interface RecetaPdfData {
     cedulaProfesional?: string | null;
     cedulaEspecialidad?: string | null;
     institucion?: string | null;
+    institucionLogoUrl?: string | null;
   };
   clinica: {
     nombre: string;
@@ -148,8 +149,8 @@ export function htmlAInformeBloques(html: string | null): InformePdfBloque[] {
 async function cargarMembrete(clinicaId: string, userId: string, medicoNombre: string) {
   const [{ data: md }, { data: cl }, { data: ceds }] = await Promise.all([
     supabase.from('medico_detalles')
-      .select('prefijo, cedula_profesional, universidad, especialidad_id')
-      .eq('profile_id', userId).maybeSingle<{ prefijo: string | null; cedula_profesional: string | null; universidad: string | null; especialidad_id: number | null }>(),
+      .select('prefijo, cedula_profesional, universidad, especialidad_id, universidad_logo_url')
+      .eq('profile_id', userId).maybeSingle<{ prefijo: string | null; cedula_profesional: string | null; universidad: string | null; especialidad_id: number | null; universidad_logo_url: string | null }>(),
     supabase.from('clinicas')
       .select('nombre, direccion, telefono, correo_contacto, logo_url, plantilla_receta')
       .eq('id', clinicaId).maybeSingle<{ nombre: string | null; direccion: string | null; telefono: string | null; correo_contacto: string | null; logo_url: string | null; plantilla_receta: string | null }>(),
@@ -189,6 +190,7 @@ async function cargarMembrete(clinicaId: string, userId: string, medicoNombre: s
       cedulaProfesional: md?.cedula_profesional ?? null,
       cedulaEspecialidad,
       institucion: md?.universidad ?? null,
+      institucionLogoUrl: md?.universidad_logo_url ?? null,
     },
     clinica: {
       nombre: cl?.nombre ?? 'Consultorio',
