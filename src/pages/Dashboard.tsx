@@ -395,6 +395,21 @@ export function Dashboard({ go, openModal, dataVersion = 0 }: { go: (name: strin
   function prevMonth() { setCalMonth((m) => { if (m === 0) { setCalYear((y) => y - 1); return 11; } return m - 1; }); }
   function nextMonth() { setCalMonth((m) => { if (m === 11) { setCalYear((y) => y + 1); return 0; } return m + 1; }); }
 
+  // Widget de chat GoHighLevel — solo mientras el Dashboard está montado.
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://widgets.leadconnectorhq.com/loader.js';
+    script.setAttribute('data-resources-url', 'https://widgets.leadconnectorhq.com/chat-widget/loader.js');
+    script.setAttribute('data-widget-id', '6a58fdbac40835bdcd770ad3');
+    document.body.appendChild(script);
+
+    return () => {
+      script.remove();
+      document.querySelectorAll('[src*="leadconnectorhq.com"], iframe[src*="leadconnectorhq"]')
+        .forEach((el) => el.remove());
+    };
+  }, []);
+
   const nombre = account.nombreCompleto;
 
   return (
