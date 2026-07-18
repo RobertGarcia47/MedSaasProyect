@@ -81,7 +81,7 @@ export function PatientList({ go, openModal, dataVersion = 0 }: { go: (n: string
           <Icon name="search" size={22} style={{ color: 'var(--on-surface-variant)' }} />
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o CURP…"
             style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--on-surface)', fontSize: 15, fontFamily: 'var(--font-body)' }} />
-          {q && <Icon name="close" size={20} onClick={() => setQ('')} style={{ cursor: 'pointer', color: 'var(--on-surface-variant)' }} />}
+          {q && <Icon name="close" size={20} onClick={() => setQ('')} title="Limpiar búsqueda" style={{ color: 'var(--on-surface-variant)' }} />}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <Chip label="Todos" selected />

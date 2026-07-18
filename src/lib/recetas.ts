@@ -65,12 +65,31 @@ export async function obtenerRecetas(expedienteId: string): Promise<RecetaUI[]> 
   return (data ?? []) as RecetaUI[];
 }
 
-/** Catálogo CIE-10 para el selector de diagnóstico. */
-export async function fetchCie10(): Promise<{ codigo: string; descripcion: string }[]> {
-  const { data, error } = await supabase
-    .from('cie10')
-    .select('codigo, descripcion')
-    .order('codigo');
+export interface Cie10Resultado {
+  codigo: string;
+  descripcion: string;
+  capitulo: string | null;
+  sexo: 'M' | 'F' | null;      // el código solo aplica a ese sexo
+  vigente: boolean;
+  consulta_externa: boolean;
+  asterisco: boolean;           // manifestación: nunca causa básica
+  daga: boolean;                // etiología: no debe ir solo
+}
+
+/**
+ * Busca en el catálogo CIE-10 (14,485 códigos) por código o descripción.
+ *
+ * La búsqueda vive en el servidor (RPC `buscar_cie10`): el catálogo es
+ * demasiado grande para traerlo entero y filtrarlo en memoria — hacerlo así
+ * topaba con el corte de 1000 filas de PostgREST y ocultaba en silencio la
+ * mayor parte del catálogo. Ignora acentos y tolera errores de dedo.
+ */
+export async function buscarCie10(query: string, limit = 20): Promise<Cie10Resultado[]> {
+  if (query.trim().length < 2) return [];
+  const { data, error } = await supabase.rpc('buscar_cie10', {
+    p_query: query,
+    p_limit: limit,
+  });
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []) as Cie10Resultado[];
 }

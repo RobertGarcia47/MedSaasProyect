@@ -85,13 +85,14 @@ export interface PacienteSelect {
   expediente_id: string | null;
   name: string;
   grupo_sanguineo: GrupoSanguineo | null;
+  sexo: SexoEnum | null;
 }
 
 export async function fetchPacientesSelect(clinicaId: string): Promise<PacienteSelect[]> {
-  type Row = { id: string; nombre: string; apellido_paterno: string | null; apellido_materno: string | null; grupo_sanguineo: string | null };
+  type Row = { id: string; nombre: string; apellido_paterno: string | null; apellido_materno: string | null; grupo_sanguineo: string | null; sexo: string | null };
   const { data, error } = await supabase
     .from('pacientes')
-    .select('id, nombre, apellido_paterno, apellido_materno, grupo_sanguineo')
+    .select('id, nombre, apellido_paterno, apellido_materno, grupo_sanguineo, sexo')
     .eq('clinica_id', clinicaId)
     .order('nombre');
   if (error) throw error;
@@ -114,6 +115,7 @@ export async function fetchPacientesSelect(clinicaId: string): Promise<PacienteS
     expediente_id: expByPaciente.get(p.id) ?? null,
     name: nombreCompleto(p.nombre, p.apellido_paterno, p.apellido_materno),
     grupo_sanguineo: (p.grupo_sanguineo ?? null) as GrupoSanguineo | null,
+    sexo: (p.sexo ?? null) as SexoEnum | null,
   }));
 }
 

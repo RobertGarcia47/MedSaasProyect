@@ -1,11 +1,29 @@
 import { useState, useEffect, useCallback } from 'react';
 
 /* ---------- Icon ---------- */
-export function Icon({ name, fill, size = 24, weight, className = '', style = {} }) {
+// `onClick` es opcional: sin él, el icono es decorativo. Con él, se comporta
+// como botón (teclado incluido). Antes la prop no se desestructuraba y se
+// descartaba en silencio, así que las × de "quitar" no hacían nada.
+export function Icon({ name, fill, size = 24, weight, className = '', style = {}, onClick, title, ariaLabel }) {
+  const clickable = typeof onClick === 'function';
   return (
     <span
       className={`ms ${fill ? 'fill' : ''} ${className}`}
-      style={{ fontSize: size, fontVariationSettings: `'FILL' ${fill ? 1 : 0}, 'wght' ${weight || 400}, 'GRAD' 0, 'opsz' ${size}`, ...style }}
+      onClick={onClick}
+      onKeyDown={clickable ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(e); }
+      } : undefined}
+      role={clickable ? 'button' : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      title={title}
+      aria-label={clickable ? (ariaLabel || title || name) : undefined}
+      aria-hidden={clickable ? undefined : true}
+      style={{
+        fontSize: size,
+        fontVariationSettings: `'FILL' ${fill ? 1 : 0}, 'wght' ${weight || 400}, 'GRAD' 0, 'opsz' ${size}`,
+        ...(clickable ? { cursor: 'pointer', userSelect: 'none' } : null),
+        ...style,
+      }}
     >{name}</span>
   );
 }

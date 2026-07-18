@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAccount } from '../context/AccountContext';
 import { fetchPacientesSelect, getOrCreateExpediente, type PacienteSelect } from '../lib/patients';
-import { crearReceta, fetchCie10, type MedicamentoInput } from '../lib/recetas';
+import { crearReceta, type MedicamentoInput } from '../lib/recetas';
+import { Cie10Picker } from '../components/Cie10Picker';
 import { construirRecetaPdf, type RecetaPdfData } from '../lib/pdf';
 import { PdfRecetaModal } from '../components/PdfRecetaModal';
 import { Icon, Button, Card, IconButton } from '../components';
@@ -64,7 +65,7 @@ export function Receta({ go, goBack, toast, patientId }: {
   const [birth, setBirth]         = useState('');
   const [recipeDate, setRecipeDate] = useState(new Date().toISOString().slice(0, 10));
   const [dx, setDx]               = useState('');
-  const [cie10, setCie10]         = useState<{ codigo: string; descripcion: string }[]>([]);
+  const [dxDesc, setDxDesc]       = useState('');
   const [meds, setMeds]           = useState<Med[]>([nuevoMed(1)]);
   const [medsErr, setMedsErr]     = useState(false);
   const [saving, setSaving]       = useState(false);
@@ -77,7 +78,6 @@ export function Receta({ go, goBack, toast, patientId }: {
   useEffect(() => {
     if (!account.clinicaId) return;
     fetchPacientesSelect(account.clinicaId).then(setPacientes).catch((e) => console.error(e));
-    fetchCie10().then(setCie10).catch((e) => console.error(e));
   }, [account.clinicaId]);
   useEffect(() => { if (!pid && pacientes.length) setPid(patientId || pacientes[0].id); }, [pacientes]);
 
@@ -244,11 +244,19 @@ export function Receta({ go, goBack, toast, patientId }: {
 
           {/* Diagnóstico */}
           <RailCard icon="diagnosis" title="Diagnóstico (CIE-10)">
-            <select value={dx} onChange={(e) => { setDx(e.target.value); setDirty(true); }}
-              style={{ width: '100%', border: '1px solid var(--outline-variant)', borderRadius: 12, padding: '12px 14px', background: 'var(--surface)', color: dx ? 'var(--on-surface)' : 'var(--on-surface-variant)', fontSize: 14.5, fontFamily: 'var(--font-body)', cursor: 'pointer', appearance: 'none' }}>
-              <option value="">Sin diagnóstico</option>
-              {cie10.map((c) => <option key={c.codigo} value={c.codigo}>{c.codigo} — {c.descripcion}</option>)}
-            </select>
+            {dx ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--secondary-container)', color: 'var(--on-secondary-container)', borderRadius: 10, padding: '10px 12px' }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--on-primary)', background: 'var(--primary)', padding: '2px 7px', borderRadius: 6, flexShrink: 0 }}>{dx}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500 }}>{dxDesc}</span>
+                <Icon name="close" size={18} onClick={() => { setDx(''); setDxDesc(''); setDirty(true); }}
+                  title="Quitar diagnóstico" style={{ flexShrink: 0 }} />
+              </div>
+            ) : (
+              <Cie10Picker
+                placeholder="Buscar diagnóstico…"
+                onSelect={(c) => { setDx(c.codigo); setDxDesc(c.descripcion); setDirty(true); }}
+                sexoPaciente={paciente?.sexo === 'M' || paciente?.sexo === 'F' ? paciente.sexo : null} />
+            )}
           </RailCard>
 
           {/* Resumen */}

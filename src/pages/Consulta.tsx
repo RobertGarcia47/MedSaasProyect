@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAccount } from '../context/AccountContext';
 import { fetchPacientesSelect, getOrCreateExpediente, actualizarGrupoSanguineo, type PacienteSelect } from '../lib/patients';
 import type { GrupoSanguineo } from '../lib/types';
 import { crearConsulta, obtenerConsultas, type ConsultaDetalleUI } from '../lib/consultas';
 import { obtenerAntecedentes, guardarAntecedentes, ANTECEDENTES_VACIOS, type Antecedentes,
          obtenerAlergias, agregarAlergia, eliminarAlergia, type Alergia } from '../lib/antecedentes';
-import { fetchCie10 } from '../lib/recetas';
+import { Cie10Picker } from '../components/Cie10Picker';
 import { Icon, Button, Card, IconButton, Select } from '../components';
 
 // ── Campo outlined con label flotante (estilo del diseño) ────────────────────────
@@ -41,19 +41,25 @@ function Field({
 }
 
 // ── Tarjeta del rail ──────────────────────────────────────────────────────────
-function RailCard({ icon, title, action, children }: {
-  icon: string; title: string; action?: React.ReactNode; children: React.ReactNode;
+function RailCard({ icon, title, action, defaultOpen = false, children }: {
+  icon: string; title: string; action?: React.ReactNode; defaultOpen?: boolean; children: React.ReactNode;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <Card variant="outlined" style={{ padding: 18, borderRadius: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: open ? 14 : 0 }}>
+        <button onClick={() => setOpen(!open)} aria-expanded={open} style={{
+          display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0,
+          background: 'none', border: 'none', padding: 0, cursor: 'pointer', textAlign: 'left',
+          fontFamily: 'var(--font-body)',
+        }}>
           <Icon name={icon} size={19} style={{ color: 'var(--primary)' }} />
-          <span style={{ fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.3px', color: 'var(--on-surface-variant)' }}>{title}</span>
-        </div>
+          <span style={{ flex: 1, minWidth: 0, fontSize: 13, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.3px', color: 'var(--on-surface-variant)' }}>{title}</span>
+          <Icon name="expand_more" size={20} style={{ color: 'var(--on-surface-variant)', flexShrink: 0, transition: 'transform .2s', transform: open ? 'rotate(180deg)' : 'none' }} />
+        </button>
         {action}
       </div>
-      {children}
+      {open && children}
     </Card>
   );
 }
@@ -108,6 +114,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
 }) {
   const account = useAccount();
   const editorRef = useRef<HTMLDivElement>(null);
+  const dxRef     = useRef<HTMLDivElement>(null);   // destino del contador del encabezado
 
   const [pacientes, setPacientes] = useState<PacienteSelect[]>([]);
   const [pid, setPid]             = useState(patientId || '');
@@ -115,8 +122,6 @@ export function Consulta({ go, goBack, toast, patientId }: {
   const [motivo, setMotivo]       = useState('');
   const [motivoErr, setMotivoErr] = useState(false);
   const [vitales, setVitales]     = useState({ ...VITAL_VACIO });
-  const [dxQuery, setDxQuery]     = useState('');
-  const [cie10, setCie10]         = useState<{ codigo: string; descripcion: string }[]>([]);
   const [diagnosticos, setDx]     = useState<Dx[]>([]);
   const [plantillaOpen, setPlantOpen] = useState(false);
   const [saving, setSaving]       = useState(false);
@@ -139,7 +144,6 @@ export function Consulta({ go, goBack, toast, patientId }: {
   useEffect(() => {
     if (!account.clinicaId) return;
     fetchPacientesSelect(account.clinicaId).then(setPacientes).catch((e) => console.error(e));
-    fetchCie10().then(setCie10).catch((e) => console.error(e));
   }, [account.clinicaId]);
 
   useEffect(() => { if (!pid && pacientes.length) setPid(patientId || pacientes[0].id); }, [pacientes]);
@@ -170,19 +174,10 @@ export function Consulta({ go, goBack, toast, patientId }: {
       .catch((e) => { console.error(e); setAlergias([]); });
   }, [expedienteSel]);
 
-  const dxResults = useMemo(() => {
-    const q = dxQuery.trim().toLowerCase();
-    if (!q) return [];
-    return cie10
-      .filter((c) => c.codigo.toLowerCase().includes(q) || c.descripcion.toLowerCase().includes(q))
-      .filter((c) => !diagnosticos.some((d) => d.code === c.codigo))
-      .slice(0, 6);
-  }, [dxQuery, cie10, diagnosticos]);
-
   const updVital = (k: string, v: string) => { setVitales((p) => ({ ...p, [k]: v })); setDirty(true); };
   const addDx = (c: { codigo: string; descripcion: string }) => {
     setDx((prev) => prev.some((d) => d.code === c.codigo) ? prev : [...prev, { code: c.codigo, label: c.descripcion }]);
-    setDxQuery(''); setDirty(true);
+    setDirty(true);
   };
   const removeDx = (code: string) => setDx((prev) => prev.filter((d) => d.code !== code));
 
@@ -327,6 +322,22 @@ export function Consulta({ go, goBack, toast, patientId }: {
           </div>
         </div>
         <div style={{ flex: 1 }} />
+        {/* Contador de diagnósticos: la tarjeta quedó al final del lienzo, bajo el
+            pliegue, así que aquí queda visible sin scrollear. Al hacer clic, baja. */}
+        <button
+          onClick={() => dxRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+          title={diagnosticos.length === 0
+            ? 'Aún no se ha codificado ningún diagnóstico — ir a la sección'
+            : diagnosticos.map((d, i) => `${d.code} ${d.label}${i === 0 ? ' (principal)' : ''}`).join('\n')}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999,
+            fontSize: 12.5, fontWeight: 600, cursor: 'pointer', border: 'none', fontFamily: 'var(--font-body)',
+            background: diagnosticos.length === 0 ? 'var(--warning-container)' : 'var(--primary-container)',
+            color:      diagnosticos.length === 0 ? 'var(--on-warning-container)' : 'var(--on-primary-container)',
+          }}>
+          <Icon name="diagnosis" size={16} />
+          {diagnosticos.length === 0 ? 'Sin diagnóstico' : `${diagnosticos.length} dx`}
+        </button>
         <span style={{
           display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999,
           fontSize: 12.5, fontWeight: 500,
@@ -345,7 +356,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
         {/* Rail izquierdo */}
         <div style={{ width: 408, flex: 'none', position: 'sticky', top: 96, display: 'flex', flexDirection: 'column', gap: 18 }} className="consulta-rail">
           {/* Paciente */}
-          <RailCard icon="person" title="Paciente">
+          <RailCard icon="person" title="Paciente" defaultOpen>
             <div style={{ position: 'relative' }}>
               <button onClick={() => setPatOpen(!patientOpen)} style={{
                 width: '100%', textAlign: 'left', border: '1px solid var(--outline-variant)', borderRadius: 12,
@@ -401,7 +412,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
           </RailCard>
 
           {/* Historial de consultas previas (acordeón — revisar en caliente) */}
-          <RailCard icon="history" title="Historial de consultas"
+          <RailCard icon="history" title="Historial de consultas" defaultOpen
             action={historial && historial.length > 0
               ? <span style={{ fontSize: 12, fontWeight: 700, padding: '2px 9px', borderRadius: 999, background: 'var(--primary-container)', color: 'var(--on-primary-container)' }}>{historial.length}</span>
               : undefined}>
@@ -534,7 +545,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
                   {alergias.map((a) => (
                     <span key={a.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'var(--error-container)', color: 'var(--on-error-container)', borderRadius: 999, padding: '5px 6px 5px 12px', fontSize: 12.5, fontWeight: 500 }}>
                       {a.alergia}
-                      <Icon name="close" size={15} onClick={() => removeAlergia(a.id)} style={{ cursor: 'pointer' }} />
+                      <Icon name="close" size={15} onClick={() => removeAlergia(a.id)} title={`Quitar alergia ${a.alergia}`} />
                     </span>
                   ))}
                 </div>
@@ -570,40 +581,6 @@ export function Consulta({ go, goBack, toast, patientId }: {
             </div>
           </RailCard>
 
-          {/* Diagnósticos CIE-10 */}
-          <RailCard icon="diagnosis" title="Diagnósticos (CIE-10)">
-            <div style={{ position: 'relative' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--outline-variant)', borderRadius: 12, padding: '10px 14px', background: 'var(--surface)' }}>
-                <Icon name="search" size={20} style={{ color: 'var(--on-surface-variant)' }} />
-                <input value={dxQuery} onChange={(e) => setDxQuery(e.target.value)} placeholder="Buscar por código o descripción…"
-                  style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--on-surface)', fontSize: 14.5, fontFamily: 'var(--font-body)' }} />
-              </div>
-              {dxResults.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 4, background: 'var(--surface-container-high)', borderRadius: 12, boxShadow: 'var(--elev-3)', zIndex: 30, padding: 6 }}>
-                  {dxResults.map((c) => (
-                    <button key={c.codigo} onClick={() => addDx(c)} className="state-layer" style={{
-                      display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', border: 'none',
-                      cursor: 'pointer', padding: '9px 10px', borderRadius: 8, background: 'transparent', position: 'relative',
-                    }}>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--on-primary-container)', background: 'var(--primary-container)', padding: '2px 7px', borderRadius: 6 }}>{c.codigo}</span>
-                      <span style={{ fontSize: 13.5, color: 'var(--on-surface)' }}>{c.descripcion}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-              {diagnosticos.length === 0 && <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>Aún no se han agregado diagnósticos.</div>}
-              {diagnosticos.map((d, i) => (
-                <div key={d.code} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--secondary-container)', color: 'var(--on-secondary-container)', borderRadius: 10, padding: '8px 12px' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--on-primary)', background: 'var(--primary)', padding: '2px 7px', borderRadius: 6 }}>{d.code}</span>
-                  <span style={{ flex: 1, fontSize: 13.5, fontWeight: 500 }}>{d.label}</span>
-                  {i === 0 && <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 7px', borderRadius: 999, background: 'var(--primary)', color: 'var(--on-primary)' }}>PRINCIPAL</span>}
-                  <Icon name="close" size={18} onClick={() => removeDx(d.code)} style={{ cursor: 'pointer' }} />
-                </div>
-              ))}
-            </div>
-          </RailCard>
         </div>
 
         {/* Lienzo */}
@@ -673,6 +650,45 @@ export function Consulta({ go, goBack, toast, patientId }: {
               </div>
             </div>
           </Card>
+
+          {/* Diagnósticos CIE-10 — cierra la nota: se codifica después de explorar
+              y de escribir la impresión diagnóstica (orden de la NOM-004).
+              El div envuelve porque Card no reenvía ref. */}
+          <div ref={dxRef}>
+          <Card variant="outlined" style={{ padding: '20px 22px', borderRadius: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+              <Icon name="diagnosis" size={20} style={{ color: 'var(--primary)' }} />
+              <span className="title-s" style={{ fontSize: 16 }}>Diagnósticos (CIE-10)</span>
+              <span style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>
+                {diagnosticos.length === 0
+                  ? 'El primero que agregues será el principal'
+                  : `${diagnosticos.length} ${diagnosticos.length === 1 ? 'diagnóstico' : 'diagnósticos'}`}
+              </span>
+            </div>
+            <Cie10Picker
+              onSelect={addDx}
+              excluir={diagnosticos.map((d) => d.code)}
+              sexoPaciente={paciente?.sexo === 'M' || paciente?.sexo === 'F' ? paciente.sexo : null} />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+              {diagnosticos.length === 0 && (
+                <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>Aún no se han agregado diagnósticos.</div>
+              )}
+              {diagnosticos.map((d, i) => (
+                <div key={d.code} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--secondary-container)', color: 'var(--on-secondary-container)', borderRadius: 10, padding: '10px 12px' }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--on-primary)', background: 'var(--primary)', padding: '2px 7px', borderRadius: 6, flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{d.code}</span>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 500 }}>{d.label}</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, padding: '2px 8px', borderRadius: 999, flexShrink: 0,
+                    background: i === 0 ? 'var(--primary)' : 'var(--surface-container-highest)',
+                    color:      i === 0 ? 'var(--on-primary)' : 'var(--on-surface-variant)' }}>
+                    {i === 0 ? 'PRINCIPAL' : 'SECUNDARIO'}
+                  </span>
+                  <Icon name="close" size={18} onClick={() => removeDx(d.code)}
+                    title={`Quitar ${d.code}`} style={{ flexShrink: 0 }} />
+                </div>
+              ))}
+            </div>
+          </Card>
+          </div>
         </div>
       </div>
     </div>
