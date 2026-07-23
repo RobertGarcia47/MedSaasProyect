@@ -242,6 +242,8 @@ a { color: inherit; text-decoration: none; }
 .mobile-menu-btn { display: none !important; }
 .mobile-fab { display: none !important; }
 .bottom-nav { display: none !important; }
+.record-actions-more { display: none !important; }
+.patients-card-list { display: none !important; }
 
 /* ---------- editor de nota clínica (contenteditable) ---------- */
 .consulta-editor:empty::before {
@@ -279,11 +281,95 @@ a { color: inherit; text-decoration: none; }
   .login-split { grid-template-columns: 1fr !important; }
   .login-hero { display: none !important; }
   .topnav-items { display: none !important; }
+
+  /* Widget de chat GoHighLevel (Dashboard): la burbuja flotante se posiciona
+     encima del bottom-nav y le tapa "Agenda"/"Pacientes" — confirmado que
+     intercepta los toques. Se oculta solo en móvil; en desktop sigue igual. */
+  chat-widget { display: none !important; }
+
+  /* padding general de página: 32/36/48 desktop desperdicia demasiado en móvil */
+  .page-pad { padding: 20px 20px 36px; }
+
+  /* Consulta/Receta/Informe/Laboratorio: la barra superior sticky no tenía wrap y
+     cortaba el botón Registrar/Emitir/Guardar en pantallas angostas */
+  .clinical-topbar { flex-wrap: wrap; row-gap: 8px; padding: 10px 16px; }
+  .clinical-topbar-spacer { display: none; }
+  .consulta-body { padding: 16px 16px 32px !important; gap: 16px !important; }
+  .consulta-rail { gap: 12px !important; }
+
+  /* Expediente del paciente: en móvil solo quedan visibles "Nueva consulta" + el
+     menú "⋮" con Editar/Agendar/Receta/Informe/Laboratorio (ver record-actions-more) */
+  .record-actions-secondary { display: none !important; }
+  .record-actions-more { display: inline-flex !important; }
+
+  /* Dashboard: accesos rápidos, 4 columnas quedan apretadas en teléfono */
+  .quick-access-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }
 
 @media (max-width: 560px) {
-  .patients-table-head,
-  .patients-row { grid-template-columns: 2fr 1fr !important; }
-  .patients-table-head > *:not(:first-child):not(:last-child),
-  .patients-row > *:not(:first-child):not(:last-child) { display: none; }
+  .page-pad { padding: 16px 16px 32px; }
+
+  /* Pacientes: tabla comprimida → lista de tarjetas (mismos datos, más legible) */
+  .patients-table-view { display: none !important; }
+  .patients-card-list { display: flex !important; }
+
+  /* Modales de alta (paciente/cita/informe rápido) — ancho+padding fijos rompían
+     los formularios de 2-3 columnas; grid-2/grid-3 los colapsa a 1 columna.
+     align-items pasa de center a flex-start: con center, un formulario más alto
+     que la pantalla arranca centrado y el scroll no alcanza a subir lo suficiente
+     para llegar al botón "×" (queda ~250px por encima del viewport, inalcanzable);
+     con flex-start el modal arranca en su borde superior real y sí se puede llegar. */
+  .modal-card-backdrop { padding: 12px; align-items: flex-start !important; }
+  .modal-card { padding: 22px 18px 20px; margin-top: 12px; }
+  .grid-2, .grid-3, .grid-cedula { grid-template-columns: 1fr !important; }
+
+  /* Modal de PDF (receta/informe): pie de 3 botones apilado, con la acción
+     principal (Descargar) arriba, para no cortar el flujo de impresión/descarga */
+  .pdf-modal-footer { flex-direction: column-reverse; align-items: stretch; }
+  .pdf-modal-footer > button { width: 100%; }
+}
+
+/* ---------- impresión: "Panorama de tu práctica" (Dashboard) ----------
+   Ruta barata para el reporte (fase 3, "lo sencillo"): usar el diálogo nativo
+   de imprimir del navegador (permite "Guardar como PDF") en vez de generar un
+   PDF con membrete vía API. Pendiente anotado si más adelante se quiere la
+   versión con membrete: ver MIGRACION_VERCEL_SUPABASE.md. */
+.print-only { display: none; }
+@media print {
+  /* El fondo real de la página (html/body) queda fuera de .practice-stats-print
+     (ver override de variables más abajo) — sin esto, el papel sale con el
+     fondo oscuro si el médico tiene modo oscuro activo. */
+  html, body { background: #ffffff !important; color: #161D1B !important; }
+
+  /* Truco estándar: oculta todo, vuelve a mostrar solo la sección objetivo y
+     su contenido, y la reposiciona en la esquina — así no importa qué más
+     tenga la página (sidebar, calendario, FAB, etc). */
+  body * { visibility: hidden; }
+  .practice-stats-print, .practice-stats-print * { visibility: visible; }
+  .practice-stats-print { position: absolute; left: 0; top: 0; width: 100%; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+
+  /* El widget de chat de GHL vive en su propio Shadow DOM y fuerza su propia
+     visibilidad ahí adentro — "visibility:hidden" heredado no le gana.
+     display:none sobre el host sí, porque el shadow DOM no puede anular el
+     display que le pone el documento por fuera. */
+  chat-widget { display: none !important; }
+
+  /* El tooltip/cursor interno de Recharts normalmente se oculta con opacity,
+     no con visibility — el truco de arriba lo vuelve visible sin querer si
+     quedó una interacción de mouse pendiente. Se oculta explícito. */
+  .recharts-tooltip-wrapper, .recharts-active-dot, .recharts-tooltip-cursor { display: none !important; }
+
+  /* Fuerza colores de tema claro dentro de la sección, sin importar si el
+     usuario tiene modo oscuro activo — en papel siempre debe verse en claro. */
+  .practice-stats-print {
+    --surface: #ffffff; --on-surface: #161D1B;
+    --surface-container-low: #EFF5F2; --surface-container: #E9EFEC;
+    --surface-container-high: #E3EAE7; --surface-container-highest: #DEE4E1;
+    --on-surface-variant: #3F4946; --outline-variant: #BEC9C5;
+    --primary: #006A60; --on-primary: #FFFFFF;
+    --success: #2E6B4F; --error: #BA1A1A; --warning: #8A5A00; --outline: #6F7976;
+    --elev-1: none; --elev-2: none; --elev-3: none;
+  }
 }

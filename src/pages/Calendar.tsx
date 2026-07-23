@@ -8,7 +8,7 @@ import {
   checkConflicto, type ConflictoInfo,
 } from '../lib/citas';
 import { fetchPacientesSelect, type PacienteSelect } from '../lib/patients';
-import { Button, Segmented } from '../components';
+import { Button, Segmented, useIsMobile } from '../components';
 import {
   IH, MONTHS, YEARS_CITA, pad,
   type DateVal, type TimeVal, type ColDef,
@@ -777,7 +777,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
         </Field>
 
         {/* Fecha / Hora / Duración */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.1fr .9fr', gap: 22 }}>
+        <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.1fr .9fr', gap: 22 }}>
           <div>
             <FL>Fecha</FL>
             <PickerTrigger
@@ -882,6 +882,13 @@ export function Calendar({ go, toast, dataVersion = 0 }: {
   const [loading, setLoading] = useState(true);
   const [localV,  setLocalV]  = useState(0);
 
+  // En móvil el toggle de vistas solo ofrece Día/Mes — la vista Semana (7 columnas)
+  // no cabe legible en ~375px. Si el usuario estaba en Semana y la pantalla se
+  // vuelve angosta, cae a Día. Ver nota técnica en MIGRACION_VERCEL_SUPABASE.md
+  // ("vista Semana del calendario en móvil") para reactivarla más adelante.
+  const isMobile = useIsMobile();
+  useEffect(() => { if (isMobile && view === 'semana') setView('dia'); }, [isMobile, view]);
+
   // Modal nueva cita
   const [newModalOpen, setNewModalOpen] = useState(false);
   const [newModalDate, setNewModalDate] = useState<Date | null>(null);
@@ -971,7 +978,10 @@ export function Calendar({ go, toast, dataVersion = 0 }: {
           <Segmented
             value={view}
             onChange={(v: string) => setView(v as CalView)}
-            options={[
+            options={isMobile ? [
+              { value: 'mes', label: 'Mes' },
+              { value: 'dia', label: 'Día' },
+            ] : [
               { value: 'mes',    label: 'Mes'    },
               { value: 'semana', label: 'Semana' },
               { value: 'dia',    label: 'Día'    },

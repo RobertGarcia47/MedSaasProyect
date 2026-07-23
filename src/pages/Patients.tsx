@@ -6,6 +6,7 @@ import { obtenerRecetas, formatFolioReceta, type RecetaUI } from '../lib/recetas
 import { construirRecetaPdfDesdeReceta, construirInformePdfDesdeInforme, type RecetaPdfData, type InformePdfData } from '../lib/pdf';
 import { PdfRecetaModal } from '../components/PdfRecetaModal';
 import { PdfInformeModal } from '../components/PdfInformeModal';
+import { VitalsTrends } from '../components/VitalsTrends';
 import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, TIPO_INFORME_ICON, TIPO_INFORME_COLOR, VISIBILIDAD_ICON, VISIBILIDAD_LABEL, type InformeUI } from '../lib/informes';
 import { obtenerEstudios, urlDescarga, type EstudioUI } from '../lib/laboratorio';
 import { obtenerConsultas, type ConsultaDetalleUI } from '../lib/consultas';
@@ -95,33 +96,61 @@ export function PatientList({ go, openModal, dataVersion = 0 }: { go: (n: string
       ) : list.length === 0 ? (
         <EmptyState icon="group" text={q ? 'Sin resultados para la búsqueda' : 'Sin pacientes registrados aún'} />
       ) : view === 'table' ? (
-        <Card variant="elevated" style={{ overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2.4fr 1fr 1.6fr 1.6fr 48px', padding: '14px 20px', borderBottom: '1px solid var(--outline-variant)', fontSize: 12, fontWeight: 700, color: 'var(--on-surface-variant)', letterSpacing: '.4px' }}>
-            <div>PACIENTE</div><div>EDAD / SEXO</div><div>CONTACTO</div><div>DIAGNÓSTICOS</div><div />
-          </div>
-          {list.map((p) => (
-            <div key={p.id} className="state-layer patients-row" onClick={() => go('patient', { id: p.id })} style={{
-              display: 'grid', gridTemplateColumns: '2.4fr 1fr 1.6fr 1.6fr 48px', alignItems: 'center', padding: '12px 20px',
-              borderBottom: '1px solid var(--outline-variant)', cursor: 'pointer', position: 'relative',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
-                <Avatar initials={p.initials} color={p.color} size={42} />
-                <div style={{ minWidth: 0 }}>
-                  <div className="title-s" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>{p.email ?? '—'}</div>
-                </div>
-              </div>
-              <div className="body-m">{p.age != null ? `${p.age} a` : '—'} · {p.sex ?? '—'}</div>
-              <div className="body-m" style={{ color: 'var(--on-surface-variant)' }}>{p.telefono ?? '—'}</div>
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                {p.conditions.slice(0, 2).map((c) => (
-                  <span key={c} style={{ fontSize: 11.5, fontWeight: 600, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-container-highest)', color: 'var(--on-surface-variant)' }}>{c}</span>
-                ))}
-              </div>
-              <IconButton name="chevron_right" size={36} iconSize={22} />
+        <>
+          {/* Tabla — oculta en móvil (<560px), reemplazada por la lista de tarjetas de abajo */}
+          <Card variant="elevated" className="patients-table-view" style={{ overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2.4fr 1fr 1.6fr 1.6fr 48px', padding: '14px 20px', borderBottom: '1px solid var(--outline-variant)', fontSize: 12, fontWeight: 700, color: 'var(--on-surface-variant)', letterSpacing: '.4px' }}>
+              <div>PACIENTE</div><div>EDAD / SEXO</div><div>CONTACTO</div><div>DIAGNÓSTICOS</div><div />
             </div>
-          ))}
-        </Card>
+            {list.map((p) => (
+              <div key={p.id} className="state-layer patients-row" onClick={() => go('patient', { id: p.id })} style={{
+                display: 'grid', gridTemplateColumns: '2.4fr 1fr 1.6fr 1.6fr 48px', alignItems: 'center', padding: '12px 20px',
+                borderBottom: '1px solid var(--outline-variant)', cursor: 'pointer', position: 'relative',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+                  <Avatar initials={p.initials} color={p.color} size={42} />
+                  <div style={{ minWidth: 0 }}>
+                    <div className="title-s" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>{p.email ?? '—'}</div>
+                  </div>
+                </div>
+                <div className="body-m">{p.age != null ? `${p.age} a` : '—'} · {p.sex ?? '—'}</div>
+                <div className="body-m" style={{ color: 'var(--on-surface-variant)' }}>{p.telefono ?? '—'}</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {p.conditions.slice(0, 2).map((c) => (
+                    <span key={c} style={{ fontSize: 11.5, fontWeight: 600, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-container-highest)', color: 'var(--on-surface-variant)' }}>{c}</span>
+                  ))}
+                </div>
+                <IconButton name="chevron_right" size={36} iconSize={22} />
+              </div>
+            ))}
+          </Card>
+
+          {/* Lista de tarjetas — solo visible en móvil (<560px), misma data que la tabla */}
+          <div className="patients-card-list" style={{ flexDirection: 'column', gap: 10 }}>
+            {list.map((p) => (
+              <Card key={p.id} variant="elevated" onClick={() => go('patient', { id: p.id })} style={{ padding: 16, cursor: 'pointer' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <Avatar initials={p.initials} color={p.color} size={48} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="title-s" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
+                    <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginTop: 2 }}>
+                      {p.age != null ? `${p.age} a` : '—'} · {p.sex ?? '—'}{p.telefono ? ` · ${p.telefono}` : ''}
+                    </div>
+                  </div>
+                  <Icon name="chevron_right" size={22} style={{ color: 'var(--on-surface-variant)', flexShrink: 0 }} />
+                </div>
+                {p.conditions.length > 0 && (
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
+                    {p.conditions.slice(0, 2).map((c) => (
+                      <span key={c} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-container-highest)', color: 'var(--on-surface-variant)' }}>{c}</span>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            ))}
+          </div>
+        </>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
           {list.map((p) => (
@@ -154,6 +183,7 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
   const [loading,   setLoading]   = useState(true);
   const [pac,       setPac]       = useState<PacienteDetalleUI | null>(null);
   const [pacVersion, setPacVersion] = useState(0);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false); // menú "⋮" de acciones secundarias en móvil
 
   // Edit modal
   const [editOpen,   setEditOpen]   = useState(false);
@@ -243,7 +273,7 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
   const expedienteId = pac?.expedienteId ?? null;
   useEffect(() => {
     if (!expedienteId) return;
-    if (tab === 'timeline' && consultasFull === null) {
+    if ((tab === 'timeline' || tab === 'tendencias') && consultasFull === null) {
       setLoadingDoc(true);
       obtenerConsultas(expedienteId).then(setConsultasFull).catch((e) => { console.error(e); setConsultasFull([]); }).finally(() => setLoadingDoc(false));
     }
@@ -265,11 +295,12 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
   useEffect(() => { setConsultasFull(null); setRecetas(null); setInformes(null); setEstudios(null); setOpenConsulta(null); setOpenReceta(null); setOpenInforme(null); }, [dataVersion]);
 
   const tabs = [
-    ['resumen',  'Expediente', 'summarize'],
-    ['timeline', 'Consultas', 'history'],
-    ['recetas',  'Recetas',   'prescriptions'],
-    ['informes', 'Informes',  'description'],
-    ['labs',     'Laboratorio','labs'],
+    ['resumen',    'Expediente',   'summarize'],
+    ['timeline',   'Consultas',    'history'],
+    ['tendencias', 'Tendencias',   'monitoring'],
+    ['recetas',    'Recetas',      'prescriptions'],
+    ['informes',   'Informes',     'description'],
+    ['labs',       'Laboratorio',  'labs'],
   ];
 
   if (loading) return <div className="page-pad"><Spinner /></div>;
@@ -306,27 +337,79 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
               {pac.curp && <span><Icon name="badge" size={16} style={{ verticalAlign: '-3px', marginRight: 4 }} />{pac.curp}</span>}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <Button variant="outlined" icon="edit" onClick={() => {
-              setEditForm({
-                nombre:            pac.nombre_raw,
-                apellido_paterno:  pac.apellido_paterno_raw ?? '',
-                apellido_materno:  pac.apellido_materno_raw ?? '',
-                fecha_nacimiento:  pac.fecha_nacimiento ?? '',
-                sexo:              (pac.sex ?? '') as SexoEnum | '',
-                grupo_sanguineo:   (pac.grupo_sanguineo ?? '') as GrupoSanguineo | '',
-                telefono:          pac.telefono ?? '',
-                email:             pac.email ?? '',
-                curp:              pac.curp ?? '',
-              });
-              setEditError(null);
-              setEditOpen(true);
-            }}>Editar</Button>
-            <Button variant="outlined" icon="event"         onClick={() => openModal('appointment',  { patientId: pac.id })}>Agendar</Button>
-            <Button variant="outlined" icon="prescriptions" onClick={() => go('receta', { patientId: pac.id })}>Receta</Button>
-            <Button variant="outlined" icon="description"   onClick={() => go('informe',     { patientId: pac.id })}>Informe</Button>
-            <Button variant="outlined" icon="labs"          onClick={() => go('laboratorio', { patientId: pac.id })}>Laboratorio</Button>
-            <Button variant="filled"   icon="stethoscope"   onClick={() => go('consulta',    { patientId: pac.id })}>Nueva consulta</Button>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* En móvil solo quedan visibles "Nueva consulta" + el menú "⋮"; en desktop
+                los 6 botones se ven igual que siempre (display:contents no cambia el flex del padre). */}
+            <div className="record-actions-secondary" style={{ display: 'contents' }}>
+              <Button variant="outlined" icon="edit" onClick={() => {
+                setEditForm({
+                  nombre:            pac.nombre_raw,
+                  apellido_paterno:  pac.apellido_paterno_raw ?? '',
+                  apellido_materno:  pac.apellido_materno_raw ?? '',
+                  fecha_nacimiento:  pac.fecha_nacimiento ?? '',
+                  sexo:              (pac.sex ?? '') as SexoEnum | '',
+                  grupo_sanguineo:   (pac.grupo_sanguineo ?? '') as GrupoSanguineo | '',
+                  telefono:          pac.telefono ?? '',
+                  email:             pac.email ?? '',
+                  curp:              pac.curp ?? '',
+                });
+                setEditError(null);
+                setEditOpen(true);
+              }}>Editar</Button>
+              <Button variant="outlined" icon="event"         onClick={() => openModal('appointment',  { patientId: pac.id })}>Agendar</Button>
+              <Button variant="outlined" icon="prescriptions" onClick={() => go('receta', { patientId: pac.id })}>Receta</Button>
+              <Button variant="outlined" icon="description"   onClick={() => go('informe',     { patientId: pac.id })}>Informe</Button>
+              <Button variant="outlined" icon="labs"          onClick={() => go('laboratorio', { patientId: pac.id })}>Laboratorio</Button>
+            </div>
+            <Button variant="filled" icon="stethoscope" onClick={() => go('consulta', { patientId: pac.id })}>Nueva consulta</Button>
+
+            {/* Menú overflow — solo visible en móvil (CSS), agrupa las acciones secundarias */}
+            <div className="record-actions-more" style={{ position: 'relative' }}>
+              <IconButton name="more_vert" tooltip="Más acciones" onClick={() => setActionsMenuOpen((v) => !v)} />
+              {actionsMenuOpen && (
+                <>
+                  {/* Backdrop invisible para cerrar al tocar fuera — NO debe anidar el panel:
+                      al ser position:fixed se vuelve su contenedor de posicionamiento y el
+                      top:'100%' del panel se calcularía contra el viewport, no contra el botón. */}
+                  <div onClick={() => setActionsMenuOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 900 }} />
+                  <div onClick={(e) => e.stopPropagation()} style={{
+                    position: 'absolute', top: '100%', right: 0, marginTop: 6, width: 220, zIndex: 901,
+                    background: 'var(--surface-container-high)', borderRadius: 'var(--r-lg)',
+                    boxShadow: 'var(--elev-3)', padding: 8, animation: 'scaleIn .18s ease', transformOrigin: 'top right',
+                  }}>
+                    {[
+                      ['edit', 'Editar', () => {
+                        setEditForm({
+                          nombre:            pac.nombre_raw,
+                          apellido_paterno:  pac.apellido_paterno_raw ?? '',
+                          apellido_materno:  pac.apellido_materno_raw ?? '',
+                          fecha_nacimiento:  pac.fecha_nacimiento ?? '',
+                          sexo:              (pac.sex ?? '') as SexoEnum | '',
+                          grupo_sanguineo:   (pac.grupo_sanguineo ?? '') as GrupoSanguineo | '',
+                          telefono:          pac.telefono ?? '',
+                          email:             pac.email ?? '',
+                          curp:              pac.curp ?? '',
+                        });
+                        setEditError(null);
+                        setEditOpen(true);
+                      }],
+                      ['event',         'Agendar',     () => openModal('appointment', { patientId: pac.id })],
+                      ['prescriptions', 'Receta',      () => go('receta', { patientId: pac.id })],
+                      ['description',   'Informe',     () => go('informe', { patientId: pac.id })],
+                      ['labs',          'Laboratorio', () => go('laboratorio', { patientId: pac.id })],
+                    ].map(([ic, label, fn]) => (
+                      <button key={label as string} onClick={() => { (fn as () => void)(); setActionsMenuOpen(false); }} className="state-layer" style={{
+                        display: 'flex', alignItems: 'center', gap: 14, width: '100%', height: 44, padding: '0 12px',
+                        border: 'none', background: 'transparent', cursor: 'pointer', borderRadius: 'var(--r-sm)',
+                        color: 'var(--on-surface)', fontFamily: 'var(--font-body)', fontWeight: 500, fontSize: 14, position: 'relative',
+                      }}>
+                        <Icon name={ic as string} size={20} style={{ color: 'var(--on-surface-variant)' }} />{label as string}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
         {pac.alergias.length > 0 && (
@@ -506,6 +589,11 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
             </div>
           )}
         </Card>
+      )}
+
+      {/* Tendencias — mismos datos de obtener_consultas que el tab Consultas, sin llamada propia */}
+      {tab === 'tendencias' && (
+        loadingDoc && consultasFull === null ? <Spinner /> : <VitalsTrends consultas={consultasFull ?? []} />
       )}
 
       {/* Recetas — RPC obtener_recetas */}

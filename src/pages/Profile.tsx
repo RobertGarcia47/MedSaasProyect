@@ -537,6 +537,8 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
     letterSpacing: '0.1px',
     transition: 'color .15s, border-color .15s',
     fontFamily: 'inherit',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   });
 
   if (loading) return (
@@ -623,7 +625,7 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
           </div>
 
           {/* Tab nav */}
-          <div style={{ display: 'flex', borderTop: '1px solid var(--outline-variant)', padding: '0 24px' }}>
+          <div style={{ display: 'flex', borderTop: '1px solid var(--outline-variant)', padding: '0 24px', overflowX: 'auto' }}>
             <button style={tabStyle('personal')}    onClick={() => setActiveTab('personal')}>Datos personales</button>
             <button style={tabStyle('clinica')}     onClick={() => setActiveTab('clinica')}>Mi clínica</button>
             <button style={tabStyle('profesional')} onClick={() => setActiveTab('profesional')}>Perfil profesional</button>
@@ -637,7 +639,7 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
               <IUser c="var(--primary)" s={17} />
               <span style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--on-surface)' }}>Datos personales</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <PField label="Nombre(s)" value={nombre} onChange={setNombre} icon={<IUser c="var(--primary)" />} fullWidth required />
               <PField label="Apellido paterno" value={apellidoP} onChange={setApellidoP} />
               <PField label="Apellido materno"  value={apellidoM} onChange={setApellidoM} />
@@ -681,7 +683,7 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
               <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" style={{ display: 'none' }} onChange={onLogoChange} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <PField label="Nombre de la clínica" value={cNombre} onChange={setCNombre} icon={<IBuilding c="var(--primary)" />} fullWidth required />
               <PField label="Dirección"             value={cDir}    onChange={setCDir}    icon={<IPin />}  fullWidth />
               <PField label="Teléfono"              value={cTel}    onChange={setCTel}    icon={<IPhone />} type="tel" />
@@ -776,7 +778,7 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
                 )}
 
                 {extraCedulas.map((row, idx) => (
-                  <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', gap: 12, alignItems: 'flex-end', marginBottom: 12 }}>
+                  <div key={idx} className="grid-cedula" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 40px', gap: 12, alignItems: 'flex-end', marginBottom: 12 }}>
                     <PField label={`Cédula ${idx + 2}`} value={row.cedula} onChange={v => updateExtra(idx, 'cedula', v)} icon={<IDoc />} />
                     <PSelect label="Especialidad" value={row.especialidad_id} onChange={v => updateExtra(idx, 'especialidad_id', v)} options={espOptions} icon={<IHeartPulse />} />
                     <button onClick={() => removeExtra(idx)} title="Eliminar cédula" style={{ height: 40, width: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--error)', background: 'var(--error-container)', borderRadius: 8, cursor: 'pointer' }}>

@@ -412,3 +412,50 @@ export function SectionHeader({ title, action, onAction, icon }) {
     </div>
   );
 }
+
+/* ---------- useIsMobile ----------
+   Mismo breakpoint (860px) que index.css usa para intercambiar sidebar↔bottom-nav.
+   Para decisiones que no se pueden resolver solo con CSS (ocultar una opción de un
+   toggle controlado por estado, forzar una vista por defecto, etc). */
+export function useIsMobile(breakpoint = 860) {
+  const query = `(max-width: ${breakpoint}px)`;
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia(query).matches);
+  useEffect(() => {
+    const mql = window.matchMedia(query);
+    const onChange = (e) => setIsMobile(e.matches);
+    mql.addEventListener('change', onChange);
+    setIsMobile(mql.matches);
+    return () => mql.removeEventListener('change', onChange);
+  }, [query]);
+  return isMobile;
+}
+
+/* ---------- useThemeColors ----------
+   Resuelve variables CSS (--primary, --error, etc) a su valor computado real.
+   Necesario para librerías como Recharts, que dibujan en <svg> y no siempre
+   resuelven var(--x) de forma confiable en atributos de color. Se recalcula
+   cuando cambia data-theme/data-accent en <html> (el toggle de tema no
+   re-renderiza el árbol de React, así que sin esto las gráficas quedarían
+   con los colores del tema con el que se montaron). */
+const THEME_VAR_NAMES = [
+  '--primary', '--on-primary', '--error', '--tertiary', '--success', '--warning',
+  '--on-surface', '--on-surface-variant', '--outline-variant',
+  '--surface-container-high', '--surface-container-low',
+];
+function readThemeColors() {
+  if (typeof window === 'undefined') return {};
+  const cs = getComputedStyle(document.documentElement);
+  const out = {};
+  for (const name of THEME_VAR_NAMES) out[name.slice(2)] = cs.getPropertyValue(name).trim();
+  return out;
+}
+export function useThemeColors() {
+  const [colors, setColors] = useState(readThemeColors);
+  useEffect(() => {
+    const el = document.documentElement;
+    const obs = new MutationObserver(() => setColors(readThemeColors()));
+    obs.observe(el, { attributes: true, attributeFilter: ['data-theme', 'data-accent'] });
+    return () => obs.disconnect();
+  }, []);
+  return colors;
+}

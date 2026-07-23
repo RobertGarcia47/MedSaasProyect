@@ -201,7 +201,7 @@ export function Informe({ go, goBack, toast, patientId }: {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
       {/* ── Header sticky ─────────────────────────────────────────────────── */}
-      <div style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--surface)', borderBottom: '1px solid var(--outline-variant)', padding: '10px 28px', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="clinical-topbar" style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--surface)', borderBottom: '1px solid var(--outline-variant)', padding: '10px 28px', display: 'flex', alignItems: 'center', gap: 12 }}>
         {goBack && (
           <button onClick={goBack} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container)', color: 'var(--on-surface-variant)', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)', whiteSpace: 'nowrap', flexShrink: 0 }}>
             <Icon name="arrow_back" size={18} />Regresar
@@ -221,7 +221,7 @@ export function Informe({ go, goBack, toast, patientId }: {
             {paciente && <>{' › '}<span>{paciente.name}</span></>}
           </div>
         </div>
-        <div style={{ flex: 1 }} />
+        <div className="clinical-topbar-spacer" style={{ flex: 1 }} />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 999, fontSize: 12.5, fontWeight: 500, background: 'var(--primary-container)', color: 'var(--on-primary-container)', whiteSpace: 'nowrap' }}>
           <Icon name="lock" size={16} />Cifrado
         </span>

@@ -297,7 +297,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* ── Top app bar ── */}
-      <div style={{
+      <div className="clinical-topbar" style={{
         position: 'sticky', top: 0, zIndex: 20, background: 'var(--surface)',
         borderBottom: '1px solid var(--outline-variant)', padding: '10px 28px',
         display: 'flex', alignItems: 'center', gap: 12,
@@ -321,7 +321,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
             {paciente && <>{' › '}<span>{paciente.name}</span></>}
           </div>
         </div>
-        <div style={{ flex: 1 }} />
+        <div className="clinical-topbar-spacer" style={{ flex: 1 }} />
         {/* Contador de diagnósticos: la tarjeta quedó al final del lienzo, bajo el
             pliegue, así que aquí queda visible sin scrollear. Al hacer clic, baja. */}
         <button
@@ -689,6 +689,13 @@ export function Consulta({ go, goBack, toast, patientId }: {
             </div>
           </Card>
           </div>
+
+          {/* Segundo botón de guardado — flujo natural: llenar datos, agregar
+              diagnóstico y registrar sin tener que subir hasta la barra superior.
+              Misma acción que el botón del encabezado; ambos conviven. */}
+          <Button variant="filled" icon="check_circle" onClick={registrar} disabled={saving} full style={{ height: 52 }}>
+            {saving ? 'Registrando…' : 'Registrar consulta'}
+          </Button>
         </div>
       </div>
     </div>

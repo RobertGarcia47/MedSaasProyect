@@ -34,3 +34,5 @@ export const Dialog: any;
 export const Snackbar: any;
 export const Divider: any;
 export const SectionHeader: any;
+export function useIsMobile(breakpoint?: number): boolean;
+export function useThemeColors(): Record<string, string>;

@@ -125,7 +125,7 @@ export function PdfRecetaModal({ open, data, onClose, toast }: {
       </div>
 
       {/* Footer */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, padding: '14px 20px', borderTop: '1px solid var(--outline-variant)' }}>
+      <div className="pdf-modal-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 10, padding: '14px 20px', borderTop: '1px solid var(--outline-variant)' }}>
         <Button variant="text" onClick={onClose}>Cerrar</Button>
         <Button variant="outlined" icon="print" onClick={imprimir} disabled={loading || !!error}>Imprimir</Button>
         <Button variant="filled" icon="download" onClick={descargar} disabled={loading || !!error}>Descargar PDF</Button>

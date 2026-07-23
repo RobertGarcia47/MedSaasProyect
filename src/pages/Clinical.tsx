@@ -321,13 +321,13 @@ export function PickerTrigger({ icon, value, active, placeholder, onClick }: {
 // Outer fixed backdrop + inner card (position:relative for picker overlay)
 export function ModalCard({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
+    <div className="modal-card-backdrop" style={{
       position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
       background: 'var(--scrim)', zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: 28, overflowY: 'auto', animation: 'fadeIn .2s ease',
     }}>
-      <div style={{
+      <div className="modal-card" style={{
         position: 'relative', width: 580, maxWidth: '100%',
         background: 'var(--surface-container-high)', borderRadius: 24,
         boxShadow: '0 30px 70px var(--shadow)',
@@ -610,7 +610,7 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
           </Field>
 
           {/* Fecha / Hora / Duración */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.1fr .9fr', gap: 22 }}>
+          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.1fr .9fr', gap: 22 }}>
             <div>
               <label style={FL}>Fecha</label>
               <PickerTrigger
@@ -719,7 +719,7 @@ export function ReportModal({ open, onClose, prefill, toast, onCreated }: Report
         <div style={{ padding: '8px 24px' }}><PendingNotice icon="group_off" text="No hay pacientes registrados aún." /></div>
       ) : (
         <div style={{ padding: '8px 24px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <Select label="Paciente" icon="person" value={pid} onChange={setPid}
               options={pacientes.map((p) => ({ value: p.id, label: p.name }))} />
             <Select label="Tipo" icon="category" value={tipo} onChange={setTipo}
@@ -829,7 +829,7 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
           </Field>
 
           {/* Apellidos */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
             <Field label="Apellido paterno" icon="person">
               <FocusInput value={apPaterno} onChange={(e) => setApPaterno(e.target.value)} placeholder="Apellido paterno" />
             </Field>
@@ -839,7 +839,7 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
           </div>
 
           {/* Fecha de nacimiento (wheel) + Sexo */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
             <div>
               <label style={FL}>Fecha de nacimiento</label>
               <PickerTrigger
@@ -861,7 +861,7 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
           </div>
 
           {/* Grupo sanguíneo + Teléfono */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
             <Field label="Grupo sanguíneo" icon="water_drop">
               <FocusSelect value={grupo} onChange={(e) => setGrupo(e.target.value)}>
                 <option value="">Sin especificar</option>
@@ -896,7 +896,7 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
           </Field>
 
           {/* Municipio + Estado */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
             <Field label="Municipio / Alcaldía" icon="location_city">
               <FocusInput value={municipio} onChange={(e) => setMunicipio(e.target.value)} placeholder="Ej. Guadalajara" />
             </Field>
@@ -906,7 +906,7 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
           </div>
 
           {/* NSS + RFC */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
             <Field label="NSS (Núm. Seguro Social)" icon="badge">
               <FocusInput value={nss} onChange={(e) => setNss(e.target.value)} placeholder="11 dígitos" maxLength={11} />
             </Field>

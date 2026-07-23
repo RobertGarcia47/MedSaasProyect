@@ -4,6 +4,7 @@ import { countConsultas, type ApptUI } from '../lib/consultas';
 import { fetchCitasDia, fetchCitasMes } from '../lib/citas';
 import { countPacientes } from '../lib/patients';
 import { Icon, Button, Card, Avatar, StatusPill, IconButton } from '../components';
+import { PracticeStats } from '../components/PracticeStats';
 
 // ── Tipo de cita — colores (mismo criterio que TIPO_META de Calendar.tsx, mapeado a variables CSS) ──
 const TYPE_META: Record<ApptUI['type'], { dot: string; bg: string; on: string; label: string }> = {
@@ -284,7 +285,7 @@ function QuickAccessGrid({ openModal, go }: { openModal: (type: string) => void;
   return (
     <Card variant="outlined" style={{ padding: '16px 20px' }}>
       <h3 className="title-m" style={{ marginBottom: 14 }}>Accesos rápidos</h3>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+      <div className="quick-access-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
         {items.map(([ic, label, fn]) => (
           <button key={label} onClick={fn} className="state-layer" style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '14px 8px',
@@ -446,6 +447,8 @@ export function Dashboard({ go, openModal, dataVersion = 0 }: { go: (name: strin
               <WaitingRoom appts={appts} />
             </div>
           </div>
+
+          <PracticeStats clinicaId={clinicaId} />
         </>
       )}
     </div>
