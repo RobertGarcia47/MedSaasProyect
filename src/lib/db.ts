@@ -42,6 +42,13 @@ export interface AccountContext {
   accesoVigente: boolean;
   /** §6.1: owner/médico sin cédula → permitir entrar pero bloquear consulta/receta. */
   puedeEmitirClinico: boolean;
+  /** No todo profesional prescribe (psicólogos, nutriólogos…): toggle propio en
+   *  medico_detalles.puede_prescribir, independiente de tener cédula o no. */
+  puedePrescribir: boolean;
+  /** Mismo patrón que puedePrescribir: no todo profesional toma signos vitales. */
+  usaSignosVitales: boolean;
+  /** Mismo patrón que puedePrescribir: no todo profesional solicita laboratorio. */
+  usaLaboratorio: boolean;
 }
 
 /** Resultado del arranque de sesión: distingue "sin onboarding" de "listo". */
@@ -111,13 +118,24 @@ export async function loadAccountContext(): Promise<AccountLoad | null> {
   //    Defensivo: el nombre exacto de la columna de cédula no está verificado en
   //    código, así que tratamos cualquier 'cedula*' no vacía como válida.
   let puedeEmitirClinico = true;
+  let puedePrescribir = true;
+  let usaSignosVitales = true;
+  let usaLaboratorio = true;
   if (rol === 'owner' || rol === 'medico') {
     const { data: medico } = await supabase
       .from('medico_detalles')
-      .select('cedula_profesional')
+      .select('cedula_profesional, puede_prescribir, usa_signos_vitales, usa_laboratorio')
       .eq('profile_id', user.id)
-      .maybeSingle<{ cedula_profesional: string | null }>();
+      .maybeSingle<{
+        cedula_profesional: string | null;
+        puede_prescribir: boolean | null;
+        usa_signos_vitales: boolean | null;
+        usa_laboratorio: boolean | null;
+      }>();
     puedeEmitirClinico = !!medico?.cedula_profesional;
+    puedePrescribir = puedeEmitirClinico && (medico?.puede_prescribir ?? true);
+    usaSignosVitales = puedeEmitirClinico && (medico?.usa_signos_vitales ?? true);
+    usaLaboratorio = puedeEmitirClinico && (medico?.usa_laboratorio ?? true);
   }
 
   const nombreCompleto = [profile.nombre, profile.apellido_paterno, profile.apellido_materno]
@@ -137,6 +155,9 @@ export async function loadAccountContext(): Promise<AccountLoad | null> {
     suscripcion,
     accesoVigente,
     puedeEmitirClinico,
+    puedePrescribir,
+    usaSignosVitales,
+    usaLaboratorio,
   };
 
   return { state: 'ok', account };

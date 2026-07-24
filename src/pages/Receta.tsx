@@ -73,7 +73,11 @@ export function Receta({ go, goBack, toast, patientId }: {
   const [pdfData, setPdfData]     = useState<RecetaPdfData | null>(null);
   const [pdfOpen, setPdfOpen]     = useState(false);
 
-  const puede = account.puedeEmitirClinico && !!account.clinicaId;
+  const puede = account.puedeEmitirClinico && account.puedePrescribir && !!account.clinicaId;
+  // Distingue el motivo del bloqueo: sin cédula vs. cédula con recetas desactivadas
+  // (psicólogos, nutriólogos…) — cubre navegación directa aunque los botones de
+  // entrada ya estén ocultos en Pacientes/Dashboard.
+  const bloqueadoPorToggle = account.puedeEmitirClinico && !account.puedePrescribir;
 
   useEffect(() => {
     if (!account.clinicaId) return;
@@ -141,9 +145,13 @@ export function Receta({ go, goBack, toast, patientId }: {
       <div className="page-pad" style={{ maxWidth: 640, margin: '40px auto', textAlign: 'center' }}>
         <Card variant="elevated" style={{ padding: '48px 28px' }}>
           <Icon name="badge" size={48} style={{ color: 'var(--primary)', opacity: .6 }} />
-          <h2 className="title-l" style={{ marginTop: 14 }}>Registra tu cédula profesional</h2>
+          <h2 className="title-l" style={{ marginTop: 14 }}>
+            {bloqueadoPorToggle ? 'La emisión de recetas está desactivada' : 'Registra tu cédula profesional'}
+          </h2>
           <p className="body-m" style={{ color: 'var(--on-surface-variant)', margin: '8px auto 18px', maxWidth: 420 }}>
-            Para emitir recetas necesitas estar dado de alta como médico. Captura tu cédula en tu perfil.
+            {bloqueadoPorToggle
+              ? 'Tu perfil profesional tiene desactivada la opción de emitir recetas. Actívala en tu perfil si tu práctica sí incluye prescribir medicamentos.'
+              : 'Para emitir recetas necesitas estar dado de alta como médico. Captura tu cédula en tu perfil.'}
           </p>
           <Button variant="filled" icon="account_circle" onClick={() => go('profile')}>Ir a mi perfil</Button>
         </Card>
@@ -152,6 +160,15 @@ export function Receta({ go, goBack, toast, patientId }: {
   }
 
   const fechaLarga = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  // Consulta/Informe siempre aplican; Receta y Laboratorio respetan los toggles
+  // del perfil profesional (psicología, nutrición…).
+  const docTypes = [
+    { key: 'consulta',    icon: 'stethoscope',    label: 'Consulta' },
+    ...(account.puedePrescribir ? [{ key: 'receta', icon: 'prescriptions', label: 'Receta' }] : []),
+    { key: 'informe',     icon: 'clinical_notes', label: 'Informe' },
+    ...(account.usaLaboratorio ? [{ key: 'laboratorio', icon: 'labs', label: 'Lab' }] : []),
+  ] as const;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -214,13 +231,8 @@ export function Receta({ go, goBack, toast, patientId }: {
               <button onClick={() => pid && go('patient', { id: pid })} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, background: 'var(--surface-container)', color: 'var(--on-surface)', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--font-body)', width: '100%' }}>
                 <Icon name="folder_shared" size={16} style={{ color: 'var(--primary)' }} />Ver expediente completo
               </button>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
-                {([
-                  { key: 'consulta',    icon: 'stethoscope',   label: 'Consulta' },
-                  { key: 'receta',      icon: 'prescriptions', label: 'Receta'   },
-                  { key: 'informe',     icon: 'clinical_notes',label: 'Informe'  },
-                  { key: 'laboratorio', icon: 'labs',           label: 'Lab'     },
-                ] as const).map(({ key, icon, label }) => {
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${docTypes.length}, 1fr)`, gap: 5 }}>
+                {docTypes.map(({ key, icon, label }) => {
                   const active = key === 'receta';
                   return (
                     <button key={key} disabled={active} onClick={() => !active && go(key, { patientId: pid })} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 4px', borderRadius: 10, border: 'none', cursor: active ? 'default' : 'pointer', background: active ? 'var(--primary-container)' : 'var(--surface-container-high)', color: active ? 'var(--on-primary-container)' : 'var(--on-surface-variant)', fontFamily: 'var(--font-body)', fontSize: 10.5, fontWeight: active ? 700 : 500 }}>

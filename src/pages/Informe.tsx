@@ -197,6 +197,15 @@ export function Informe({ go, goBack, toast, patientId }: {
   // El folio real se asigna en la DB al guardar; aquí solo mostramos un indicador visual.
   const folioDisplay = 'Se asignará al guardar';
 
+  // Consulta/Informe siempre aplican; Receta y Laboratorio respetan los toggles
+  // del perfil profesional (psicología, nutrición…).
+  const docTypes = [
+    { key: 'consulta',    icon: 'stethoscope',    label: 'Consulta' },
+    ...(account.puedePrescribir ? [{ key: 'receta', icon: 'prescriptions', label: 'Receta' }] : []),
+    { key: 'informe',     icon: 'clinical_notes', label: 'Informe' },
+    ...(account.usaLaboratorio ? [{ key: 'laboratorio', icon: 'labs', label: 'Lab' }] : []),
+  ] as const;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
@@ -271,13 +280,8 @@ export function Informe({ go, goBack, toast, patientId }: {
                 <button onClick={() => go('patient', { id: pid })} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, background: 'var(--surface-container)', color: 'var(--on-surface)', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--font-body)', width: '100%' }}>
                   <Icon name="folder_shared" size={16} style={{ color: 'var(--primary)' }} />Ver expediente completo
                 </button>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
-                  {([
-                    { key: 'consulta',    icon: 'stethoscope',   label: 'Consulta' },
-                    { key: 'receta',      icon: 'prescriptions', label: 'Receta'   },
-                    { key: 'informe',     icon: 'clinical_notes',label: 'Informe'  },
-                    { key: 'laboratorio', icon: 'labs',           label: 'Lab'     },
-                  ] as const).map(({ key, icon, label }) => {
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${docTypes.length}, 1fr)`, gap: 5 }}>
+                  {docTypes.map(({ key, icon, label }) => {
                     const active = key === 'informe';
                     return (
                       <button key={key} disabled={active} onClick={() => !active && go(key, { patientId: pid })} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 4px', borderRadius: 10, border: 'none', cursor: active ? 'default' : 'pointer', background: active ? 'var(--primary-container)' : 'var(--surface-container-high)', color: active ? 'var(--on-primary-container)' : 'var(--on-surface-variant)', fontFamily: 'var(--font-body)', fontSize: 10.5, fontWeight: active ? 700 : 500 }}>

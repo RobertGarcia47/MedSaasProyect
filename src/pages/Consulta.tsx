@@ -294,6 +294,15 @@ export function Consulta({ go, goBack, toast, patientId }: {
 
   const fechaLarga = new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
+  // Consulta/Informe siempre aplican; Receta y Laboratorio respetan los toggles
+  // del perfil profesional (psicología, nutrición…).
+  const docTypes = [
+    { key: 'consulta',    icon: 'stethoscope',    label: 'Consulta' },
+    ...(account.puedePrescribir ? [{ key: 'receta', icon: 'prescriptions', label: 'Receta' }] : []),
+    { key: 'informe',     icon: 'clinical_notes', label: 'Informe' },
+    ...(account.usaLaboratorio ? [{ key: 'laboratorio', icon: 'labs', label: 'Lab' }] : []),
+  ] as const;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
       {/* ── Top app bar ── */}
@@ -388,13 +397,8 @@ export function Consulta({ go, goBack, toast, patientId }: {
               <button onClick={() => pid && go('patient', { id: pid })} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderRadius: 10, background: 'var(--surface-container)', color: 'var(--on-surface)', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, fontFamily: 'var(--font-body)', width: '100%' }}>
                 <Icon name="folder_shared" size={16} style={{ color: 'var(--primary)' }} />Ver expediente completo
               </button>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 5 }}>
-                {([
-                  { key: 'consulta',    icon: 'stethoscope',  label: 'Consulta' },
-                  { key: 'receta',      icon: 'prescriptions',label: 'Receta'   },
-                  { key: 'informe',     icon: 'clinical_notes',label: 'Informe' },
-                  { key: 'laboratorio', icon: 'labs',          label: 'Lab'     },
-                ] as const).map(({ key, icon, label }) => {
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${docTypes.length}, 1fr)`, gap: 5 }}>
+                {docTypes.map(({ key, icon, label }) => {
                   const active = key === 'consulta';
                   return (
                     <button key={key} disabled={active} onClick={() => !active && go(key, { patientId: pid })} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 4px', borderRadius: 10, border: 'none', cursor: active ? 'default' : 'pointer', background: active ? 'var(--primary-container)' : 'var(--surface-container-high)', color: active ? 'var(--on-primary-container)' : 'var(--on-surface-variant)', fontFamily: 'var(--font-body)', fontSize: 10.5, fontWeight: active ? 700 : 500 }}>
@@ -563,23 +567,25 @@ export function Consulta({ go, goBack, toast, patientId }: {
             )}
           </RailCard>
 
-          {/* Signos vitales */}
-          <RailCard icon="monitor_heart" title="Signos vitales">
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Field label="Peso (kg)"      type="number" value={vitales.peso}    onChange={(v) => updVital('peso', v)} />
-              <Field label="Estatura (cm)"  type="number" value={vitales.talla}   onChange={(v) => updVital('talla', v)} />
-              <Field label="IMC"            value={imc?.value ?? ''} readOnly hint={imc?.hint} hintColor={imc?.color} tint={imc?.color} />
-              <Field label="TA sistólica"   type="number" value={vitales.taSist}  onChange={(v) => updVital('taSist', v)} />
-              <Field label="TA diastólica"  type="number" value={vitales.taDiast} onChange={(v) => updVital('taDiast', v)} />
-              <Field label="FC (lpm)"       type="number" value={vitales.fc}      onChange={(v) => updVital('fc', v)} />
-              <Field label="Temp (°C)"      type="number" value={vitales.temp}    onChange={(v) => updVital('temp', v)} />
-              <Field label="FR (rpm)"       type="number" value={vitales.fr}      onChange={(v) => updVital('fr', v)} />
-              <Field label="SpO₂ (%)"       type="number" value={vitales.spo2}    onChange={(v) => updVital('spo2', v)} />
-              <Field label="Glucosa (mg/dL)" type="number" value={vitales.glucosa} onChange={(v) => updVital('glucosa', v)} />
-              <Field label="Perímetro abd. (cm)" type="number" value={vitales.periAbdo}  onChange={(v) => updVital('periAbdo', v)} />
-              <Field label="Grasa corporal (%)"  type="number" value={vitales.grasaPct}  onChange={(v) => updVital('grasaPct', v)} />
-            </div>
-          </RailCard>
+          {/* Signos vitales — no toda práctica los captura (psicología, etc.) */}
+          {account.usaSignosVitales && (
+            <RailCard icon="monitor_heart" title="Signos vitales">
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <Field label="Peso (kg)"      type="number" value={vitales.peso}    onChange={(v) => updVital('peso', v)} />
+                <Field label="Estatura (cm)"  type="number" value={vitales.talla}   onChange={(v) => updVital('talla', v)} />
+                <Field label="IMC"            value={imc?.value ?? ''} readOnly hint={imc?.hint} hintColor={imc?.color} tint={imc?.color} />
+                <Field label="TA sistólica"   type="number" value={vitales.taSist}  onChange={(v) => updVital('taSist', v)} />
+                <Field label="TA diastólica"  type="number" value={vitales.taDiast} onChange={(v) => updVital('taDiast', v)} />
+                <Field label="FC (lpm)"       type="number" value={vitales.fc}      onChange={(v) => updVital('fc', v)} />
+                <Field label="Temp (°C)"      type="number" value={vitales.temp}    onChange={(v) => updVital('temp', v)} />
+                <Field label="FR (rpm)"       type="number" value={vitales.fr}      onChange={(v) => updVital('fr', v)} />
+                <Field label="SpO₂ (%)"       type="number" value={vitales.spo2}    onChange={(v) => updVital('spo2', v)} />
+                <Field label="Glucosa (mg/dL)" type="number" value={vitales.glucosa} onChange={(v) => updVital('glucosa', v)} />
+                <Field label="Perímetro abd. (cm)" type="number" value={vitales.periAbdo}  onChange={(v) => updVital('periAbdo', v)} />
+                <Field label="Grasa corporal (%)"  type="number" value={vitales.grasaPct}  onChange={(v) => updVital('grasaPct', v)} />
+              </div>
+            </RailCard>
+          )}
 
         </div>
 

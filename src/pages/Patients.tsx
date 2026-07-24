@@ -297,10 +297,13 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
   const tabs = [
     ['resumen',    'Expediente',   'summarize'],
     ['timeline',   'Consultas',    'history'],
-    ['tendencias', 'Tendencias',   'monitoring'],
-    ['recetas',    'Recetas',      'prescriptions'],
+    // Tendencias grafica signos vitales — sin ellos no hay nada que mostrar.
+    ...(account.usaSignosVitales ? [['tendencias', 'Tendencias', 'monitoring']] : []),
+    // Sin toggle "puede prescribir" (psicólogos, nutriólogos…), la pestaña de
+    // recetas ni se muestra — no solo el botón de crear.
+    ...(account.puedePrescribir ? [['recetas', 'Recetas', 'prescriptions']] : []),
     ['informes',   'Informes',     'description'],
-    ['labs',       'Laboratorio',  'labs'],
+    ...(account.usaLaboratorio ? [['labs', 'Laboratorio', 'labs']] : []),
   ];
 
   if (loading) return <div className="page-pad"><Spinner /></div>;
@@ -357,9 +360,13 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
                 setEditOpen(true);
               }}>Editar</Button>
               <Button variant="outlined" icon="event"         onClick={() => openModal('appointment',  { patientId: pac.id })}>Agendar</Button>
-              <Button variant="outlined" icon="prescriptions" onClick={() => go('receta', { patientId: pac.id })}>Receta</Button>
+              {account.puedePrescribir && (
+                <Button variant="outlined" icon="prescriptions" onClick={() => go('receta', { patientId: pac.id })}>Receta</Button>
+              )}
               <Button variant="outlined" icon="description"   onClick={() => go('informe',     { patientId: pac.id })}>Informe</Button>
-              <Button variant="outlined" icon="labs"          onClick={() => go('laboratorio', { patientId: pac.id })}>Laboratorio</Button>
+              {account.usaLaboratorio && (
+                <Button variant="outlined" icon="labs" onClick={() => go('laboratorio', { patientId: pac.id })}>Laboratorio</Button>
+              )}
             </div>
             <Button variant="filled" icon="stethoscope" onClick={() => go('consulta', { patientId: pac.id })}>Nueva consulta</Button>
 
@@ -394,9 +401,9 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
                         setEditOpen(true);
                       }],
                       ['event',         'Agendar',     () => openModal('appointment', { patientId: pac.id })],
-                      ['prescriptions', 'Receta',      () => go('receta', { patientId: pac.id })],
+                      ...(account.puedePrescribir ? [['prescriptions', 'Receta', () => go('receta', { patientId: pac.id })]] : []),
                       ['description',   'Informe',     () => go('informe', { patientId: pac.id })],
-                      ['labs',          'Laboratorio', () => go('laboratorio', { patientId: pac.id })],
+                      ...(account.usaLaboratorio ? [['labs', 'Laboratorio', () => go('laboratorio', { patientId: pac.id })]] : []),
                     ].map(([ic, label, fn]) => (
                       <button key={label as string} onClick={() => { (fn as () => void)(); setActionsMenuOpen(false); }} className="state-layer" style={{
                         display: 'flex', alignItems: 'center', gap: 14, width: '100%', height: 44, padding: '0 12px',
@@ -444,6 +451,7 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
       {tab === 'resumen' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr)', gap: 18 }} className="dash-grid">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minWidth: 0 }}>
+            {account.usaSignosVitales && (
             <Card variant="elevated" style={{ padding: 20 }}>
               <h3 className="title-l" style={{ marginBottom: 16 }}>Signos vitales</h3>
               {v ? (
@@ -470,6 +478,7 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
                 <EmptyState icon="monitor_heart" text="Sin consultas con vitales registrados" />
               )}
             </Card>
+            )}
 
             {pac.diagnosticos.length > 0 && (
               <Card variant="elevated" style={{ padding: 20 }}>
@@ -497,9 +506,13 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
               <h3 className="title-l" style={{ marginBottom: 16 }}>Datos del paciente</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <InfoStat label="Grupo sanguíneo" value={pac.grupo_sanguineo === 'desconocido' ? 'Desconocido' : pac.grupo_sanguineo ?? undefined} />
-                <InfoStat label="IMC" value={v?.imc} sub="kg/m²" />
-                <InfoStat label="Peso" value={v?.peso_kg} sub="kg" />
-                <InfoStat label="Estatura" value={v?.talla_cm} sub="cm" />
+                {account.usaSignosVitales && (
+                  <>
+                    <InfoStat label="IMC" value={v?.imc} sub="kg/m²" />
+                    <InfoStat label="Peso" value={v?.peso_kg} sub="kg" />
+                    <InfoStat label="Estatura" value={v?.talla_cm} sub="cm" />
+                  </>
+                )}
               </div>
               <Divider style={{ margin: '18px 0' }} />
               <InfoStat label="Última consulta" value={v ? new Date(v.fecha).toLocaleDateString('es-MX') : undefined} />

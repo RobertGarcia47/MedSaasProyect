@@ -31,7 +31,26 @@ interface MedicoDetalleFull {
   universidad: string | null;
   especialidad_id: number | null;
   universidad_logo_url: string | null;
+  puede_prescribir: boolean | null;
+  usa_signos_vitales: boolean | null;
+  usa_laboratorio: boolean | null;
+  tipo_profesional: string | null;
 }
+
+// Presets del selector "Tipo de práctica" — pre-llenan los 3 toggles de abajo,
+// pero no los bloquean (siguen editables a mano después de elegir uno).
+// "otro" no aplica preset: deja los switches como estén.
+const PRESETS_PROFESION: Record<string, { prescribir: boolean; vitales: boolean; laboratorio: boolean }> = {
+  medico_general: { prescribir: true,  vitales: true,  laboratorio: true  },
+  psicologo:      { prescribir: false, vitales: false, laboratorio: false },
+  nutriologo:     { prescribir: false, vitales: true,  laboratorio: true  },
+};
+const TIPO_PROFESIONAL_OPTIONS = [
+  { value: 'medico_general', label: 'Médico general' },
+  { value: 'psicologo',      label: 'Psicólogo(a) / psicoterapeuta' },
+  { value: 'nutriologo',     label: 'Nutriólogo(a)' },
+  { value: 'otro',           label: 'Otro (personalizado)' },
+];
 
 type TabId = 'personal' | 'clinica' | 'profesional';
 
@@ -241,6 +260,10 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
   const [cedula,        setCedula]        = useState('');
   const [universidad,   setUniversidad]   = useState('');
   const [especialidadId, setEspecialidadId] = useState('');
+  const [puedePrescribir, setPuedePrescribir] = useState(true);
+  const [usaSignosVitales, setUsaSignosVitales] = useState(true);
+  const [usaLaboratorio, setUsaLaboratorio] = useState(true);
+  const [tipoProfesional, setTipoProfesional] = useState('');
   const [uniLogoUrl,     setUniLogoUrl]     = useState<string | null>(null);
   const [uniLogoFile,    setUniLogoFile]    = useState<File | null>(null);
   const [uniLogoPreview, setUniLogoPreview] = useState<string | null>(null);
@@ -303,7 +326,7 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
 
       const { data: md } = await supabase
         .from('medico_detalles')
-        .select('prefijo, cedula_profesional, universidad, especialidad_id, universidad_logo_url')
+        .select('prefijo, cedula_profesional, universidad, especialidad_id, universidad_logo_url, puede_prescribir, usa_signos_vitales, usa_laboratorio, tipo_profesional')
         .eq('profile_id', account.userId)
         .maybeSingle<MedicoDetalleFull>();
       if (md) {
@@ -313,6 +336,10 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
         setUniversidad(md.universidad ?? '');
         setEspecialidadId(md.especialidad_id ? String(md.especialidad_id) : '');
         setUniLogoUrl(md.universidad_logo_url ?? null);
+        setPuedePrescribir(md.puede_prescribir ?? true);
+        setUsaSignosVitales(md.usa_signos_vitales ?? true);
+        setUsaLaboratorio(md.usa_laboratorio ?? true);
+        setTipoProfesional(md.tipo_profesional ?? '');
       }
 
       const { data: esps } = await supabase
@@ -429,6 +456,10 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
         universidad:        universidad.trim() || null,
         especialidad_id:    especialidadId ? Number(especialidadId) : null,
         universidad_logo_url,
+        puede_prescribir:   puedePrescribir,
+        usa_signos_vitales: usaSignosVitales,
+        usa_laboratorio:    usaLaboratorio,
+        tipo_profesional:   tipoProfesional || null,
       }, { onConflict: 'profile_id' });
       if (error) throw error;
 
@@ -452,6 +483,18 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
       t('Error: ' + (e.message ?? String(e)));
     } finally {
       setSavingM(false);
+    }
+  }
+
+  // Al elegir un tipo de práctica, pre-llena los 3 toggles con su preset — pero
+  // no los bloquea, siguen editables a mano después. "otro" no trae preset.
+  function aplicarPresetProfesion(v: string) {
+    setTipoProfesional(v);
+    const preset = PRESETS_PROFESION[v];
+    if (preset) {
+      setPuedePrescribir(preset.prescribir);
+      setUsaSignosVitales(preset.vitales);
+      setUsaLaboratorio(preset.laboratorio);
     }
   }
 
@@ -755,6 +798,53 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
               <PField label="Cédula profesional"   value={cedula}     onChange={setCedula}     icon={<IDoc />} required />
               <PField label="Universidad / institución" value={universidad} onChange={setUniversidad} icon={<ISchool />} fullWidth />
               <PSelect label="Especialidad" value={especialidadId} onChange={setEspecialidadId} options={espOptions} icon={<IHeartPulse />} fullWidth />
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <PSelect
+                label="Tipo de práctica"
+                value={tipoProfesional}
+                onChange={aplicarPresetProfesion}
+                options={TIPO_PROFESIONAL_OPTIONS}
+                icon={<IUser />}
+              />
+              <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 5 }}>
+                Ajusta los 3 interruptores de abajo a lo que usa esa práctica — los puedes
+                cambiar a mano después, esto solo llena valores iniciales.
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface-container-low)', border: '1px solid var(--outline-variant)', borderRadius: 10, padding: '14px 16px', marginTop: 16 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--on-surface)' }}>Puedo emitir recetas</div>
+                <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 2 }}>
+                  Desactívalo si tu práctica no incluye prescribir medicamentos (psicología, nutrición, etc.) —
+                  se ocultará la opción de Receta en toda la app, aunque tengas cédula registrada.
+                </div>
+              </div>
+              <Switch checked={puedePrescribir} onChange={setPuedePrescribir} />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface-container-low)', border: '1px solid var(--outline-variant)', borderRadius: 10, padding: '14px 16px', marginTop: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--on-surface)' }}>Registro signos vitales</div>
+                <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 2 }}>
+                  Desactívalo si tu práctica no captura peso, presión, temperatura, etc. — se
+                  ocultará la tarjeta de signos vitales en Consulta y Expediente, y la pestaña Tendencias.
+                </div>
+              </div>
+              <Switch checked={usaSignosVitales} onChange={setUsaSignosVitales} />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface-container-low)', border: '1px solid var(--outline-variant)', borderRadius: 10, padding: '14px 16px', marginTop: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--on-surface)' }}>Solicito estudios de laboratorio</div>
+                <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 2 }}>
+                  Desactívalo si tu práctica no incluye laboratorio — se ocultará esa opción en
+                  el expediente.
+                </div>
+              </div>
+              <Switch checked={usaLaboratorio} onChange={setUsaLaboratorio} />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>

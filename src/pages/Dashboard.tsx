@@ -275,11 +275,11 @@ function CalendarBig({ year, month, appts, onPrev, onNext, onPickDay }: {
 }
 
 // ── Accesos rápidos ────────────────────────────────────────────────────────
-function QuickAccessGrid({ openModal, go }: { openModal: (type: string) => void; go: (name: string, params?: any) => void }) {
+function QuickAccessGrid({ openModal, go, puedePrescribir }: { openModal: (type: string) => void; go: (name: string, params?: any) => void; puedePrescribir: boolean }) {
   const items: [string, string, () => void][] = [
     ['person_add',      'Nuevo paciente', () => openModal('patient')],
     ['event_available', 'Agendar cita',   () => openModal('appointment')],
-    ['description',     'Crear receta',   () => go('receta')],
+    ...(puedePrescribir ? [['description', 'Crear receta', () => go('receta')] as [string, string, () => void]] : []),
     ['manage_search',   'Ver expediente', () => go('patients')],
   ];
   return (
@@ -443,7 +443,7 @@ export function Dashboard({ go, openModal, dataVersion = 0 }: { go: (name: strin
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minWidth: 0 }}>
               <CalendarBig year={calYear} month={calMonth} appts={apptsMes} onPrev={prevMonth} onNext={nextMonth} onPickDay={() => go('calendar')} />
-              <QuickAccessGrid openModal={openModal} go={go} />
+              <QuickAccessGrid openModal={openModal} go={go} puedePrescribir={account.puedePrescribir} />
               <WaitingRoom appts={appts} />
             </div>
           </div>
