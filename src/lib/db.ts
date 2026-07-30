@@ -117,10 +117,14 @@ export async function loadAccountContext(): Promise<AccountLoad | null> {
   // 4. Gate de cédula (§6.1): solo aplica a owner/médico.
   //    Defensivo: el nombre exacto de la columna de cédula no está verificado en
   //    código, así que tratamos cualquier 'cedula*' no vacía como válida.
-  let puedeEmitirClinico = true;
-  let puedePrescribir = true;
-  let usaSignosVitales = true;
-  let usaLaboratorio = true;
+  //    Default en false (no en true): un 'asistente' nunca entra al if de abajo,
+  //    así que si el default fuera true se quedaría con acceso clínico completo
+  //    (Consulta/Receta/Informe/Laboratorio) sin haber tenido nunca cédula —
+  //    justo lo opuesto de lo que implica ese rol.
+  let puedeEmitirClinico = false;
+  let puedePrescribir = false;
+  let usaSignosVitales = false;
+  let usaLaboratorio = false;
   if (rol === 'owner' || rol === 'medico') {
     const { data: medico } = await supabase
       .from('medico_detalles')

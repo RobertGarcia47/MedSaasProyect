@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Icon, Button, TextField, Divider } from '../components';
+import { previsualizarInvitacion, aceptarInvitacion, type InvitacionPreview } from '../lib/equipo';
 
 // URL del onboarding (app separada que crea la cuenta + tenant).
 const ONBOARDING_URL = 'https://medsaas-onboarding.vercel.app/';
@@ -84,10 +85,143 @@ function MedicalBackdrop({ children, style = {}, className = '' }) {
   );
 }
 
+/* ---------- Aceptar invitación (alta de asistente/médico adicional) ----------
+   Dos caminos según si Supabase pide confirmar el correo o no:
+   - Sin confirmación: signUp() ya deja sesión activa → se pide el nombre y se
+     acepta la invitación en el mismo paso.
+   - Con confirmación: signUp() no deja sesión; se le pide confirmar el correo
+     y volver a abrir el MISMO link (emailRedirectTo apunta de vuelta aquí) —
+     al volver ya hay sesión activa (onboarding-incompleto) y este componente
+     detecta eso solo y pasa directo al paso de nombre. */
+function InviteAcceptView({ inviteCode, onLogin }: { inviteCode: string; onLogin?: () => void }) {
+  const [preview, setPreview] = useState<InvitacionPreview | null | 'loading' | 'invalid'>('loading');
+  const [autenticado, setAutenticado] = useState(false);
+  const [esperandoConfirmacion, setEsperandoConfirmacion] = useState(false);
+  const [nombre, setNombre] = useState('');
+  const [pwd, setPwd] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const [prev, { data: { session } }] = await Promise.all([
+          previsualizarInvitacion(inviteCode),
+          supabase.auth.getSession(),
+        ]);
+        setPreview(prev ?? 'invalid');
+        setAutenticado(!!session);
+      } catch {
+        setPreview('invalid');
+      }
+    })();
+  }, [inviteCode]);
+
+  const handleCrearCuenta = async () => {
+    if (pwd.length < 8) { setError('La contraseña debe tener al menos 8 caracteres.'); return; }
+    if (preview === 'loading' || preview === 'invalid' || !preview) return;
+    setLoading(true); setError('');
+    try {
+      const { data, error: err } = await supabase.auth.signUp({
+        email: preview.email,
+        password: pwd,
+        options: { emailRedirectTo: `${window.location.origin}/?invite=${inviteCode}` },
+      });
+      if (err) { setError(authErrorMsg(err.message)); return; }
+      if (data.session) setAutenticado(true);
+      else setEsperandoConfirmacion(true);
+    } catch (e: any) {
+      setError(authErrorMsg(e?.message));
+    } finally { setLoading(false); }
+  };
+
+  const handleUnirme = async () => {
+    if (!nombre.trim()) { setError('Ingresa tu nombre completo.'); return; }
+    setLoading(true); setError('');
+    try {
+      await aceptarInvitacion(inviteCode, nombre.trim());
+      onLogin?.();
+    } catch (e: any) {
+      setError(e?.message ?? 'No se pudo completar el registro.');
+    } finally { setLoading(false); }
+  };
+
+  if (preview === 'loading') {
+    return (
+      <div style={{ width: '100%', maxWidth: 380, margin: '0 auto', textAlign: 'center', color: 'var(--on-surface-variant)' }}>
+        Cargando invitación…
+      </div>
+    );
+  }
+
+  if (preview === 'invalid' || !preview) {
+    return (
+      <div style={{ width: '100%', maxWidth: 380, margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--error-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <Icon name="link_off" size={30} fill style={{ color: 'var(--on-error-container)' }} />
+        </div>
+        <h2 className="headline-s" style={{ marginBottom: 10, letterSpacing: '-.3px' }}>Invitación no válida</h2>
+        <p className="body-m" style={{ color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>
+          Este enlace ya venció, se usó, o fue revocado. Pídele a quien te invitó que te mande uno nuevo.
+        </p>
+      </div>
+    );
+  }
+
+  if (esperandoConfirmacion) {
+    return (
+      <div style={{ width: '100%', maxWidth: 380, margin: '0 auto', textAlign: 'center' }}>
+        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <Icon name="mark_email_read" size={30} fill style={{ color: 'var(--on-primary-container)' }} />
+        </div>
+        <h2 className="headline-s" style={{ marginBottom: 10, letterSpacing: '-.3px' }}>Confirma tu correo</h2>
+        <p className="body-m" style={{ color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>
+          Te mandamos un enlace de confirmación a <strong>{preview.email}</strong>. Ábrelo y vuelve a
+          este mismo link de invitación para terminar de unirte a {preview.clinicaNombre}.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ width: '100%', maxWidth: 380, margin: '0 auto' }}>
+      <h1 className="headline-m" style={{ marginBottom: 6, letterSpacing: '-.5px' }}>
+        Te invitaron a {preview.clinicaNombre}
+      </h1>
+      <p className="body-m" style={{ color: 'var(--on-surface-variant)', marginBottom: 26 }}>
+        Te vas a unir como <strong>{preview.rol === 'medico' ? 'Médico' : 'Asistente'}</strong> con el
+        correo <strong>{preview.email}</strong>.
+      </p>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {autenticado ? (
+          <TextField staticLabel label="Nombre completo" icon="badge" value={nombre} onChange={setNombre} placeholder="Dra. Ana García" />
+        ) : (
+          <TextField staticLabel label="Elige una contraseña" icon="lock" type={showPwd ? 'text' : 'password'} value={pwd}
+            onChange={setPwd} placeholder="••••••••" trailingIcon={showPwd ? 'visibility_off' : 'visibility'} onTrailingClick={() => setShowPwd(!showPwd)} />
+        )}
+
+        {error && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', borderRadius: 'var(--r-sm)', background: 'var(--error-container)', color: 'var(--on-error-container)', fontSize: 13.5, fontWeight: 500 }}>
+            <Icon name="error" size={18} fill style={{ flexShrink: 0 }} />{error}
+          </div>
+        )}
+
+        <Button full size="md" onClick={autenticado ? handleUnirme : handleCrearCuenta} disabled={loading} style={{ height: 52, marginTop: 4 }} trailingIcon={loading ? undefined : 'arrow_forward'}>
+          {loading ? 'Un momento…' : autenticado ? 'Unirme a la clínica' : 'Crear cuenta y continuar'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /* ---------- Login form ---------- */
 type LoginView = 'login' | 'forgot' | 'forgot-sent' | 'reset';
 
-function LoginForm({ onLogin, authError, onClearAuthError }) {
+function LoginForm({ onLogin, authError, onClearAuthError, inviteCode }) {
+  if (inviteCode) return <InviteAcceptView inviteCode={inviteCode} onLogin={onLogin} />;
+
   const [tab, setTab]         = useState('login');
   const [view, setView]       = useState<LoginView>('login');
   const [email, setEmail]     = useState('');
@@ -351,7 +485,7 @@ function LoginForm({ onLogin, authError, onClearAuthError }) {
 }
 
 /* ---------- Split variant ---------- */
-function LoginSplit({ onLogin, authError, onClearAuthError }) {
+function LoginSplit({ onLogin, authError, onClearAuthError, inviteCode }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.05fr) minmax(0, 1fr)', height: '100%', minHeight: 0 }} className="login-split">
       <MedicalBackdrop className="login-hero" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '48px 56px' }}>
@@ -376,14 +510,14 @@ function LoginSplit({ onLogin, authError, onClearAuthError }) {
         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)', position: 'relative', zIndex: 1 }}>© 2026 MedSaaS · Clínica Santa Marta</div>
       </MedicalBackdrop>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 32px', background: 'var(--surface)', overflowY: 'auto' }}>
-        <LoginForm onLogin={onLogin} authError={authError} onClearAuthError={onClearAuthError} />
+        <LoginForm onLogin={onLogin} authError={authError} onClearAuthError={onClearAuthError} inviteCode={inviteCode} />
       </div>
     </div>
   );
 }
 
 /* ---------- Centered variant ---------- */
-function LoginCentered({ onLogin, authError, onClearAuthError }) {
+function LoginCentered({ onLogin, authError, onClearAuthError, inviteCode }) {
   return (
     <MedicalBackdrop style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, overflowY: 'auto' }}>
       <div style={{
@@ -392,14 +526,14 @@ function LoginCentered({ onLogin, authError, onClearAuthError }) {
         animation: 'scaleIn .4s cubic-bezier(.2,0,0,1)',
       }}>
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}><BrandMark /></div>
-        <LoginForm onLogin={onLogin} authError={authError} onClearAuthError={onClearAuthError} />
+        <LoginForm onLogin={onLogin} authError={authError} onClearAuthError={onClearAuthError} inviteCode={inviteCode} />
       </div>
     </MedicalBackdrop>
   );
 }
 
 /* ---------- Hero variant ---------- */
-function LoginHero({ onLogin, authError, onClearAuthError }) {
+function LoginHero({ onLogin, authError, onClearAuthError, inviteCode }) {
   return (
     <div style={{ height: '100%', overflowY: 'auto', background: 'var(--surface)' }}>
       <MedicalBackdrop style={{ padding: '36px 32px 64px', borderRadius: '0 0 32px 32px' }}>
@@ -417,7 +551,7 @@ function LoginHero({ onLogin, authError, onClearAuthError }) {
       </MedicalBackdrop>
       <div style={{ padding: '0 24px 40px', marginTop: -36, position: 'relative', zIndex: 2 }}>
         <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-xl)', boxShadow: 'var(--elev-2)', padding: '32px 28px', maxWidth: 440, margin: '0 auto', border: '1px solid var(--outline-variant)' }}>
-          <LoginForm onLogin={onLogin} authError={authError} onClearAuthError={onClearAuthError} />
+          <LoginForm onLogin={onLogin} authError={authError} onClearAuthError={onClearAuthError} inviteCode={inviteCode} />
         </div>
       </div>
     </div>
@@ -425,7 +559,9 @@ function LoginHero({ onLogin, authError, onClearAuthError }) {
 }
 
 /* ---------- Login (exported) ---------- */
-export function Login({ variant = 'split', onLogin, authError, onClearAuthError }) {
+export function Login({ variant = 'split', onLogin, authError, onClearAuthError, inviteCode }: {
+  variant?: string; onLogin?: () => void; authError?: string; onClearAuthError?: () => void; inviteCode?: string | null;
+}) {
   const V = variant === 'centered' ? LoginCentered : variant === 'hero' ? LoginHero : LoginSplit;
-  return <div style={{ height: '100%' }}><V onLogin={onLogin} authError={authError} onClearAuthError={onClearAuthError} /></div>;
+  return <div style={{ height: '100%' }}><V onLogin={onLogin} authError={authError} onClearAuthError={onClearAuthError} inviteCode={inviteCode} /></div>;
 }

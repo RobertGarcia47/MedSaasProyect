@@ -7,6 +7,11 @@ import type { TipoInforme } from '../lib/informes';
 import { Icon, Button, Card, IconButton, Dialog, TextField, Select } from '../components';
 import type { PacienteSelect } from '../lib/patients';
 import type { SexoEnum, GrupoSanguineo } from '../lib/types';
+import { fetchMedicosClinica, fetchMedicosAsignados, type MedicoOption } from '../lib/equipo';
+import {
+  fetchCandidatos, fetchOportunidadesAbiertas, asignarOportunidad, descartarOportunidad,
+  type CandidatoUI, type OportunidadUI,
+} from '../lib/oportunidades';
 
 /* ═══════════════════════════════════════════════════════════
    WHEEL PICKER — iOS-style scroll-snap drum selector
@@ -488,6 +493,300 @@ function usePacientes(open: boolean, clinicaId: string | null) {
   return { pacientes, loading };
 }
 
+/** Médicos con cédula de la clínica — para el picker "¿para qué médico?" que
+ *  necesitan Nuevo paciente/Agendar cita ahora que cualquier miembro activo
+ *  (no solo quien tiene cédula) puede crearlos. Un asistente solo ve el/los
+ *  médico(s) a los que está asignado (medico_asistentes) — la RLS de
+ *  pacientes/citas solo le deja escribir para esos, así que mostrarle el
+ *  resto de la clínica solo generaría un guardado que falla. */
+export function useMedicos(open: boolean, clinicaId: string | null) {
+  const account = useAccount();
+  const [medicos, setMedicos] = useState<MedicoOption[]>([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!open || !clinicaId) return;
+    setLoading(true);
+    const fetcher =
+      account.rol === 'asistente'
+        ? fetchMedicosAsignados(clinicaId, account.userId)
+        : fetchMedicosClinica(clinicaId);
+    fetcher
+      .then(setMedicos)
+      .catch((e) => console.error('fetchMedicos:', e))
+      .finally(() => setLoading(false));
+  }, [open, clinicaId, account.rol, account.userId]);
+  return { medicos, loading };
+}
+
+/* ═══════════════════════════════════════════════════════════
+   OPORTUNIDADES — lista de espera para adelanto de citas
+   ═══════════════════════════════════════════════════════════ */
+
+type OrdenCandidatos = 'beneficio' | 'solicitud';
+
+function sortCandidatos(list: CandidatoUI[], orden: OrdenCandidatos): CandidatoUI[] {
+  const arr = [...list];
+  if (orden === 'beneficio') arr.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+  else arr.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+  return arr;
+}
+
+function fmtFechaHora(iso: string): string {
+  const d = new Date(iso);
+  const fecha = d.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+  const hora = d.toLocaleTimeString('es-MX', { hour: 'numeric', minute: '2-digit' });
+  return `${fecha.charAt(0).toUpperCase()}${fecha.slice(1)} · ${hora}`;
+}
+
+function CandidatoRow({ c, onAsignar, asignando }: { c: CandidatoUI; onAsignar: () => void; asignando: boolean }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 0', borderBottom: '1px solid var(--outline-variant)' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--on-surface)' }}>{c.pacienteName}</div>
+        <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 2 }}>
+          Cita actual: {fmtFechaHora(c.fecha)}{c.telefono ? ` · ${c.telefono}` : ''}
+        </div>
+      </div>
+      <button
+        onClick={onAsignar}
+        disabled={asignando}
+        style={{ flexShrink: 0, padding: '8px 14px', borderRadius: 9, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 12.5, fontWeight: 700, cursor: asignando ? 'not-allowed' : 'pointer', opacity: asignando ? 0.6 : 1, fontFamily: 'inherit' }}
+      >
+        {asignando ? 'Asignando…' : 'Asignar'}
+      </button>
+    </div>
+  );
+}
+
+function OrdenToggle({ orden, setOrden }: { orden: OrdenCandidatos; setOrden: (o: OrdenCandidatos) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+      {(['beneficio', 'solicitud'] as OrdenCandidatos[]).map((o) => (
+        <button
+          key={o}
+          onClick={() => setOrden(o)}
+          style={{ padding: '5px 11px', borderRadius: 999, border: `1px solid ${orden === o ? 'var(--primary)' : 'var(--outline-variant)'}`, background: orden === o ? 'var(--primary-container)' : 'transparent', color: orden === o ? 'var(--on-primary-container)' : 'var(--on-surface-variant)', fontSize: 11.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+        >
+          {o === 'beneficio' ? 'Mayor beneficio' : 'Orden de solicitud'}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export interface OportunidadModalSingle {
+  oportunidadId: string;
+  medicoId: string;
+  fecha: string;       // ISO del hueco liberado
+  duracionMin: number;
+}
+
+/**
+ * Dos modos en un solo componente (mismo contenido central — lista de candidatos, orden,
+ * asignar — solo cambia el alcance):
+ * - `single` presente: una oportunidad puntual, recién creada al cancelar una cita — candidato
+ *   top preseleccionado, con opción de expandir a la lista completa.
+ * - `single` ausente: explorar TODAS las oportunidades abiertas de la clínica (desde el badge
+ *   de Dashboard), cada una expandible a su propia lista de candidatos.
+ */
+export function OportunidadModal({ open, onClose, clinicaId, currentUserId, toast, onResolved, single }: {
+  open: boolean;
+  onClose: () => void;
+  clinicaId: string;
+  currentUserId: string;
+  toast: (m: string) => void;
+  onResolved: () => void;
+  single?: OportunidadModalSingle | null;
+}) {
+  const [loading,   setLoading]   = useState(false);
+  const [orden,     setOrden]     = useState<OrdenCandidatos>('beneficio');
+  const [expandido, setExpandido] = useState(false);
+  const [error,     setError]     = useState('');
+  const [busyId,    setBusyId]    = useState<string | null>(null);
+
+  const [candidatosSingle, setCandidatosSingle] = useState<CandidatoUI[]>([]);
+  const [lista,         setLista]         = useState<OportunidadUI[]>([]);
+  const [abiertaId,     setAbiertaId]     = useState<string | null>(null);
+  const [candidatosPorOp, setCandidatosPorOp] = useState<Record<string, CandidatoUI[]>>({});
+
+  useEffect(() => {
+    if (!open) return;
+    setError(''); setExpandido(false); setOrden('beneficio'); setAbiertaId(null); setCandidatosPorOp({});
+    setLoading(true);
+    if (single) {
+      fetchCandidatos(clinicaId, single.medicoId, single.fecha)
+        .then(setCandidatosSingle)
+        .catch((e: any) => setError(e.message ?? 'Error al cargar candidatos'))
+        .finally(() => setLoading(false));
+    } else {
+      fetchOportunidadesAbiertas(clinicaId)
+        .then(setLista)
+        .catch((e: any) => setError(e.message ?? 'Error al cargar oportunidades'))
+        .finally(() => setLoading(false));
+    }
+  }, [open, single?.oportunidadId, clinicaId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (!open) return null;
+
+  async function handleAsignar(oportunidadId: string, medicoId: string, fecha: string, duracionMin: number, c: CandidatoUI) {
+    setBusyId(c.citaId); setError('');
+    try {
+      await asignarOportunidad(oportunidadId, c.citaId, clinicaId, medicoId, fecha, duracionMin, currentUserId);
+      toast(`Cita reasignada a ${c.pacienteName}`);
+      if (single) {
+        onResolved(); onClose();
+      } else {
+        setLista((l) => l.filter((o) => o.id !== oportunidadId));
+        onResolved();
+      }
+    } catch (e: any) {
+      setError(e.message ?? 'No se pudo asignar');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleDescartar(oportunidadId: string) {
+    setBusyId(oportunidadId); setError('');
+    try {
+      await descartarOportunidad(oportunidadId, currentUserId);
+      toast('Oportunidad descartada');
+      setLista((l) => l.filter((o) => o.id !== oportunidadId));
+      onResolved();
+    } catch (e: any) {
+      setError(e.message ?? 'No se pudo descartar');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function toggleExpandOp(op: OportunidadUI) {
+    if (abiertaId === op.id) { setAbiertaId(null); return; }
+    setAbiertaId(op.id);
+    if (!candidatosPorOp[op.id]) {
+      try {
+        const cs = await fetchCandidatos(clinicaId, op.medicoId, op.fecha);
+        setCandidatosPorOp((m) => ({ ...m, [op.id]: cs }));
+      } catch (e: any) { setError(e.message ?? 'Error al cargar candidatos'); }
+    }
+  }
+
+  // ── Modo "una oportunidad" (post-cancelación) ──────────────────────────────
+  if (single) {
+    const ordenados = sortCandidatos(candidatosSingle, orden);
+    const top  = ordenados[0];
+    const resto = ordenados.slice(1);
+    return (
+      <ModalCard>
+        <CloseBtn onClose={onClose} />
+        <ModalBadge icon="event_available" title="Hueco liberado" subtitle={fmtFechaHora(single.fecha)} />
+        {loading ? (
+          <div style={{ padding: '18px 0', color: 'var(--on-surface-variant)', fontSize: 13.5 }}>Buscando pacientes en espera…</div>
+        ) : !top ? (
+          <div style={{ padding: '18px 0', color: 'var(--on-surface-variant)', fontSize: 13.5 }}>No hay nadie en espera para este horario.</div>
+        ) : (
+          <>
+            <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+              Paciente sugerido
+            </div>
+            <div style={{ background: 'var(--primary-container)', borderRadius: 12, padding: '14px 16px', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--on-primary-container)' }}>{top.pacienteName}</div>
+                  <div style={{ fontSize: 12.5, color: 'var(--on-primary-container)', opacity: 0.85, marginTop: 2 }}>
+                    Cita actual: {fmtFechaHora(top.fecha)}{top.telefono ? ` · ${top.telefono}` : ''}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleAsignar(single.oportunidadId, single.medicoId, single.fecha, single.duracionMin, top)}
+                  disabled={busyId === top.citaId}
+                  style={{ flexShrink: 0, padding: '10px 16px', borderRadius: 10, border: 'none', background: 'var(--primary)', color: 'var(--on-primary)', fontSize: 13, fontWeight: 700, cursor: busyId === top.citaId ? 'not-allowed' : 'pointer', opacity: busyId === top.citaId ? 0.6 : 1, fontFamily: 'inherit' }}
+                >
+                  {busyId === top.citaId ? 'Asignando…' : `Asignar a ${top.pacienteName.split(' ')[0]}`}
+                </button>
+              </div>
+            </div>
+
+            {resto.length > 0 && (
+              <button onClick={() => setExpandido((v) => !v)} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', padding: '0 0 12px', fontFamily: 'inherit' }}>
+                {expandido ? 'Ocultar lista completa' : `Ver lista completa (${resto.length} más)`}
+              </button>
+            )}
+
+            {expandido && (
+              <div>
+                <OrdenToggle orden={orden} setOrden={setOrden} />
+                {resto.map((c) => (
+                  <CandidatoRow
+                    key={c.citaId} c={c} asignando={busyId === c.citaId}
+                    onAsignar={() => handleAsignar(single.oportunidadId, single.medicoId, single.fecha, single.duracionMin, c)}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+        {error && <div style={{ fontSize: 12.5, color: 'var(--on-error-container)', background: 'var(--error-container)', padding: '8px 12px', borderRadius: 8, marginTop: 14 }}>{error}</div>}
+        <ModalFooter>
+          <CancelBtn onClick={onClose} />
+        </ModalFooter>
+      </ModalCard>
+    );
+  }
+
+  // ── Modo "explorar todas" (badge de Dashboard) ─────────────────────────────
+  return (
+    <ModalCard>
+      <CloseBtn onClose={onClose} />
+      <ModalBadge icon="event_available" title="Oportunidades abiertas" subtitle="Huecos liberados con pacientes en espera" />
+      {loading ? (
+        <div style={{ padding: '18px 0', color: 'var(--on-surface-variant)', fontSize: 13.5 }}>Cargando…</div>
+      ) : lista.length === 0 ? (
+        <div style={{ padding: '18px 0', color: 'var(--on-surface-variant)', fontSize: 13.5 }}>No hay oportunidades abiertas.</div>
+      ) : (
+        <div style={{ maxHeight: 420, overflowY: 'auto' }}>
+          {lista.map((op) => (
+            <div key={op.id} style={{ border: '1px solid var(--outline-variant)', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--on-surface)' }}>{op.medicoNombre ?? 'Médico'}</div>
+                  <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 2 }}>Hueco: {fmtFechaHora(op.fecha)}</div>
+                </div>
+                <button onClick={() => toggleExpandOp(op)} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--outline-variant)', background: 'var(--surface)', color: 'var(--on-surface)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
+                  {abiertaId === op.id ? 'Ocultar' : 'Ver candidatos'}
+                </button>
+                <button onClick={() => handleDescartar(op.id)} disabled={busyId === op.id} style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--error)', background: 'transparent', color: 'var(--error)', fontSize: 12, fontWeight: 600, cursor: busyId === op.id ? 'not-allowed' : 'pointer', opacity: busyId === op.id ? 0.5 : 1, fontFamily: 'inherit' }}>
+                  Descartar
+                </button>
+              </div>
+              {abiertaId === op.id && (
+                <div style={{ marginTop: 10, paddingTop: 10, borderTop: '1px solid var(--outline-variant)' }}>
+                  {!candidatosPorOp[op.id] ? (
+                    <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>Cargando…</div>
+                  ) : candidatosPorOp[op.id].length === 0 ? (
+                    <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>Sin candidatos.</div>
+                  ) : (
+                    candidatosPorOp[op.id].map((c) => (
+                      <CandidatoRow
+                        key={c.citaId} c={c} asignando={busyId === c.citaId}
+                        onAsignar={() => handleAsignar(op.id, op.medicoId, op.fecha, op.duracionMin, c)}
+                      />
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+      {error && <div style={{ fontSize: 12.5, color: 'var(--on-error-container)', background: 'var(--error-container)', padding: '8px 12px', borderRadius: 8, marginTop: 14 }}>{error}</div>}
+      <ModalFooter>
+        <CancelBtn onClick={onClose} />
+      </ModalFooter>
+    </ModalCard>
+  );
+}
+
 /* ═══════════════════════════════════════════════════════════
    HUB PAGES: Recetas / Informes
    ═══════════════════════════════════════════════════════════ */
@@ -527,11 +826,13 @@ interface AppointmentModalProps {
 export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: AppointmentModalProps) {
   const account = useAccount();
   const { pacientes } = usePacientes(open, account.clinicaId);
+  const { medicos } = useMedicos(open, account.clinicaId);
 
   const initDate = (): DateVal => { const n = new Date(); return { d: n.getDate(), m: n.getMonth(), y: n.getFullYear() }; };
   const initTime = (): TimeVal => ({ h: 10, min: 0, ap: 'AM' });
 
   const [pid,         setPid]        = useState('');
+  const [medicoId,    setMedicoId]   = useState('');
   const [dateVal,     setDateVal]    = useState<DateVal>(initDate);
   const [timeVal,     setTimeVal]    = useState<TimeVal>(initTime);
   const [dur,         setDur]        = useState('30');
@@ -539,11 +840,17 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
   const [pickerOpen,  setPickerOpen] = useState<null | 'date' | 'time'>(null);
   const [saving,      setSaving]     = useState(false);
 
-  const puede = account.puedeEmitirClinico && !!account.clinicaId;
+  // Cualquier miembro activo puede agendar (no solo quien tiene cédula) — el
+  // picker de "¿para qué médico?" de abajo es lo que mantiene la cita bien
+  // atribuida cuando quien la crea no es médico.
+  const puede = !!account.clinicaId;
 
   useEffect(() => {
     if (open) {
       setPid(prefill?.patientId || '');
+      // Si el propio usuario es médico (aparece en la lista), se autoselecciona;
+      // si no (asistente), se deja vacío y hay que elegir.
+      setMedicoId(account.puedeEmitirClinico ? account.userId : '');
       setDateVal(initDate()); setTimeVal(initTime());
       setDur('30'); setTipo('consulta'); setPickerOpen(null); setSaving(false);
     }
@@ -553,14 +860,19 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
     if (open && !pid && pacientes.length) setPid(pacientes[0].id);
   }, [open, pacientes]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (open && !medicoId && medicos.length === 1) setMedicoId(medicos[0].profileId);
+  }, [open, medicos]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const guardar = async () => {
     if (!pid) { toast?.('Selecciona un paciente'); return; }
+    if (!medicoId) { toast?.('Selecciona a qué médico pertenece la cita'); return; }
     const fecha = dateTimeToISO(dateVal, timeVal);
     if (!fecha) { toast?.('Fecha u hora inválida'); return; }
     setSaving(true);
     try {
       const TIPO_LABELS: Record<string, string> = { consulta: 'Consulta', seguimiento: 'Seguimiento', revision: 'Revisión', urgencia: 'Urgencia' };
-      await createCita(account.clinicaId!, account.userId, {
+      await createCita(account.clinicaId!, medicoId, account.userId, {
         paciente_id: pid, fecha, duracion_min: Number(dur) || 30,
         motivo: encodeMotivoConTipo(tipo, TIPO_LABELS[tipo] ?? tipo),
       });
@@ -596,9 +908,11 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
       <ModalBadge icon="event_available" title="Agendar cita" subtitle="Programa una consulta para un paciente" />
 
       {!puede ? (
-        <PendingNotice text="Para agendar citas necesitas estar registrado como médico (cédula). Captúrala en tu perfil." />
+        <PendingNotice text="No perteneces a ninguna clínica todavía." />
       ) : pacientes.length === 0 ? (
         <PendingNotice icon="group_off" text="No hay pacientes registrados aún. Crea un paciente antes de agendar una cita." />
+      ) : medicos.length === 0 ? (
+        <PendingNotice icon="badge" text="Todavía no hay ningún médico con cédula registrado en la clínica. Se necesita al menos uno para agendar citas." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -608,6 +922,16 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
               {pacientes.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </FocusSelect>
           </Field>
+
+          {/* Médico — solo se muestra si hay más de uno (o si quien agenda no es médico) */}
+          {(medicos.length > 1 || !account.puedeEmitirClinico) && (
+            <Field label="Médico" icon="stethoscope" required>
+              <FocusSelect value={medicoId} onChange={(e) => setMedicoId(e.target.value)}>
+                <option value="" disabled>Selecciona un médico</option>
+                {medicos.map((m) => <option key={m.profileId} value={m.profileId}>{m.nombre}</option>)}
+              </FocusSelect>
+            </Field>
+          )}
 
           {/* Fecha / Hora / Duración */}
           <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.1fr .9fr', gap: 22 }}>
@@ -650,8 +974,8 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
 
       <ModalFooter>
         <CancelBtn onClick={onClose} />
-        {puede && pacientes.length > 0 && (
-          <PrimaryBtn onClick={guardar} disabled={saving || !pid}>
+        {puede && pacientes.length > 0 && medicos.length > 0 && (
+          <PrimaryBtn onClick={guardar} disabled={saving || !pid || !medicoId}>
             {saving ? 'Agendando…' : 'Agendar cita'}
           </PrimaryBtn>
         )}
@@ -752,8 +1076,10 @@ interface PatientModalProps {
 
 export function PatientModal({ open, onClose, toast, onCreated }: PatientModalProps) {
   const account = useAccount();
+  const { medicos } = useMedicos(open, account.clinicaId);
 
   const [nombre,       setNombre]      = useState('');
+  const [medicoId,     setMedicoId]    = useState('');
   const [apPaterno,    setApPaterno]   = useState('');
   const [apMaterno,    setApMaterno]   = useState('');
   const [dateNacVal,   setDateNacVal]  = useState<DateVal>({ d: 1, m: 0, y: 1990 });
@@ -778,16 +1104,27 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
       setSexo(''); setGrupo(''); setTelefono(''); setEmail(''); setCurp('');
       setDomicilio(''); setMunicipio(''); setEstado(''); setNss(''); setRfc('');
       setSaving(false);
+      // Si el propio usuario es médico (aparece en la lista), se autoselecciona
+      // como médico tratante; si no (asistente), se deja vacío y hay que elegir.
+      setMedicoId(account.puedeEmitirClinico ? account.userId : '');
     }
-  }, [open]);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const puede = account.puedeEmitirClinico && !!account.clinicaId;
+  useEffect(() => {
+    if (open && !medicoId && medicos.length === 1) setMedicoId(medicos[0].profileId);
+  }, [open, medicos]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cualquier miembro activo puede dar de alta pacientes (no solo quien tiene
+  // cédula) — el picker de "médico tratante" de abajo mantiene el dato correcto
+  // cuando quien registra no es médico.
+  const puede = !!account.clinicaId;
 
   const guardar = async () => {
     if (!nombre.trim()) { toast?.('El nombre es obligatorio'); return; }
+    if (!medicoId) { toast?.('Selecciona el médico tratante'); return; }
     setSaving(true);
     try {
-      await createPaciente(account.clinicaId!, account.userId, {
+      await createPaciente(account.clinicaId!, medicoId, {
         nombre, apellido_paterno: apPaterno, apellido_materno: apMaterno,
         fecha_nacimiento: dateNacSet ? dateValToISO(dateNacVal) : null,
         sexo: (sexo as SexoEnum) || null,
@@ -819,7 +1156,9 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
       <ModalBadge icon="person_add" title="Nuevo paciente" subtitle="Registra un expediente clínico" />
 
       {!puede ? (
-        <PendingNotice text="Para dar de alta pacientes necesitas estar registrado como médico (cédula). Captúrala en tu perfil para habilitar el alta." />
+        <PendingNotice text="No perteneces a ninguna clínica todavía." />
+      ) : medicos.length === 0 ? (
+        <PendingNotice icon="badge" text="Todavía no hay ningún médico con cédula registrado en la clínica. Se necesita al menos uno para dar de alta pacientes." />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -827,6 +1166,16 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
           <Field label="Nombre(s)" icon="badge" required>
             <FocusInput value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. María Fernanda" />
           </Field>
+
+          {/* Médico tratante — solo se muestra si hay más de uno (o si quien registra no es médico) */}
+          {(medicos.length > 1 || !account.puedeEmitirClinico) && (
+            <Field label="Médico tratante" icon="stethoscope" required>
+              <FocusSelect value={medicoId} onChange={(e) => setMedicoId(e.target.value)}>
+                <option value="" disabled>Selecciona un médico</option>
+                {medicos.map((m) => <option key={m.profileId} value={m.profileId}>{m.nombre}</option>)}
+              </FocusSelect>
+            </Field>
+          )}
 
           {/* Apellidos */}
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
@@ -925,8 +1274,8 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
 
       <ModalFooter>
         <CancelBtn onClick={onClose} />
-        {puede && (
-          <PrimaryBtn onClick={guardar} disabled={saving || !nombre.trim()}>
+        {puede && medicos.length > 0 && (
+          <PrimaryBtn onClick={guardar} disabled={saving || !nombre.trim() || !medicoId}>
             {saving ? 'Guardando…' : 'Crear expediente'}
           </PrimaryBtn>
         )}

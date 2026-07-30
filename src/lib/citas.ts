@@ -63,6 +63,8 @@ type CitaRow = {
   estado: EstadoCita;
   motivo: string | null;
   paciente_id: string;
+  medico_id: string;
+  acepta_adelanto: boolean;
   pacientes: { id: string; nombre: string; apellido_paterno: string | null } | null;
 };
 
@@ -70,7 +72,7 @@ async function queryCitas(clinicaId: string, desde: string, hasta: string): Prom
   const { data, error } = await supabase
     .from('citas')
     .select(`
-      id, fecha, duracion_min, estado, motivo, paciente_id,
+      id, fecha, duracion_min, estado, motivo, paciente_id, medico_id, acepta_adelanto,
       pacientes(id, nombre, apellido_paterno)
     `)
     .eq('clinica_id', clinicaId)
@@ -97,6 +99,8 @@ async function queryCitas(clinicaId: string, desde: string, hasta: string): Prom
       reason: decodeMotivoCita(c.motivo),
       status: ESTADO_TO_STATUS[c.estado] ?? 'pendiente',
       room: 'Consultorio',
+      medicoId: c.medico_id,
+      aceptaAdelanto: c.acepta_adelanto,
     };
   });
 }
@@ -144,11 +148,19 @@ export interface NuevaCita {
   duracion_min?: number;
   motivo?: string | null;
   estado?: EstadoCita;
+  acepta_adelanto?: boolean;
 }
 
+/**
+ * medicoId = a qué médico pertenece la cita (para checkConflicto y la agenda).
+ * createdBy = quién la capturó de verdad — puede ser un asistente sin cédula
+ * agendando a nombre de un médico de la clínica. Antes eran el mismo valor,
+ * lo cual asumía que solo un médico podía crear citas (ya no es el caso).
+ */
 export async function createCita(
   clinicaId: string,
   medicoId: string,
+  createdBy: string,
   input: NuevaCita,
 ): Promise<string> {
   const { data, error } = await supabase
@@ -161,7 +173,8 @@ export async function createCita(
       duracion_min: input.duracion_min ?? 30,
       motivo: input.motivo?.trim() || null,
       estado: input.estado ?? 'programada',
-      created_by: medicoId,
+      acepta_adelanto: input.acepta_adelanto ?? false,
+      created_by: createdBy,
     })
     .select('id')
     .single<{ id: string }>();

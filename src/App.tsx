@@ -304,6 +304,14 @@ export default function App() {
   const [dataVersion, setDataVersion] = useState(0); // se incrementa tras un write para refrescar listas
   const bumpData = () => setDataVersion((v) => v + 1);
 
+  // Invitación de equipo (?invite=<codigo>): se lee una sola vez al montar y se
+  // limpia de la URL para no repetir el flujo en un refresh accidental.
+  const [inviteCode] = useState<string | null>(() => {
+    const code = new URLSearchParams(window.location.search).get('invite');
+    if (code) window.history.replaceState({}, '', window.location.pathname);
+    return code;
+  });
+
   // Tema oscuro/claro y color de acento: aplican al instante (localStorage) y se
   // guardan en `profiles` para que la preferencia siga al usuario entre dispositivos.
   const setTheme = (t: ThemeMode) => {
@@ -327,6 +335,15 @@ export default function App() {
         return;
       }
       if (load.state === 'no-profile' || load.state === 'onboarding-incompleto') {
+        // Excepción: alguien completando una invitación de equipo SÍ tiene sesión
+        // válida pero todavía sin clinica_miembros (onboarding-incompleto es
+        // justamente ese estado intermedio) — no cerrarle la sesión, dejar que
+        // InviteAcceptView (Login.tsx) la use para llamar aceptar_invitacion.
+        if (load.state === 'onboarding-incompleto' && inviteCode) {
+          setAccount(null);
+          setAuthed(false);
+          return;
+        }
         await supabase.auth.signOut();
         setAccount(null);
         setAuthed(false);
@@ -404,7 +421,18 @@ export default function App() {
   }
 
   if (!authed) {
-    return <Login variant="split" onLogin={() => { /* el listener resuelve la sesión */ }} authError={authError} onClearAuthError={() => setAuthError('')} />;
+    // onLogin: el login/registro normal ya se resuelve solo vía onAuthStateChange;
+    // aceptar una invitación (Login.tsx → InviteAcceptView) NO cambia el estado de
+    // auth (es una RPC, no un signIn), así que aquí sí hace falta re-resolver a mano.
+    return (
+      <Login
+        variant="split"
+        onLogin={() => resolveSession()}
+        authError={authError}
+        onClearAuthError={() => setAuthError('')}
+        inviteCode={inviteCode}
+      />
+    );
   }
 
   const doctor = doctorFromAccount(account);
@@ -428,7 +456,7 @@ export default function App() {
     case 'prescriptions':page = <Prescriptions {...pageProps} />; break;
     case 'reports':      page = <Reports      {...pageProps} />; break;
     case 'profile':      page = <Profile      {...pageProps} />; break;
-    case 'settings':     page = <Settings theme={theme} setTheme={setTheme} accent={accent} setAccent={setAccent} onLogout={onLogout} navStyle={navStyle} setNavStyle={setNavStyle} />; break;
+    case 'settings':     page = <Settings theme={theme} setTheme={setTheme} accent={accent} setAccent={setAccent} onLogout={onLogout} navStyle={navStyle} setNavStyle={setNavStyle} toast={toast} />; break;
     default:             page = <Dashboard    {...pageProps} />;
   }
 

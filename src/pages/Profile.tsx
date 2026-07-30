@@ -5,6 +5,11 @@ import { Switch, Select } from '../components';
 import type { Especialidad } from '../lib/types';
 import { PLANTILLAS, type Plantilla } from '../lib/pdf';
 import type { AccentColor, ThemeMode } from '../lib/db';
+import {
+  fetchMiembros, fetchInvitacionesPendientes, crearInvitacion, revocarInvitacion,
+  setMiembroActivo, fetchMedicosClinica, type MiembroUI, type InvitacionUI, type RolInvitacion,
+  type MedicoOption,
+} from '../lib/equipo';
 
 const ACENTOS: { id: AccentColor; nombre: string; desc: string; color: string }[] = [
   { id: 'teal',   nombre: 'Verde clínico', desc: 'Identidad base de MedSaaS',   color: '#006A60' },
@@ -925,7 +930,7 @@ function SectionHead({ icon, title }: { icon: string; title: string }) {
   );
 }
 
-export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyle, setNavStyle }: {
+export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyle, setNavStyle, toast }: {
   theme: ThemeMode;
   setTheme: (t: ThemeMode) => void;
   accent: AccentColor;
@@ -933,12 +938,22 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
   onLogout: () => void;
   navStyle: string;
   setNavStyle: (s: string) => void;
+  toast?: (m: string) => void;
 }) {
   const account = useAccount();
+  const t = (msg: string) => toast?.(msg);
   const [tab,         setTab]         = useState('apariencia');
   const [notif,       setNotif]       = useState(true);
   const [emailNotif,  setEmailNotif]  = useState(true);
   const [twoFa,       setTwoFa]       = useState(false);
+
+  // Cambiar contraseña (estando ya logueado — el flujo de "olvidé mi contraseña"
+  // ya existía en Login.tsx, vía correo; esto es el atajo directo desde Ajustes).
+  const [pwdActual,   setPwdActual]   = useState('');
+  const [pwdNueva,    setPwdNueva]    = useState('');
+  const [pwdConfirma, setPwdConfirma] = useState('');
+  const [pwdCambiando, setPwdCambiando] = useState(false);
+  const [pwdMsg,      setPwdMsg]      = useState<{ ok: boolean; texto: string } | null>(null);
   const [lang,        setLang]        = useState('Español');
   const [logoutHover, setLogoutHover] = useState(false);
 
@@ -966,9 +981,117 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
     else { setPlantillaMsg('Guardado'); setTimeout(() => setPlantillaMsg(null), 2000); }
   };
 
+  // ── Equipo (invitar/dar de baja asistentes y médicos adicionales) ───────────
+  const [miembros,       setMiembros]       = useState<MiembroUI[]>([]);
+  const [invitaciones,   setInvitaciones]   = useState<InvitacionUI[]>([]);
+  const [loadingEquipo,  setLoadingEquipo]  = useState(false);
+  const [inviteEmail,    setInviteEmail]    = useState('');
+  const [inviteRol,      setInviteRol]      = useState<RolInvitacion>('asistente');
+  const [inviteMedicoId, setInviteMedicoId] = useState('');
+  const [medicosClinica, setMedicosClinica] = useState<MedicoOption[]>([]);
+  const [invitando,      setInvitando]      = useState(false);
+  const [inviteErr,      setInviteErr]      = useState<string | null>(null);
+  const [ultimoLink,     setUltimoLink]     = useState<string | null>(null);
+  const [linkCopiado,    setLinkCopiado]    = useState(false);
+  const [equipoBusyId,   setEquipoBusyId]   = useState<string | null>(null);
+
+  const cargarEquipo = async () => {
+    if (!account.clinicaId) return;
+    setLoadingEquipo(true);
+    try {
+      const [m, i, meds] = await Promise.all([
+        fetchMiembros(account.clinicaId),
+        fetchInvitacionesPendientes(account.clinicaId),
+        fetchMedicosClinica(account.clinicaId),
+      ]);
+      setMiembros(m);
+      setInvitaciones(i);
+      setMedicosClinica(meds);
+    } catch (e: any) {
+      t('Error al cargar el equipo: ' + (e.message ?? String(e)));
+    } finally {
+      setLoadingEquipo(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 'equipo' && esEditor) cargarEquipo();
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const enlaceInvitacion = (codigo: string) => `${window.location.origin}/?invite=${codigo}`;
+
+  const handleInvitar = async () => {
+    if (!account.clinicaId) return;
+    const email = inviteEmail.trim();
+    if (!email || !email.includes('@')) { setInviteErr('Correo inválido'); return; }
+    if (inviteRol === 'asistente' && !inviteMedicoId) { setInviteErr('Elige a qué médico queda asignado el asistente'); return; }
+    setInvitando(true);
+    setInviteErr(null);
+    try {
+      const codigo = await crearInvitacion(account.clinicaId, inviteRol, email, inviteRol === 'asistente' ? inviteMedicoId : null);
+      setUltimoLink(enlaceInvitacion(codigo));
+      setLinkCopiado(false);
+      setInviteEmail('');
+      setInviteMedicoId('');
+      await cargarEquipo();
+    } catch (e: any) {
+      setInviteErr(e.message ?? String(e));
+    } finally {
+      setInvitando(false);
+    }
+  };
+
+  const handleCopiarLink = async () => {
+    if (!ultimoLink) return;
+    await navigator.clipboard.writeText(ultimoLink);
+    setLinkCopiado(true);
+    setTimeout(() => setLinkCopiado(false), 2000);
+  };
+
+  const handleRevocar = async (id: string) => {
+    setEquipoBusyId(id);
+    try { await revocarInvitacion(id); await cargarEquipo(); }
+    catch (e: any) { t('Error: ' + (e.message ?? String(e))); }
+    finally { setEquipoBusyId(null); }
+  };
+
+  const handleToggleActivo = async (profileId: string, activoActual: boolean) => {
+    if (!account.clinicaId) return;
+    setEquipoBusyId(profileId);
+    try { await setMiembroActivo(account.clinicaId, profileId, !activoActual); await cargarEquipo(); }
+    catch (e: any) { t('Error: ' + (e.message ?? String(e))); }
+    finally { setEquipoBusyId(null); }
+  };
+
+  const handleCambiarPassword = async () => {
+    setPwdMsg(null);
+    if (!pwdActual) { setPwdMsg({ ok: false, texto: 'Ingresa tu contraseña actual.' }); return; }
+    if (pwdNueva.length < 8) { setPwdMsg({ ok: false, texto: 'La nueva contraseña debe tener al menos 8 caracteres.' }); return; }
+    if (pwdNueva !== pwdConfirma) { setPwdMsg({ ok: false, texto: 'La confirmación no coincide.' }); return; }
+    setPwdCambiando(true);
+    try {
+      // Reverifica la contraseña actual antes de cambiarla — supabase.auth.updateUser()
+      // no lo exige por sí solo (basta con tener sesión activa), así que sin este paso
+      // cualquiera con la sesión abierta (ej. equipo compartido) podría tomarla.
+      const { error: verifyErr } = await supabase.auth.signInWithPassword({ email: account.email, password: pwdActual });
+      if (verifyErr) { setPwdMsg({ ok: false, texto: 'La contraseña actual no es correcta.' }); return; }
+
+      const { error } = await supabase.auth.updateUser({ password: pwdNueva });
+      if (error) throw error;
+
+      setPwdMsg({ ok: true, texto: 'Contraseña actualizada.' });
+      setPwdActual(''); setPwdNueva(''); setPwdConfirma('');
+    } catch (e: any) {
+      setPwdMsg({ ok: false, texto: 'Error: ' + (e.message ?? String(e)) });
+    } finally {
+      setPwdCambiando(false);
+    }
+  };
+
   const TABS = [
     { key: 'apariencia', label: 'Apariencia',             icon: 'palette' },
     { key: 'recetas',    label: 'Recetas',                icon: 'prescriptions' },
+    { key: 'equipo',     label: 'Equipo',                 icon: 'group' },
     { key: 'notif',      label: 'Notificaciones',         icon: 'notifications' },
     { key: 'seguridad',  label: 'Seguridad y privacidad', icon: 'security' },
     { key: 'cuenta',     label: 'Cuenta',                 icon: 'manage_accounts' },
@@ -1106,6 +1229,135 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
             </>
           )}
 
+          {tab === 'equipo' && (
+            <>
+              <SectionHead icon="group" title="Equipo" />
+              {!esEditor ? (
+                <p className="body-m" style={{ color: 'var(--on-surface-variant)' }}>
+                  Solo el propietario de la clínica puede gestionar el equipo.
+                </p>
+              ) : (
+                <>
+                  <p className="body-m" style={{ color: 'var(--on-surface-variant)', margin: '-6px 0 18px', fontSize: 13.5 }}>
+                    Invita a un asistente o a otro médico. Te va a dar un link para que se lo mandes
+                    tú mismo (WhatsApp, correo, etc.) — la app no lo envía por su cuenta.
+                  </p>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: inviteRol === 'asistente' ? '1fr 130px 1fr auto' : '1fr 150px auto', gap: 10, alignItems: 'flex-end', marginBottom: 8 }}>
+                    <PField label="Correo del invitado" value={inviteEmail} onChange={setInviteEmail} icon={<IMail />} placeholder="correo@ejemplo.com" />
+                    <PSelect
+                      label="Rol"
+                      value={inviteRol}
+                      onChange={(v) => setInviteRol(v as RolInvitacion)}
+                      options={[{ value: 'asistente', label: 'Asistente' }, { value: 'medico', label: 'Médico' }]}
+                    />
+                    {inviteRol === 'asistente' && (
+                      <PSelect
+                        label="Asignado a"
+                        value={inviteMedicoId}
+                        onChange={setInviteMedicoId}
+                        options={[
+                          { value: '', label: medicosClinica.length ? 'Elige un médico…' : 'Sin médicos con cédula' },
+                          ...medicosClinica.map((m) => ({ value: m.profileId, label: m.nombre })),
+                        ]}
+                      />
+                    )}
+                    <SaveBtn onClick={handleInvitar} disabled={invitando || !inviteEmail.trim() || (inviteRol === 'asistente' && !inviteMedicoId)}>
+                      <IPlus c="var(--on-primary)" />{invitando ? 'Invitando…' : 'Invitar'}
+                    </SaveBtn>
+                  </div>
+                  {inviteRol === 'asistente' && (
+                    <p style={{ color: 'var(--on-surface-variant)', fontSize: 12, margin: '-2px 0 8px' }}>
+                      El asistente solo podrá crear/ver pacientes y citas de este médico.
+                    </p>
+                  )}
+                  {inviteErr && <div style={{ color: 'var(--error)', fontSize: 12.5, marginBottom: 12 }}>{inviteErr}</div>}
+
+                  {ultimoLink && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--primary-container)', color: 'var(--on-primary-container)', borderRadius: 10, padding: '12px 14px', marginBottom: 24 }}>
+                      <span className="ms" style={{ fontSize: 20, flexShrink: 0 }}>link</span>
+                      <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, wordBreak: 'break-all' }}>{ultimoLink}</div>
+                      <button
+                        onClick={handleCopiarLink}
+                        style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 5, background: 'var(--surface)', color: 'var(--primary)', fontSize: 12.5, fontWeight: 600, padding: '7px 12px', borderRadius: 8, border: 'none', cursor: 'pointer' }}
+                      >
+                        <span className="ms" style={{ fontSize: 16 }}>{linkCopiado ? 'check' : 'content_copy'}</span>
+                        {linkCopiado ? 'Copiado' : 'Copiar'}
+                      </button>
+                    </div>
+                  )}
+
+                  {invitaciones.length > 0 && (
+                    <div style={{ marginBottom: 24 }}>
+                      <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--on-surface)', marginBottom: 4 }}>Invitaciones pendientes</h3>
+                      {invitaciones.map((inv) => (
+                        <div key={inv.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--outline-variant)' }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--on-surface)' }}>{inv.email}</div>
+                            <div style={{ fontSize: 11.5, color: 'var(--on-surface-variant)' }}>
+                              {inv.rol === 'medico' ? 'Médico' : 'Asistente'} · vence {new Date(inv.expiraEn).toLocaleDateString('es-MX')}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => navigator.clipboard.writeText(enlaceInvitacion(inv.codigo))}
+                            title="Copiar link de invitación"
+                            style={{ background: 'transparent', border: '1px solid var(--outline-variant)', borderRadius: 8, width: 34, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--on-surface-variant)' }}
+                          >
+                            <span className="ms" style={{ fontSize: 17 }}>content_copy</span>
+                          </button>
+                          <button
+                            onClick={() => handleRevocar(inv.id)}
+                            disabled={equipoBusyId === inv.id}
+                            style={{ background: 'transparent', border: '1px solid var(--error)', color: 'var(--error)', borderRadius: 8, padding: '7px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', opacity: equipoBusyId === inv.id ? 0.5 : 1 }}
+                          >
+                            Revocar
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--on-surface)', marginBottom: 4 }}>Miembros</h3>
+                  {loadingEquipo ? (
+                    <div style={{ padding: '20px 0', display: 'flex', justifyContent: 'center' }}>
+                      <span className="ms" style={{ fontSize: 26, color: 'var(--on-surface-variant)', animation: 'spin 1s linear infinite' }}>progress_activity</span>
+                    </div>
+                  ) : miembros.length === 0 ? (
+                    <p className="body-m" style={{ color: 'var(--on-surface-variant)' }}>Sin miembros todavía.</p>
+                  ) : miembros.map((m) => (
+                    <div key={m.profileId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderBottom: '1px solid var(--outline-variant)' }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--on-surface)' }}>{m.nombre}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--on-surface-variant)', textTransform: 'capitalize' }}>{m.rol}</div>
+                      </div>
+                      <span style={{
+                        fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 999,
+                        background: m.activo ? 'var(--success-container)' : 'var(--surface-container-highest)',
+                        color: m.activo ? 'var(--on-success-container)' : 'var(--on-surface-variant)',
+                      }}>
+                        {m.activo ? 'Activo' : 'Inactivo'}
+                      </span>
+                      {m.rol !== 'owner' && (
+                        <button
+                          onClick={() => handleToggleActivo(m.profileId, m.activo)}
+                          disabled={equipoBusyId === m.profileId}
+                          style={{
+                            background: 'transparent', borderRadius: 8, padding: '7px 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer',
+                            border: `1px solid ${m.activo ? 'var(--error)' : 'var(--primary)'}`,
+                            color: m.activo ? 'var(--error)' : 'var(--primary)',
+                            opacity: equipoBusyId === m.profileId ? 0.5 : 1,
+                          }}
+                        >
+                          {m.activo ? 'Dar de baja' : 'Reactivar'}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </>
+              )}
+            </>
+          )}
+
           {tab === 'notif' && (
             <>
               <SectionHead icon="notifications" title="Notificaciones" />
@@ -1119,6 +1371,25 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
           {tab === 'seguridad' && (
             <>
               <SectionHead icon="security" title="Seguridad y privacidad" />
+
+              <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--on-surface)', marginBottom: 12 }}>Cambiar contraseña</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 380, marginBottom: 24 }}>
+                <PField label="Contraseña actual" type="password" value={pwdActual} onChange={setPwdActual} icon={<span className="ms" style={{ fontSize: 16, color: 'var(--on-surface-variant)' }}>lock</span>} />
+                <PField label="Nueva contraseña" type="password" value={pwdNueva} onChange={setPwdNueva} icon={<span className="ms" style={{ fontSize: 16, color: 'var(--on-surface-variant)' }}>lock_reset</span>} />
+                <PField label="Confirmar nueva contraseña" type="password" value={pwdConfirma} onChange={setPwdConfirma} icon={<span className="ms" style={{ fontSize: 16, color: 'var(--on-surface-variant)' }}>lock_reset</span>} />
+                {pwdMsg && (
+                  <div style={{ fontSize: 12.5, color: pwdMsg.ok ? 'var(--primary)' : 'var(--error)', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span className="ms" style={{ fontSize: 16 }}>{pwdMsg.ok ? 'check_circle' : 'error'}</span>{pwdMsg.texto}
+                  </div>
+                )}
+                <div>
+                  <SaveBtn onClick={handleCambiarPassword} disabled={pwdCambiando || !pwdActual || !pwdNueva || !pwdConfirma}>
+                    <ICheck />{pwdCambiando ? 'Actualizando…' : 'Actualizar contraseña'}
+                  </SaveBtn>
+                </div>
+              </div>
+
+              <div style={{ paddingTop: 4, borderTop: '1px solid var(--outline-variant)' }} />
               <SettingRow icon="verified_user" title="Autenticación en dos pasos" desc="Protege tu cuenta con un segundo factor"
                 control={<Switch checked={twoFa} onChange={setTwoFa} />} />
               <SettingRow icon="verified" title="Cumplimiento NOM-024" desc="Expediente clínico electrónico certificado"

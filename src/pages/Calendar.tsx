@@ -8,6 +8,7 @@ import {
   checkConflicto, type ConflictoInfo,
 } from '../lib/citas';
 import { fetchPacientesSelect, type PacienteSelect } from '../lib/patients';
+import { fetchCandidatos, crearOportunidad, actualizarAdelanto } from '../lib/oportunidades';
 import { Button, Segmented, useIsMobile } from '../components';
 import {
   IH, MONTHS, YEARS_CITA, pad,
@@ -17,6 +18,7 @@ import {
   ModalCard, CloseBtn, ModalBadge,
   Field, FocusInput, FocusSelect, PickerTrigger,
   ModalFooter, CancelBtn, PrimaryBtn,
+  useMedicos, OportunidadModal, type OportunidadModalSingle,
 } from './Clinical';
 
 // ── Constantes de layout ───────────────────────────────────────────────────────
@@ -146,11 +148,12 @@ function FL({ children }: { children: string }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // Modal de detalle de cita
 // ══════════════════════════════════════════════════════════════════════════════
-function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId, medicoId }: {
+function CitaDetailModal({ appt, open, onClose, onChanged, onCancelled, go, toast, clinicaId, medicoId }: {
   appt: ApptUI | null;
   open: boolean;
   onClose: () => void;
   onChanged: () => void;
+  onCancelled?: (appt: ApptUI) => void;
   go: (name: string, params?: any) => void;
   toast: (m: string) => void;
   clinicaId: string;
@@ -163,6 +166,8 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState('');
   const [conflicto, setConflicto] = useState<ConflictoInfo | null>(null);
+  const [adelanto,  setAdelanto]  = useState(false);
+  const [adelantoBusy, setAdelantoBusy] = useState(false);
 
   useEffect(() => {
     if (open && appt) {
@@ -171,6 +176,7 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
       setNewStart(appt.start);
       setNewEnd(appt.end);
       setError(''); setSaving(false); setConflicto(null);
+      setAdelanto(!!appt.aceptaAdelanto); setAdelantoBusy(false);
     }
   }, [open, appt?.id]);
 
@@ -179,11 +185,20 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
   const meta = TIPO_META[tipoFromType(appt.type)];
   const isClosed = appt.status === 'cancelada' || appt.status === 'completada';
 
+  async function handleToggleAdelanto() {
+    const nuevo = !adelanto;
+    setAdelanto(nuevo); setAdelantoBusy(true);
+    try { await actualizarAdelanto(appt!.id, nuevo); }
+    catch (e: any) { setAdelanto(!nuevo); toast(e.message ?? 'No se pudo actualizar'); }
+    finally { setAdelantoBusy(false); }
+  }
+
   async function handleCancelar() {
     setSaving(true); setError('');
     try {
       await cancelarCita(appt!.id);
       toast('Cita cancelada');
+      onCancelled?.(appt!);
       onChanged(); onClose();
     } catch (e: any) { setError(e.message ?? 'Error al cancelar'); }
     finally { setSaving(false); }
@@ -207,7 +222,10 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
     if (dur <= 0) { setError('Duración inválida.'); return; }
     setSaving(true); setError(''); setConflicto(null);
     try {
-      const c = await checkConflicto(clinicaId, medicoId, localIso(newDate, newStart), dur, appt!.id);
+      // appt.medicoId es el médico REAL de la cita — antes se usaba el medicoId de la cuenta
+      // logueada (bug: un asistente o un médico viendo la cita de un colega comprobaba el
+      // horario equivocado).
+      const c = await checkConflicto(clinicaId, appt!.medicoId ?? medicoId, localIso(newDate, newStart), dur, appt!.id);
       if (c) { setConflicto(c); setSaving(false); return; }
       await doReagendar();
     } catch (e: any) { setError(e.message ?? 'Error al reagendar'); }
@@ -300,6 +318,25 @@ function CitaDetailModal({ appt, open, onClose, onChanged, go, toast, clinicaId,
                     <line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
                   </svg>
                   Cancelar cita
+                </button>
+              )}
+
+              {!isClosed && (
+                <button
+                  onClick={handleToggleAdelanto}
+                  disabled={adelantoBusy}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1px solid var(--outline-variant)', borderRadius: 10, background: 'var(--surface)', color: 'var(--on-surface)', fontSize: 13, fontWeight: 600, cursor: adelantoBusy ? 'not-allowed' : 'pointer', textAlign: 'left', opacity: adelantoBusy ? 0.6 : 1 }}
+                >
+                  <span style={{
+                    width: 34, height: 19, borderRadius: 999, flexShrink: 0, position: 'relative',
+                    background: adelanto ? 'var(--primary)' : 'var(--outline-variant)', transition: 'background .15s',
+                  }}>
+                    <span style={{
+                      position: 'absolute', top: 2, left: adelanto ? 17 : 2, width: 15, height: 15, borderRadius: '50%',
+                      background: '#fff', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+                    }} />
+                  </span>
+                  Avisar si se libera una cita antes
                 </button>
               )}
             </div>
@@ -671,18 +708,22 @@ function DayView({ appts, date, onApptClick, onAddClick }: {
 // ══════════════════════════════════════════════════════════════════════════════
 // Modal nueva cita — mismo diseño que AppointmentModal en expediente
 // ══════════════════════════════════════════════════════════════════════════════
-function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medicoId }: {
+function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medicoId: creatorId }: {
   open: boolean; date: Date | null;
   onClose: () => void; onCreated: () => void;
   toast: (m: string) => void;
   clinicaId: string; medicoId: string;
 }) {
+  const account = useAccount();
+  const { medicos } = useMedicos(open, clinicaId);
   const [patients,   setPatients]   = useState<PacienteSelect[]>([]);
   const [pid,        setPid]        = useState('');
+  const [medicoSel,  setMedicoSel]  = useState('');
   const [dateVal,    setDateVal]    = useState<DateVal>({ d: 1, m: 0, y: 2026 });
   const [timeVal,    setTimeVal]    = useState<TimeVal>({ h: 9, min: 0, ap: 'AM' });
   const [dur,        setDur]        = useState('30');
   const [tipo,       setTipo]       = useState<TipoCita>('consulta');
+  const [adelanto,   setAdelanto]   = useState(false);
   const [pickerOpen, setPickerOpen] = useState<null | 'date' | 'time'>(null);
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState('');
@@ -698,14 +739,20 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
       const now = new Date();
       setDateVal({ d: date.getDate(), m: date.getMonth(), y: date.getFullYear() });
       setTimeVal({ h: now.getHours() % 12 || 12, min: 0, ap: now.getHours() >= 12 ? 'PM' : 'AM' });
-      setDur('30'); setTipo('consulta');
+      setDur('30'); setTipo('consulta'); setAdelanto(false);
       setPickerOpen(null); setSaving(false); setError(''); setConflicto(null);
+      // Si el propio usuario es médico se autoselecciona; si no (asistente), vacío.
+      setMedicoSel(account.puedeEmitirClinico ? creatorId : '');
     }
-  }, [open, date?.getTime()]);
+  }, [open, date?.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (open && !pid && patients.length) setPid(patients[0].id);
   }, [open, patients]);
+
+  useEffect(() => {
+    if (open && !medicoSel && medicos.length === 1) setMedicoSel(medicos[0].profileId);
+  }, [open, medicos]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!open || !date) return null;
 
@@ -714,12 +761,13 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
   async function doCreate() {
     const fecha = dateTimeToISO(dateVal, timeVal);
     if (!fecha) throw new Error('Fecha u hora inválida');
-    await createCita(clinicaId, medicoId, {
+    await createCita(clinicaId, medicoSel, creatorId, {
       paciente_id: pid,
       fecha,
       duracion_min: Number(dur) || 30,
       motivo: encodeMotivoConTipo(tipo, TIPO_META[tipo].label),
       estado: 'programada',
+      acepta_adelanto: adelanto,
     });
     toast('Cita agendada correctamente');
     onCreated(); onClose();
@@ -727,11 +775,12 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
 
   async function handleCreate() {
     if (!pid) { setError('Selecciona un paciente.'); return; }
+    if (!medicoSel) { setError('Selecciona a qué médico pertenece la cita.'); return; }
     const fecha = dateTimeToISO(dateVal, timeVal);
     if (!fecha) { setError('Fecha u hora inválida.'); return; }
     setSaving(true); setError(''); setConflicto(null);
     try {
-      const c = await checkConflicto(clinicaId, medicoId, fecha, Number(dur) || 30);
+      const c = await checkConflicto(clinicaId, medicoSel, fecha, Number(dur) || 30);
       if (c) { setConflicto(c); setSaving(false); return; }
       await doCreate();
     } catch (e: any) { setError(e.message ?? 'Error al crear la cita'); }
@@ -776,6 +825,16 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
           </FocusSelect>
         </Field>
 
+        {/* Médico — solo se muestra si hay más de uno (o si quien agenda no es médico) */}
+        {(medicos.length > 1 || !account.puedeEmitirClinico) && (
+          <Field label="Médico" icon="stethoscope" required>
+            <FocusSelect value={medicoSel} onChange={e => { setMedicoSel(e.target.value); setError(''); setConflicto(null); }}>
+              <option value="" disabled>Selecciona un médico</option>
+              {medicos.map(m => <option key={m.profileId} value={m.profileId}>{m.nombre}</option>)}
+            </FocusSelect>
+          </Field>
+        )}
+
         {/* Fecha / Hora / Duración */}
         <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.1fr .9fr', gap: 22 }}>
           <div>
@@ -813,6 +872,25 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
           </FocusSelect>
         </Field>
 
+        {/* Adelanto de cita — solo aplica a citas de médico único (misma lógica que el
+            picker de médico), el hueco liberado siempre se ofrece dentro del mismo médico. */}
+        <button
+          type="button"
+          onClick={() => setAdelanto(v => !v)}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1px solid var(--outline-variant)', borderRadius: 10, background: 'var(--surface-container-highest)', color: 'var(--on-surface)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+        >
+          <span style={{
+            width: 34, height: 19, borderRadius: 999, flexShrink: 0, position: 'relative',
+            background: adelanto ? 'var(--primary)' : 'var(--outline-variant)', transition: 'background .15s',
+          }}>
+            <span style={{
+              position: 'absolute', top: 2, left: adelanto ? 17 : 2, width: 15, height: 15, borderRadius: '50%',
+              background: '#fff', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+            }} />
+          </span>
+          Avisar si se libera una cita antes
+        </button>
+
       </div>
 
       {/* Error */}
@@ -843,7 +921,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
       <ModalFooter>
         <CancelBtn onClick={onClose} />
         {!conflicto && (
-          <PrimaryBtn onClick={handleCreate} disabled={saving || !pid}>
+          <PrimaryBtn onClick={handleCreate} disabled={saving || !pid || !medicoSel}>
             {saving ? 'Verificando…' : 'Agendar Ahora'}
           </PrimaryBtn>
         )}
@@ -897,6 +975,10 @@ export function Calendar({ go, toast, dataVersion = 0 }: {
   const [detailOpen,   setDetailOpen]   = useState(false);
   const [detailAppt,   setDetailAppt]   = useState<ApptUI | null>(null);
 
+  // Modal de oportunidad (adelanto de cita) — se abre solo si al cancelar hay ≥1 candidato
+  const [oportunidadOpen,   setOportunidadOpen]   = useState(false);
+  const [oportunidadSingle, setOportunidadSingle] = useState<OportunidadModalSingle | null>(null);
+
   const monday = getMonday(current);
   const year   = current.getFullYear();
   const month  = current.getMonth();
@@ -939,6 +1021,21 @@ export function Calendar({ go, toast, dataVersion = 0 }: {
   const openNew    = (d: Date)     => { setNewModalDate(d); setNewModalOpen(true); };
   const openDetail = (a: ApptUI)   => { setDetailAppt(a);   setDetailOpen(true);  };
   const t          = (msg: string) => toast?.(msg);
+
+  // Tras cancelar: si hay candidatos en espera del mismo médico para un hueco más cercano,
+  // crea la oportunidad y abre el modal ofreciéndola. Si no hay nadie esperando, no pasa nada.
+  const handleApptCancelled = async (appt: ApptUI) => {
+    if (!appt.medicoId) return;
+    const fechaIso = localIso(appt.date, appt.start);
+    const dur = Math.max(toMin(appt.end) - toMin(appt.start), 15);
+    try {
+      const candidatos = await fetchCandidatos(clinicaId, appt.medicoId, fechaIso);
+      if (candidatos.length === 0) return;
+      const oportunidadId = await crearOportunidad(clinicaId, appt.medicoId, fechaIso, dur, appt.id, medicoId);
+      setOportunidadSingle({ oportunidadId, medicoId: appt.medicoId, fecha: fechaIso, duracionMin: dur });
+      setOportunidadOpen(true);
+    } catch (e) { console.error('oportunidad:', e); }
+  };
 
   return (
     <div className="page-pad fade-up" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -1039,10 +1136,22 @@ export function Calendar({ go, toast, dataVersion = 0 }: {
         appt={detailAppt}
         onClose={() => setDetailOpen(false)}
         onChanged={() => setLocalV(v => v + 1)}
+        onCancelled={handleApptCancelled}
         go={go}
         toast={t}
         clinicaId={clinicaId}
         medicoId={medicoId}
+      />
+
+      {/* Modal de oportunidad — se abre solo si hubo candidatos al cancelar */}
+      <OportunidadModal
+        open={oportunidadOpen}
+        onClose={() => setOportunidadOpen(false)}
+        clinicaId={clinicaId}
+        currentUserId={medicoId}
+        toast={t}
+        onResolved={() => setLocalV(v => v + 1)}
+        single={oportunidadSingle}
       />
     </div>
   );

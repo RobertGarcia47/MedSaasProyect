@@ -3,8 +3,10 @@ import { useAccount } from '../context/AccountContext';
 import { countConsultas, type ApptUI } from '../lib/consultas';
 import { fetchCitasDia, fetchCitasMes } from '../lib/citas';
 import { countPacientes } from '../lib/patients';
+import { countOportunidadesAbiertas } from '../lib/oportunidades';
 import { Icon, Button, Card, Avatar, StatusPill, IconButton } from '../components';
 import { PracticeStats } from '../components/PracticeStats';
+import { OportunidadModal } from './Clinical';
 
 // ── Tipo de cita — colores (mismo criterio que TIPO_META de Calendar.tsx, mapeado a variables CSS) ──
 const TYPE_META: Record<ApptUI['type'], { dot: string; bg: string; on: string; label: string }> = {
@@ -43,13 +45,14 @@ function tlTop(hhmm: string): number {
 }
 
 // ── Stat chip ─────────────────────────────────────────────────────────────────
-function StatChip({ icon, label, value, tone = 'primary', onClick }: {
-  icon: string; label: string; value: string | number; tone?: 'primary' | 'tertiary' | 'secondary'; onClick?: () => void;
+function StatChip({ icon, label, value, tone = 'primary', onClick, pulse }: {
+  icon: string; label: string; value: string | number; tone?: 'primary' | 'tertiary' | 'secondary' | 'warning'; onClick?: () => void; pulse?: boolean;
 }) {
   const tones: Record<string, [string, string]> = {
     primary:   ['var(--primary-container)',   'var(--primary)'],
     tertiary:  ['var(--tertiary-container)',  'var(--tertiary)'],
     secondary: ['var(--secondary-container)', 'var(--secondary)'],
+    warning:   ['var(--warning-container)',   'var(--warning)'],
   };
   const [bg, fg] = tones[tone] ?? tones.primary;
   return (
@@ -65,6 +68,9 @@ function StatChip({ icon, label, value, tone = 'primary', onClick }: {
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, lineHeight: 1, letterSpacing: '-1px', color: 'var(--on-surface)' }}>{value}</div>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--on-surface-variant)', marginTop: 3 }}>{label}</div>
       </div>
+      {pulse && (
+        <span style={{ position: 'absolute', top: 10, right: 10, width: 9, height: 9, borderRadius: '50%', background: 'var(--error)', animation: 'blink 1.5s ease-in-out infinite' }} />
+      )}
     </div>
   );
 }
@@ -349,7 +355,7 @@ function Spinner() {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
-export function Dashboard({ go, openModal, dataVersion = 0 }: { go: (name: string, params?: any) => void; openModal: (type: string) => void; dataVersion?: number }) {
+export function Dashboard({ go, openModal, toast, dataVersion = 0 }: { go: (name: string, params?: any) => void; openModal: (type: string) => void; toast?: (m: string) => void; dataVersion?: number }) {
   const account = useAccount();
   const clinicaId = account.clinicaId ?? '';
 
@@ -358,6 +364,9 @@ export function Dashboard({ go, openModal, dataVersion = 0 }: { go: (name: strin
   const [totalPacientes, setTotalPacientes] = useState<number>(0);
   const [consultasHoy,   setConsultasHoy]   = useState<number>(0);
   const [consultasMes,   setConsultasMes]   = useState<number>(0);
+  const [oportunidades,  setOportunidades]  = useState<number>(0);
+  const [oportModalOpen, setOportModalOpen] = useState(false);
+  const [localV,         setLocalV]         = useState(0);
 
   const now = new Date();
   const [calYear,  setCalYear]  = useState(now.getFullYear());
@@ -375,16 +384,18 @@ export function Dashboard({ go, openModal, dataVersion = 0 }: { go: (name: strin
       fetchCitasDia(clinicaId, hoy),
       countPacientes(clinicaId),
       countConsultas(clinicaId, inicioMes, finMes),
+      countOportunidadesAbiertas(clinicaId),
     ])
-      .then(([apptsDia, totalP, totalMes]) => {
+      .then(([apptsDia, totalP, totalMes, totalOport]) => {
         setAppts(apptsDia);
         setConsultasHoy(apptsDia.length);
         setTotalPacientes(totalP);
         setConsultasMes(totalMes);
+        setOportunidades(totalOport);
       })
       .catch((e) => console.error('Dashboard load error:', e))
       .finally(() => setLoading(false));
-  }, [clinicaId, dataVersion]);
+  }, [clinicaId, dataVersion, localV]);
 
   useEffect(() => {
     if (!clinicaId) return;
@@ -436,6 +447,7 @@ export function Dashboard({ go, openModal, dataVersion = 0 }: { go: (name: strin
             <StatChip icon="event_available" label="Citas hoy"     value={consultasHoy}   tone="primary"   onClick={() => go('calendar')} />
             <StatChip icon="groups"          label="Pacientes"     value={totalPacientes} tone="tertiary"  onClick={() => go('patients')} />
             <StatChip icon="calendar_month"  label="Consultas mes" value={consultasMes}   tone="secondary" onClick={() => go('calendar')} />
+            <StatChip icon="bolt" label="Oportunidades" value={oportunidades} tone="warning" pulse={oportunidades > 0} onClick={() => setOportModalOpen(true)} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 18 }} className="dash-grid">
@@ -451,6 +463,17 @@ export function Dashboard({ go, openModal, dataVersion = 0 }: { go: (name: strin
           <PracticeStats clinicaId={clinicaId} />
         </>
       )}
+
+      {/* Modal "explorar todas" — abierto desde el StatChip Oportunidades */}
+      <OportunidadModal
+        open={oportModalOpen}
+        onClose={() => setOportModalOpen(false)}
+        clinicaId={clinicaId}
+        currentUserId={account.userId ?? ''}
+        toast={(m) => toast?.(m)}
+        onResolved={() => setLocalV((v) => v + 1)}
+        single={null}
+      />
     </div>
   );
 }

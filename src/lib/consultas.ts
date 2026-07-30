@@ -17,6 +17,11 @@ export interface ApptUI {
   reason: string;  // motivo_enc es bytea → placeholder hasta tener RPCs
   status: 'en-curso' | 'pendiente' | 'completada' | 'confirmada' | 'sala-espera' | 'cancelada';
   room: string;
+  // Solo lo puebla el productor de citas.ts (agenda futura) — el de este archivo
+  // (historial de consultas ya ocurridas) lo deja undefined; no es relevante para
+  // la lista de espera de adelanto de citas, que solo mira agenda a futuro.
+  medicoId?: string;
+  aceptaAdelanto?: boolean;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
