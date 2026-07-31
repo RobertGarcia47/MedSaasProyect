@@ -837,6 +837,7 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
   const [timeVal,     setTimeVal]    = useState<TimeVal>(initTime);
   const [dur,         setDur]        = useState('30');
   const [tipo,        setTipo]       = useState('consulta');
+  const [adelanto,    setAdelanto]   = useState(false);
   const [pickerOpen,  setPickerOpen] = useState<null | 'date' | 'time'>(null);
   const [saving,      setSaving]     = useState(false);
 
@@ -852,7 +853,7 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
       // si no (asistente), se deja vacío y hay que elegir.
       setMedicoId(account.puedeEmitirClinico ? account.userId : '');
       setDateVal(initDate()); setTimeVal(initTime());
-      setDur('30'); setTipo('consulta'); setPickerOpen(null); setSaving(false);
+      setDur('30'); setTipo('consulta'); setAdelanto(false); setPickerOpen(null); setSaving(false);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -875,6 +876,7 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
       await createCita(account.clinicaId!, medicoId, account.userId, {
         paciente_id: pid, fecha, duracion_min: Number(dur) || 30,
         motivo: encodeMotivoConTipo(tipo, TIPO_LABELS[tipo] ?? tipo),
+        acepta_adelanto: adelanto,
       });
       toast?.('Cita agendada correctamente');
       onCreated?.(); onClose();
@@ -969,6 +971,25 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
               <option value="urgencia">Urgencia</option>
             </FocusSelect>
           </Field>
+
+          {/* Adelanto de cita — lista de espera si se libera un hueco más cercano con el
+              mismo médico (ver src/lib/oportunidades.ts). */}
+          <button
+            type="button"
+            onClick={() => setAdelanto((v) => !v)}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1px solid var(--outline-variant)', borderRadius: 10, background: 'var(--surface-container-highest)', color: 'var(--on-surface)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+          >
+            <span style={{
+              width: 34, height: 19, borderRadius: 999, flexShrink: 0, position: 'relative',
+              background: adelanto ? 'var(--primary)' : 'var(--outline-variant)', transition: 'background .15s',
+            }}>
+              <span style={{
+                position: 'absolute', top: 2, left: adelanto ? 17 : 2, width: 15, height: 15, borderRadius: '50%',
+                background: '#fff', transition: 'left .15s', boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+              }} />
+            </span>
+            Avisar si se libera una cita antes
+          </button>
         </div>
       )}
 

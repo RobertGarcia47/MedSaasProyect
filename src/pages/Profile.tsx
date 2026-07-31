@@ -1243,24 +1243,30 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
                     tú mismo (WhatsApp, correo, etc.) — la app no lo envía por su cuenta.
                   </p>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: inviteRol === 'asistente' ? '1fr 130px 1fr auto' : '1fr 150px auto', gap: 10, alignItems: 'flex-end', marginBottom: 8 }}>
-                    <PField label="Correo del invitado" value={inviteEmail} onChange={setInviteEmail} icon={<IMail />} placeholder="correo@ejemplo.com" />
-                    <PSelect
-                      label="Rol"
-                      value={inviteRol}
-                      onChange={(v) => setInviteRol(v as RolInvitacion)}
-                      options={[{ value: 'asistente', label: 'Asistente' }, { value: 'medico', label: 'Médico' }]}
-                    />
-                    {inviteRol === 'asistente' && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end', marginBottom: 8 }}>
+                    <div style={{ flex: '2 1 200px', minWidth: 0 }}>
+                      <PField label="Correo del invitado" value={inviteEmail} onChange={setInviteEmail} icon={<IMail />} placeholder="correo@ejemplo.com" />
+                    </div>
+                    <div style={{ flex: '1 1 120px', minWidth: 0 }}>
                       <PSelect
-                        label="Asignado a"
-                        value={inviteMedicoId}
-                        onChange={setInviteMedicoId}
-                        options={[
-                          { value: '', label: medicosClinica.length ? 'Elige un médico…' : 'Sin médicos con cédula' },
-                          ...medicosClinica.map((m) => ({ value: m.profileId, label: m.nombre })),
-                        ]}
+                        label="Rol"
+                        value={inviteRol}
+                        onChange={(v) => setInviteRol(v as RolInvitacion)}
+                        options={[{ value: 'asistente', label: 'Asistente' }, { value: 'medico', label: 'Médico' }]}
                       />
+                    </div>
+                    {inviteRol === 'asistente' && (
+                      <div style={{ flex: '1 1 160px', minWidth: 0 }}>
+                        <PSelect
+                          label="Asignado a"
+                          value={inviteMedicoId}
+                          onChange={setInviteMedicoId}
+                          options={[
+                            { value: '', label: medicosClinica.length ? 'Elige un médico…' : 'Sin médicos con cédula' },
+                            ...medicosClinica.map((m) => ({ value: m.profileId, label: m.nombre })),
+                          ]}
+                        />
+                      </div>
                     )}
                     <SaveBtn onClick={handleInvitar} disabled={invitando || !inviteEmail.trim() || (inviteRol === 'asistente' && !inviteMedicoId)}>
                       <IPlus c="var(--on-primary)" />{invitando ? 'Invitando…' : 'Invitar'}
