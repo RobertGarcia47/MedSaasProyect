@@ -24,9 +24,21 @@ export interface Profile {
 }
 
 export interface Suscripcion {
-  status: string;
+  status: string; // trial | activa | cancelada | morosa (status_suscripcion)
   periodo_fin: string | null;
+  gracia_hasta: string | null;
 }
+
+/**
+ * Nivel de acceso derivado de la suscripción — reemplaza al booleano plano:
+ * - 'total': vigente, o vencida pero dentro de las 72h de gracia.
+ * - 'gracia': subconjunto de 'total' marcado aparte solo para mostrar el aviso
+ *   (ver `enGracia` en AccountContext) — el acceso en sí sigue siendo total.
+ * - 'limitado': gracia agotada o suscripción cancelada. La clínica sin NINGUNA
+ *   fila en `suscripciones` no es 'limitado' — ver `TrialExpired` en App.tsx,
+ *   ese caso se sigue bloqueando por completo aparte de este nivel.
+ */
+export type AccesoNivel = 'total' | 'limitado';
 
 export interface AccountContext {
   userId: string;
@@ -38,7 +50,15 @@ export interface AccountContext {
   clinicaNombre: string | null;
   rol: Rol | null;
   suscripcion: Suscripcion | null;
-  /** §6.1: trial/suscripción vencida → bloquear y mandar a comprar. */
+  /** Nivel de acceso real — ver AccesoNivel. Reemplaza al gate binario anterior. */
+  accesoNivel: AccesoNivel;
+  /** true si accesoNivel es 'total' solo gracias a la gracia de 72h post-vencimiento. */
+  enGracia: boolean;
+  /** Días restantes antes de que venza (solo con acceso total y sin estar ya en gracia) —
+   *  para el aviso suave "tu trial/plan está por terminar". null si no aplica. */
+  diasParaVencer: number | null;
+  /** @deprecated usar accesoNivel !== 'limitado'. Se mantiene para no romper lecturas
+   *  existentes; §6.1: trial/suscripción vencida → bloquear y mandar a comprar. */
   accesoVigente: boolean;
   /** §6.1: owner/médico sin cédula → permitir entrar pero bloquear consulta/receta. */
   puedeEmitirClinico: boolean;
@@ -96,23 +116,54 @@ export async function loadAccountContext(): Promise<AccountLoad | null> {
   const rol = membresia?.rol ?? null;
   const clinicaNombre = membresia?.clinicas?.nombre ?? null;
 
-  // 3. Suscripción vigente de la clínica (gate del trial, §6.1).
+  // 3. Suscripción de la clínica (gate del trial, §6.1). Solo puede existir UNA fila
+  //    por clínica: el INSERT del trial (onboarding) está limitado por RLS a una sola
+  //    vez, y de ahí en adelante stripe-webhook solo hace UPDATE sobre esa misma fila
+  //    — nunca hace falta ordenar/filtrar por status ni tomar la más reciente.
   let suscripcion: Suscripcion | null = null;
   if (clinicaId) {
     const { data: sus, error: susError } = await supabase
       .from('suscripciones')
-      .select('status, periodo_fin')
+      .select('status, periodo_fin, gracia_hasta')
       .eq('clinica_id', clinicaId)
-      .in('status', ['trial', 'activa'])
-      .order('periodo_fin', { ascending: false })
-      .limit(1)
       .maybeSingle<Suscripcion>();
     if (susError) throw susError;
     suscripcion = sus ?? null;
   }
 
   const hoy = new Date().toISOString().split('T')[0];
-  const accesoVigente = !!suscripcion?.periodo_fin && suscripcion.periodo_fin >= hoy;
+  const ahoraMs = Date.now();
+
+  let accesoNivel: AccesoNivel = 'limitado';
+  let enGracia = false;
+  let diasParaVencer: number | null = null;
+
+  if (suscripcion && suscripcion.status !== 'cancelada') {
+    const vigente = !!suscripcion.periodo_fin && suscripcion.periodo_fin >= hoy;
+    if (vigente) {
+      accesoNivel = 'total';
+      if (suscripcion.periodo_fin) {
+        const msRestantes = new Date(`${suscripcion.periodo_fin}T00:00:00`).getTime() - new Date(`${hoy}T00:00:00`).getTime();
+        diasParaVencer = Math.round(msRestantes / (24 * 60 * 60 * 1000));
+      }
+    } else {
+      // Venció. Gracia explícita (morosa + gracia_hasta que puso el webhook) o, de
+      // respaldo si el webhook todavía no corrió, 72h calculadas desde periodo_fin
+      // — así la gracia siempre aplica, sin depender de que el webhook haya sido
+      // puntual.
+      const graciaExplicita = suscripcion.gracia_hasta ? new Date(suscripcion.gracia_hasta).getTime() : 0;
+      const graciaRespaldo = suscripcion.periodo_fin
+        ? new Date(`${suscripcion.periodo_fin}T00:00:00`).getTime() + 72 * 60 * 60 * 1000
+        : 0;
+      const limiteGracia = Math.max(graciaExplicita, graciaRespaldo);
+      if (ahoraMs < limiteGracia) {
+        accesoNivel = 'total';
+        enGracia = true;
+      }
+    }
+  }
+  // Alias retrocompatible — ver el @deprecated en AccountContext.
+  const accesoVigente = accesoNivel !== 'limitado';
 
   // 4. Gate de cédula (§6.1): solo aplica a owner/médico.
   //    Defensivo: el nombre exacto de la columna de cédula no está verificado en
@@ -157,6 +208,9 @@ export async function loadAccountContext(): Promise<AccountLoad | null> {
     clinicaNombre,
     rol,
     suscripcion,
+    accesoNivel,
+    enGracia,
+    diasParaVencer,
     accesoVigente,
     puedeEmitirClinico,
     puedePrescribir,

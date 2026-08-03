@@ -38,10 +38,11 @@ export function Laboratorio({ go, goBack, toast, patientId }: {
   const [saving,       setSaving]      = useState(false);
   const [dirty,        setDirty]       = useState(false);
 
-  const puede = account.puedeEmitirClinico && account.usaLaboratorio && !!account.clinicaId;
+  const suscripcionVencida = account.accesoNivel === 'limitado';
+  const puede = account.puedeEmitirClinico && account.usaLaboratorio && !!account.clinicaId && !suscripcionVencida;
   // Distingue el motivo del bloqueo: sin cédula vs. cédula con laboratorio
-  // desactivado (psicólogos, nutriólogos…) — cubre navegación directa aunque
-  // los botones de entrada ya estén ocultos en Pacientes.
+  // desactivado (psicólogos, nutriólogos…) vs. suscripción vencida — cubre
+  // navegación directa aunque los botones de entrada ya estén ocultos en Pacientes.
   const bloqueadoPorToggle = account.puedeEmitirClinico && !account.usaLaboratorio;
 
   useEffect(() => {
@@ -91,16 +92,22 @@ export function Laboratorio({ go, goBack, toast, patientId }: {
     return (
       <div className="page-pad" style={{ maxWidth: 640, margin: '40px auto', textAlign: 'center' }}>
         <Card variant="elevated" style={{ padding: '48px 28px' }}>
-          <Icon name="badge" size={48} style={{ color: 'var(--primary)', opacity: .6 }} />
+          <Icon name={suscripcionVencida ? 'lock_clock' : 'badge'} size={48} style={{ color: 'var(--primary)', opacity: .6 }} />
           <h2 className="title-l" style={{ marginTop: 14 }}>
-            {bloqueadoPorToggle ? 'El registro de laboratorio está desactivado' : 'Registra tu cédula profesional'}
+            {suscripcionVencida ? 'Tu suscripción venció' : bloqueadoPorToggle ? 'El registro de laboratorio está desactivado' : 'Registra tu cédula profesional'}
           </h2>
           <p className="body-m" style={{ color: 'var(--on-surface-variant)', margin: '8px auto 18px', maxWidth: 420 }}>
-            {bloqueadoPorToggle
+            {suscripcionVencida
+              ? 'Renueva tu suscripción desde Configuración para poder registrar estudios nuevos.'
+              : bloqueadoPorToggle
               ? 'Tu perfil profesional tiene desactivada la opción de laboratorio. Actívala en tu perfil si tu práctica sí lo incluye.'
               : 'Para registrar estudios necesitas estar dado de alta como médico.'}
           </p>
-          <Button variant="filled" icon="account_circle" onClick={() => go('profile')}>Ir a mi perfil</Button>
+          {suscripcionVencida ? (
+            <Button variant="filled" icon="settings" onClick={() => go('settings')}>Ir a Configuración</Button>
+          ) : (
+            <Button variant="filled" icon="account_circle" onClick={() => go('profile')}>Ir a mi perfil</Button>
+          )}
         </Card>
       </div>
     );

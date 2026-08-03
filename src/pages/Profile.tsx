@@ -10,6 +10,10 @@ import {
   setMiembroActivo, fetchMedicosClinica, type MiembroUI, type InvitacionUI, type RolInvitacion,
   type MedicoOption,
 } from '../lib/equipo';
+import {
+  fetchPlanes, fetchMetodoPago, crearCheckoutSession, crearPortalSession,
+  type PlanUI, type MetodoPagoUI,
+} from '../lib/suscripciones';
 
 const ACENTOS: { id: AccentColor; nombre: string; desc: string; color: string }[] = [
   { id: 'teal',   nombre: 'Verde clínico', desc: 'Identidad base de MedSaaS',   color: '#006A60' },
@@ -1022,6 +1026,7 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
 
   const handleInvitar = async () => {
     if (!account.clinicaId) return;
+    if (account.accesoNivel === 'limitado') { setInviteErr('Tu suscripción venció. Renueva para poder invitar a más gente al equipo.'); return; }
     const email = inviteEmail.trim();
     if (!email || !email.includes('@')) { setInviteErr('Correo inválido'); return; }
     if (inviteRol === 'asistente' && !inviteMedicoId) { setInviteErr('Elige a qué médico queda asignado el asistente'); return; }
@@ -1063,6 +1068,57 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
     finally { setEquipoBusyId(null); }
   };
 
+  // ── Suscripción (Stripe) ─────────────────────────────────────────────────
+  const [planes,          setPlanes]          = useState<PlanUI[]>([]);
+  const [metodoPago,      setMetodoPago]      = useState<MetodoPagoUI | null>(null);
+  const [loadingSusc,     setLoadingSusc]     = useState(false);
+  const [suscBusy,        setSuscBusy]        = useState<number | 'portal' | null>(null);
+  const [suscErr,         setSuscErr]         = useState<string | null>(null);
+
+  const cargarSuscripcion = async () => {
+    if (!account.clinicaId) return;
+    setLoadingSusc(true);
+    try {
+      const [p, m] = await Promise.all([fetchPlanes(), fetchMetodoPago(account.clinicaId)]);
+      setPlanes(p);
+      setMetodoPago(m);
+    } catch (e: any) {
+      t('Error al cargar la suscripción: ' + (e.message ?? String(e)));
+    } finally {
+      setLoadingSusc(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === 'suscripcion' && esEditor) cargarSuscripcion();
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleSuscribirse = async (planId: number) => {
+    if (!account.clinicaId) return;
+    setSuscBusy(planId);
+    setSuscErr(null);
+    try {
+      const url = await crearCheckoutSession(account.clinicaId, planId, window.location.origin);
+      window.location.href = url;
+    } catch (e: any) {
+      setSuscErr(e.message ?? String(e));
+      setSuscBusy(null);
+    }
+  };
+
+  const handleActualizarPago = async () => {
+    if (!account.clinicaId) return;
+    setSuscBusy('portal');
+    setSuscErr(null);
+    try {
+      const url = await crearPortalSession(account.clinicaId, window.location.origin);
+      window.location.href = url;
+    } catch (e: any) {
+      setSuscErr(e.message ?? String(e));
+      setSuscBusy(null);
+    }
+  };
+
   const handleCambiarPassword = async () => {
     setPwdMsg(null);
     if (!pwdActual) { setPwdMsg({ ok: false, texto: 'Ingresa tu contraseña actual.' }); return; }
@@ -1091,7 +1147,8 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
   const TABS = [
     { key: 'apariencia', label: 'Apariencia',             icon: 'palette' },
     { key: 'recetas',    label: 'Recetas',                icon: 'prescriptions' },
-    { key: 'equipo',     label: 'Equipo',                 icon: 'group' },
+    { key: 'equipo',       label: 'Equipo',                 icon: 'group' },
+    { key: 'suscripcion',  label: 'Suscripción',            icon: 'workspace_premium' },
     { key: 'notif',      label: 'Notificaciones',         icon: 'notifications' },
     { key: 'seguridad',  label: 'Seguridad y privacidad', icon: 'security' },
     { key: 'cuenta',     label: 'Cuenta',                 icon: 'manage_accounts' },
@@ -1243,6 +1300,12 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
                     tú mismo (WhatsApp, correo, etc.) — la app no lo envía por su cuenta.
                   </p>
 
+                  {account.accesoNivel === 'limitado' && (
+                    <div style={{ fontSize: 13, color: 'var(--on-error-container)', background: 'var(--error-container)', borderRadius: 10, padding: '11px 14px', marginBottom: 16 }}>
+                      Tu suscripción venció. Renueva desde la pestaña Suscripción para poder invitar a más gente al equipo.
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-end', marginBottom: 8 }}>
                     <div style={{ flex: '2 1 200px', minWidth: 0 }}>
                       <PField label="Correo del invitado" value={inviteEmail} onChange={setInviteEmail} icon={<IMail />} placeholder="correo@ejemplo.com" />
@@ -1268,7 +1331,7 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
                         />
                       </div>
                     )}
-                    <SaveBtn onClick={handleInvitar} disabled={invitando || !inviteEmail.trim() || (inviteRol === 'asistente' && !inviteMedicoId)}>
+                    <SaveBtn onClick={handleInvitar} disabled={invitando || !inviteEmail.trim() || (inviteRol === 'asistente' && !inviteMedicoId) || account.accesoNivel === 'limitado'}>
                       <IPlus c="var(--on-primary)" />{invitando ? 'Invitando…' : 'Invitar'}
                     </SaveBtn>
                   </div>
@@ -1359,6 +1422,89 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
                       )}
                     </div>
                   ))}
+                </>
+              )}
+            </>
+          )}
+
+          {tab === 'suscripcion' && (
+            <>
+              <SectionHead icon="workspace_premium" title="Suscripción" />
+              {!esEditor ? (
+                <p className="body-m" style={{ color: 'var(--on-surface-variant)' }}>
+                  Solo el propietario de la clínica puede administrar la suscripción.
+                </p>
+              ) : loadingSusc ? (
+                <p className="body-m" style={{ color: 'var(--on-surface-variant)' }}>Cargando…</p>
+              ) : (
+                <>
+                  <div style={{ background: 'var(--surface-container-highest)', borderRadius: 12, padding: '16px 18px', marginBottom: 22 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6, flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontSize: 11.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px',
+                        padding: '3px 10px', borderRadius: 999,
+                        background: account.accesoNivel === 'limitado' ? 'var(--error-container)' : account.enGracia ? 'var(--warning-container)' : 'var(--success-container)',
+                        color: account.accesoNivel === 'limitado' ? 'var(--on-error-container)' : account.enGracia ? 'var(--on-warning-container)' : 'var(--on-success-container)',
+                      }}>
+                        {account.suscripcion?.status === 'trial' ? 'Trial'
+                          : account.suscripcion?.status === 'activa' ? 'Activa'
+                          : account.suscripcion?.status === 'morosa' ? 'Pago pendiente'
+                          : account.suscripcion?.status === 'cancelada' ? 'Cancelada'
+                          : 'Sin suscripción'}
+                      </span>
+                      {account.suscripcion?.periodo_fin && (
+                        <span style={{ fontSize: 13, color: 'var(--on-surface-variant)' }}>
+                          {account.accesoNivel === 'limitado' ? 'Venció' : 'Vence'} el{' '}
+                          {new Date(`${account.suscripcion.periodo_fin}T12:00:00`).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                    {metodoPago && (
+                      <div style={{ fontSize: 13, color: 'var(--on-surface-variant)' }}>
+                        {metodoPago.marca ? metodoPago.marca.toUpperCase() : 'Tarjeta'} terminada en {metodoPago.ultimos4 ?? '····'}
+                        {metodoPago.venceMes && metodoPago.venceAnio ? ` · vence ${String(metodoPago.venceMes).padStart(2, '0')}/${metodoPago.venceAnio}` : ''}
+                      </div>
+                    )}
+                    {metodoPago && (
+                      <button
+                        onClick={handleActualizarPago}
+                        disabled={suscBusy === 'portal'}
+                        style={{ marginTop: 10, background: 'transparent', border: '1px solid var(--outline-variant)', borderRadius: 8, padding: '7px 14px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', color: 'var(--on-surface)' }}
+                      >
+                        {suscBusy === 'portal' ? 'Abriendo…' : 'Actualizar método de pago'}
+                      </button>
+                    )}
+                  </div>
+
+                  {suscErr && <div style={{ color: 'var(--error)', fontSize: 12.5, marginBottom: 16 }}>{suscErr}</div>}
+
+                  <h3 style={{ fontSize: 14, fontWeight: 700, color: 'var(--on-surface)', marginBottom: 10 }}>Planes disponibles</h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+                    {planes.map((p) => (
+                      <div key={p.id} style={{ border: '1px solid var(--outline-variant)', borderRadius: 12, padding: '16px 16px 14px' }}>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--on-surface)' }}>{p.nombre}</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary)', margin: '6px 0 4px' }}>
+                          ${p.precioMxn.toLocaleString('es-MX')} <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--on-surface-variant)' }}>MXN/mes</span>
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginBottom: 12 }}>
+                          Hasta {p.maxMedicos} médico{p.maxMedicos === 1 ? '' : 's'} · {p.maxPacientes ? `${p.maxPacientes} pacientes` : 'pacientes ilimitados'}
+                        </div>
+                        <button
+                          onClick={() => handleSuscribirse(p.id)}
+                          disabled={suscBusy !== null || !p.tieneStripePriceId}
+                          title={!p.tieneStripePriceId ? 'Este plan todavía no tiene precio configurado en Stripe' : undefined}
+                          style={{
+                            width: '100%', padding: '9px', border: 'none', borderRadius: 8,
+                            background: p.tieneStripePriceId ? 'var(--primary)' : 'var(--outline-variant)',
+                            color: p.tieneStripePriceId ? 'var(--on-primary)' : 'var(--on-surface-variant)',
+                            fontSize: 13, fontWeight: 700, cursor: p.tieneStripePriceId ? 'pointer' : 'not-allowed', fontFamily: 'inherit',
+                          }}
+                        >
+                          {suscBusy === p.id ? 'Redirigiendo…' : account.suscripcion?.status === 'activa' ? 'Cambiar a este plan' : 'Suscribirme'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </>
               )}
             </>

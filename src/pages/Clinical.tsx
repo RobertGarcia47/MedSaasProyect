@@ -843,8 +843,10 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
 
   // Cualquier miembro activo puede agendar (no solo quien tiene cédula) — el
   // picker de "¿para qué médico?" de abajo es lo que mantiene la cita bien
-  // atribuida cuando quien la crea no es médico.
-  const puede = !!account.clinicaId;
+  // atribuida cuando quien la crea no es médico. Con la suscripción vencida
+  // (accesoNivel 'limitado') se bloquea crear cosas nuevas, aunque se pueda
+  // seguir viendo lo que ya existe.
+  const puede = !!account.clinicaId && account.accesoNivel !== 'limitado';
 
   useEffect(() => {
     if (open) {
@@ -909,8 +911,10 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
       <CloseBtn onClose={onClose} />
       <ModalBadge icon="event_available" title="Agendar cita" subtitle="Programa una consulta para un paciente" />
 
-      {!puede ? (
+      {!account.clinicaId ? (
         <PendingNotice text="No perteneces a ninguna clínica todavía." />
+      ) : account.accesoNivel === 'limitado' ? (
+        <PendingNotice icon="lock_clock" text="Tu suscripción venció. Renueva desde Configuración para poder agendar citas nuevas." />
       ) : pacientes.length === 0 ? (
         <PendingNotice icon="group_off" text="No hay pacientes registrados aún. Crea un paciente antes de agendar una cita." />
       ) : medicos.length === 0 ? (
@@ -1034,7 +1038,7 @@ export function ReportModal({ open, onClose, prefill, toast, onCreated }: Report
   const [cuerpo, setCue]  = useState('');
   const [saving, setSaving] = useState(false);
 
-  const puede = account.puedeEmitirClinico && !!account.clinicaId;
+  const puede = account.puedeEmitirClinico && !!account.clinicaId && account.accesoNivel !== 'limitado';
   const expedienteId = pacientes.find((p) => p.id === pid)?.expediente_id ?? null;
 
   useEffect(() => {
@@ -1058,7 +1062,9 @@ export function ReportModal({ open, onClose, prefill, toast, onCreated }: Report
   return (
     <Dialog open={open} onClose={onClose} width={640}>
       <ModalHeader icon="description" title="Nuevo informe médico" subtitle="Redacta una nota clínica" onClose={onClose} />
-      {!puede ? (
+      {account.accesoNivel === 'limitado' ? (
+        <div style={{ padding: '8px 24px' }}><PendingNotice icon="lock_clock" text="Tu suscripción venció. Renueva desde Configuración para poder redactar informes." /></div>
+      ) : !puede ? (
         <div style={{ padding: '8px 24px' }}><PendingNotice text="Para redactar informes necesitas estar registrado como médico (cédula). Captúrala en tu perfil." /></div>
       ) : pacientes.length === 0 ? (
         <div style={{ padding: '8px 24px' }}><PendingNotice icon="group_off" text="No hay pacientes registrados aún." /></div>
@@ -1137,8 +1143,9 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
 
   // Cualquier miembro activo puede dar de alta pacientes (no solo quien tiene
   // cédula) — el picker de "médico tratante" de abajo mantiene el dato correcto
-  // cuando quien registra no es médico.
-  const puede = !!account.clinicaId;
+  // cuando quien registra no es médico. Con la suscripción vencida (accesoNivel
+  // 'limitado') se bloquea crear pacientes nuevos.
+  const puede = !!account.clinicaId && account.accesoNivel !== 'limitado';
 
   const guardar = async () => {
     if (!nombre.trim()) { toast?.('El nombre es obligatorio'); return; }
@@ -1176,8 +1183,10 @@ export function PatientModal({ open, onClose, toast, onCreated }: PatientModalPr
       <CloseBtn onClose={onClose} />
       <ModalBadge icon="person_add" title="Nuevo paciente" subtitle="Registra un expediente clínico" />
 
-      {!puede ? (
+      {!account.clinicaId ? (
         <PendingNotice text="No perteneces a ninguna clínica todavía." />
+      ) : account.accesoNivel === 'limitado' ? (
+        <PendingNotice icon="lock_clock" text="Tu suscripción venció. Renueva desde Configuración para poder dar de alta pacientes." />
       ) : medicos.length === 0 ? (
         <PendingNotice icon="badge" text="Todavía no hay ningún médico con cédula registrado en la clínica. Se necesita al menos uno para dar de alta pacientes." />
       ) : (

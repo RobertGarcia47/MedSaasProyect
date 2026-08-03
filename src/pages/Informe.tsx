@@ -93,7 +93,8 @@ export function Informe({ go, goBack, toast, patientId }: {
   const [pdfData,     setPdfData]     = useState<InformePdfData | null>(null);
   const [pdfOpen,     setPdfOpen]     = useState(false);
 
-  const puede = account.puedeEmitirClinico && !!account.clinicaId;
+  const suscripcionVencida = account.accesoNivel === 'limitado';
+  const puede = account.puedeEmitirClinico && !!account.clinicaId && !suscripcionVencida;
 
   useEffect(() => {
     if (!account.clinicaId) return;
@@ -178,12 +179,18 @@ export function Informe({ go, goBack, toast, patientId }: {
     return (
       <div className="page-pad" style={{ maxWidth: 640, margin: '40px auto', textAlign: 'center' }}>
         <Card variant="elevated" style={{ padding: '48px 28px' }}>
-          <Icon name="badge" size={48} style={{ color: 'var(--primary)', opacity: .6 }} />
-          <h2 className="title-l" style={{ marginTop: 14 }}>Registra tu cédula profesional</h2>
+          <Icon name={suscripcionVencida ? 'lock_clock' : 'badge'} size={48} style={{ color: 'var(--primary)', opacity: .6 }} />
+          <h2 className="title-l" style={{ marginTop: 14 }}>{suscripcionVencida ? 'Tu suscripción venció' : 'Registra tu cédula profesional'}</h2>
           <p className="body-m" style={{ color: 'var(--on-surface-variant)', margin: '8px auto 18px', maxWidth: 420 }}>
-            Para emitir informes necesitas estar dado de alta como médico. Captura tu cédula en tu perfil.
+            {suscripcionVencida
+              ? 'Renueva tu suscripción desde Configuración para poder emitir informes nuevos.'
+              : 'Para emitir informes necesitas estar dado de alta como médico. Captura tu cédula en tu perfil.'}
           </p>
-          <Button variant="filled" icon="account_circle" onClick={() => go('profile')}>Ir a mi perfil</Button>
+          {suscripcionVencida ? (
+            <Button variant="filled" icon="settings" onClick={() => go('settings')}>Ir a Configuración</Button>
+          ) : (
+            <Button variant="filled" icon="account_circle" onClick={() => go('profile')}>Ir a mi perfil</Button>
+          )}
         </Card>
       </div>
     );

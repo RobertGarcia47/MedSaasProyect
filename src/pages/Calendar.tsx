@@ -168,6 +168,7 @@ function CitaDetailModal({ appt, open, onClose, onChanged, onCancelled, go, toas
   const [conflicto, setConflicto] = useState<ConflictoInfo | null>(null);
   const [adelanto,  setAdelanto]  = useState(false);
   const [adelantoBusy, setAdelantoBusy] = useState(false);
+  const account = useAccount();
 
   useEffect(() => {
     if (open && appt) {
@@ -184,6 +185,9 @@ function CitaDetailModal({ appt, open, onClose, onChanged, onCancelled, go, toas
 
   const meta = TIPO_META[tipoFromType(appt.type)];
   const isClosed = appt.status === 'cancelada' || appt.status === 'completada';
+  // Con la suscripción vencida (accesoNivel 'limitado') se bloquea reagendar/cancelar
+  // — se puede seguir viendo la cita y su información, solo no modificarla.
+  const puedeEscribir = account.accesoNivel !== 'limitado';
 
   async function handleToggleAdelanto() {
     const nuevo = !adelanto;
@@ -294,7 +298,13 @@ function CitaDetailModal({ appt, open, onClose, onChanged, onCancelled, go, toas
                 Ver expediente del paciente
               </button>
 
-              {!isClosed && (
+              {!isClosed && !puedeEscribir && (
+                <div style={{ fontSize: 12, color: 'var(--on-error-container)', background: 'var(--error-container)', borderRadius: 8, padding: '9px 12px', lineHeight: 1.5 }}>
+                  Tu suscripción venció — renueva desde Configuración para reagendar o cancelar citas.
+                </div>
+              )}
+
+              {!isClosed && puedeEscribir && (
                 <button
                   onClick={() => setMode('reagendar')}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1px solid var(--outline-variant)', borderRadius: 10, background: 'var(--surface)', color: 'var(--on-surface)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
@@ -308,7 +318,7 @@ function CitaDetailModal({ appt, open, onClose, onChanged, onCancelled, go, toas
                 </button>
               )}
 
-              {!isClosed && (
+              {!isClosed && puedeEscribir && (
                 <button
                   onClick={() => setMode('cancelar')}
                   style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1px solid var(--error)', borderRadius: 10, background: 'var(--error-container)', color: 'var(--on-error-container)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
@@ -774,6 +784,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
   }
 
   async function handleCreate() {
+    if (account.accesoNivel === 'limitado') { setError('Tu suscripción venció. Renueva desde Configuración para agendar citas nuevas.'); return; }
     if (!pid) { setError('Selecciona un paciente.'); return; }
     if (!medicoSel) { setError('Selecciona a qué médico pertenece la cita.'); return; }
     const fecha = dateTimeToISO(dateVal, timeVal);
@@ -815,6 +826,12 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
     <ModalCard>
       <CloseBtn onClose={onClose} />
       <ModalBadge icon="event_available" title="Nueva cita médica" subtitle={dateLabel} />
+
+      {account.accesoNivel === 'limitado' && (
+        <div style={{ fontSize: 13, color: 'var(--on-error-container)', background: 'var(--error-container)', borderRadius: 10, padding: '11px 14px', marginBottom: 16 }}>
+          Tu suscripción venció. Renueva desde Configuración para poder agendar citas nuevas.
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
@@ -921,7 +938,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
       <ModalFooter>
         <CancelBtn onClick={onClose} />
         {!conflicto && (
-          <PrimaryBtn onClick={handleCreate} disabled={saving || !pid || !medicoSel}>
+          <PrimaryBtn onClick={handleCreate} disabled={saving || !pid || !medicoSel || account.accesoNivel === 'limitado'}>
             {saving ? 'Verificando…' : 'Agendar Ahora'}
           </PrimaryBtn>
         )}

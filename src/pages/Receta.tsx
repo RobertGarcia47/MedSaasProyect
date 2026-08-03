@@ -73,10 +73,11 @@ export function Receta({ go, goBack, toast, patientId }: {
   const [pdfData, setPdfData]     = useState<RecetaPdfData | null>(null);
   const [pdfOpen, setPdfOpen]     = useState(false);
 
-  const puede = account.puedeEmitirClinico && account.puedePrescribir && !!account.clinicaId;
+  const suscripcionVencida = account.accesoNivel === 'limitado';
+  const puede = account.puedeEmitirClinico && account.puedePrescribir && !!account.clinicaId && !suscripcionVencida;
   // Distingue el motivo del bloqueo: sin cédula vs. cédula con recetas desactivadas
-  // (psicólogos, nutriólogos…) — cubre navegación directa aunque los botones de
-  // entrada ya estén ocultos en Pacientes/Dashboard.
+  // (psicólogos, nutriólogos…) vs. suscripción vencida — cubre navegación directa
+  // aunque los botones de entrada ya estén ocultos en Pacientes/Dashboard.
   const bloqueadoPorToggle = account.puedeEmitirClinico && !account.puedePrescribir;
 
   useEffect(() => {
@@ -144,16 +145,22 @@ export function Receta({ go, goBack, toast, patientId }: {
     return (
       <div className="page-pad" style={{ maxWidth: 640, margin: '40px auto', textAlign: 'center' }}>
         <Card variant="elevated" style={{ padding: '48px 28px' }}>
-          <Icon name="badge" size={48} style={{ color: 'var(--primary)', opacity: .6 }} />
+          <Icon name={suscripcionVencida ? 'lock_clock' : 'badge'} size={48} style={{ color: 'var(--primary)', opacity: .6 }} />
           <h2 className="title-l" style={{ marginTop: 14 }}>
-            {bloqueadoPorToggle ? 'La emisión de recetas está desactivada' : 'Registra tu cédula profesional'}
+            {suscripcionVencida ? 'Tu suscripción venció' : bloqueadoPorToggle ? 'La emisión de recetas está desactivada' : 'Registra tu cédula profesional'}
           </h2>
           <p className="body-m" style={{ color: 'var(--on-surface-variant)', margin: '8px auto 18px', maxWidth: 420 }}>
-            {bloqueadoPorToggle
+            {suscripcionVencida
+              ? 'Renueva tu suscripción desde Configuración para poder emitir recetas nuevas.'
+              : bloqueadoPorToggle
               ? 'Tu perfil profesional tiene desactivada la opción de emitir recetas. Actívala en tu perfil si tu práctica sí incluye prescribir medicamentos.'
               : 'Para emitir recetas necesitas estar dado de alta como médico. Captura tu cédula en tu perfil.'}
           </p>
-          <Button variant="filled" icon="account_circle" onClick={() => go('profile')}>Ir a mi perfil</Button>
+          {suscripcionVencida ? (
+            <Button variant="filled" icon="settings" onClick={() => go('settings')}>Ir a Configuración</Button>
+          ) : (
+            <Button variant="filled" icon="account_circle" onClick={() => go('profile')}>Ir a mi perfil</Button>
+          )}
         </Card>
       </div>
     );

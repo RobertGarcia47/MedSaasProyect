@@ -263,6 +263,55 @@ function TrialExpired({ doctor, onLogout }) {
   );
 }
 
+/* ---------- Banner persistente de estado de suscripción ---------- */
+function AccesoBanner({ account, go }: { account: AccountContext; go: (name: string, params?: any) => void }) {
+  const [dismissed, setDismissed] = useState(false);
+
+  if (!account.suscripcion) return null; // sin fila en absoluto → TrialExpired ya cubrió ese caso aparte
+
+  if (account.enGracia) {
+    return (
+      <div style={{ background: 'var(--warning-container)', color: 'var(--on-warning-container)', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 13.5, fontWeight: 500 }}>
+        <Icon name="warning" size={18} fill />
+        <span style={{ flex: 1, minWidth: 200 }}>No pudimos procesar tu pago. Tienes acceso completo por 72 horas mientras lo resolvemos.</span>
+        <button onClick={() => go('settings')} style={{ background: 'var(--warning)', color: 'var(--on-warning)', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Actualizar método de pago
+        </button>
+      </div>
+    );
+  }
+
+  if (account.accesoNivel === 'limitado') {
+    return (
+      <div style={{ background: 'var(--error-container)', color: 'var(--on-error-container)', padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 13.5, fontWeight: 500 }}>
+        <Icon name="lock_clock" size={18} fill />
+        <span style={{ flex: 1, minWidth: 200 }}>Tu suscripción venció. Puedes seguir consultando tu información, pero no crear citas, pacientes ni documentos nuevos hasta renovar.</span>
+        <button onClick={() => go('settings')} style={{ background: 'var(--error)', color: 'var(--on-error)', border: 'none', borderRadius: 8, padding: '6px 14px', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Renovar
+        </button>
+      </div>
+    );
+  }
+
+  if (account.diasParaVencer !== null && account.diasParaVencer <= 7 && !dismissed) {
+    const texto = account.diasParaVencer <= 0
+      ? 'Tu periodo termina hoy.'
+      : `Tu periodo termina en ${account.diasParaVencer} día${account.diasParaVencer === 1 ? '' : 's'}.`;
+    return (
+      <div style={{ background: 'var(--surface-container-high)', color: 'var(--on-surface)', padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', fontSize: 13, borderBottom: '1px solid var(--outline-variant)' }}>
+        <Icon name="schedule" size={16} style={{ color: 'var(--on-surface-variant)' }} />
+        <span style={{ flex: 1, minWidth: 200 }}>{texto} Activa un plan para no perder acceso.</span>
+        <button onClick={() => go('settings')} style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+          Ver planes
+        </button>
+        <button onClick={() => setDismissed(true)} aria-label="Cerrar aviso" style={{ background: 'none', border: 'none', color: 'var(--on-surface-variant)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 0 }}>×</button>
+      </div>
+    );
+  }
+
+  return null;
+}
+
 /* ---------- Error boundary ---------- */
 class ErrorBoundary extends Component<any, { err: any }> {
   constructor(p: any) { super(p); this.state = { err: null }; }
@@ -437,8 +486,11 @@ export default function App() {
 
   const doctor = doctorFromAccount(account);
 
-  // Gate de vigencia del trial (§6.1): vencido → bloquear y mandar a comprar.
-  if (account && !account.accesoVigente) {
+  // Gate de vigencia del trial (§6.1): SOLO se bloquea todo si la clínica nunca tuvo
+  // ninguna fila en suscripciones (caso raro, no hay nada que mostrarle). Vencida o
+  // en gracia ya NO bloquea la app entera — ver AccesoBanner + gates puntuales en
+  // cada acción de escritura (accesoNivel === 'limitado').
+  if (account && account.clinicaId && !account.suscripcion) {
     return <TrialExpired doctor={doctor} onLogout={onLogout} />;
   }
 
@@ -463,6 +515,7 @@ export default function App() {
   return (
     <AccountCtx.Provider value={account}>
     <div className="density-regular" style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
+      {account && <AccesoBanner account={account} go={go} />}
       {navStyle === 'topnav' && (
         <TopNav route={route} go={go} theme={theme} setTheme={setTheme} openProfileMenu={() => setPmenu(true)} doctor={doctor} />
       )}
