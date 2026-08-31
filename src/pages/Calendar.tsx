@@ -18,7 +18,7 @@ import {
   ModalCard, CloseBtn, ModalBadge,
   Field, FocusInput, FocusSelect, PickerTrigger,
   ModalFooter, CancelBtn, PrimaryBtn,
-  useMedicos, useCitasDelDia, computeOcupados, TimeSlotGrid,
+  useMedicos, useCitasDelDia, computeOcupados, TimeSlotGrid, PatientSearchField,
   OportunidadModal, type OportunidadModalSingle,
 } from './Clinical';
 
@@ -764,9 +764,9 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
     }
   }, [open, date?.getTime()]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (open && !pid && patients.length) setPid(patients[0].id);
-  }, [open, patients]);
+  // Ya no se auto-selecciona el primer paciente de la lista — con el buscador,
+  // quien agenda debe confirmarlo a propósito (y ver el teléfono) para no
+  // agarrar por error a otro paciente con el mismo nombre.
 
   useEffect(() => {
     if (open && !medicoSel && medicos.length === 1) setMedicoSel(medicos[0].profileId);
@@ -838,11 +838,12 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Paciente */}
-        <Field label="Paciente" icon="person" required>
-          <FocusSelect value={pid} onChange={e => { setPid(e.target.value); setError(''); setConflicto(null); }}>
-            {patients.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </FocusSelect>
-        </Field>
+        <PatientSearchField
+          patients={patients}
+          value={pid}
+          onChange={(v) => { setPid(v); setError(''); setConflicto(null); }}
+          required
+        />
 
         {/* Médico — solo se muestra si hay más de uno (o si quien agenda no es médico) */}
         {(medicos.length > 1 || !account.puedeEmitirClinico) && (

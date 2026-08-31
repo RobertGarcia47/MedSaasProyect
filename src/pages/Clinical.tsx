@@ -358,6 +358,92 @@ export function FocusInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
+/* ── Buscador de paciente con autocompletar ──────────────────────────────────
+   Reemplaza el <select> plano: con cientos de pacientes, escribir para filtrar
+   es mucho más rápido que desplazarse por una lista larga. Muestra el teléfono
+   junto al nombre (en la lista y ya elegido) para distinguir homónimos —
+   puede haber más de un "Juan Pérez". */
+export interface PacienteBuscable {
+  id: string;
+  name: string;
+  telefono?: string | null;
+}
+
+export function PatientSearchField({ patients, value, onChange, required }: {
+  patients: PacienteBuscable[];
+  value: string;
+  onChange: (id: string) => void;
+  required?: boolean;
+}) {
+  const [busqueda, setBusqueda] = useState('');
+  const [abierto,  setAbierto]  = useState(false);
+  const seleccionado = patients.find((p) => p.id === value) ?? null;
+
+  const q = busqueda.trim().toLowerCase();
+  const filtrados = q
+    ? patients.filter((p) => p.name.toLowerCase().includes(q) || (p.telefono ?? '').includes(busqueda.trim())).slice(0, 8)
+    : [];
+
+  return (
+    <Field label="Paciente" icon="person" required={required}>
+      {seleccionado ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 0 9px 30px', minHeight: 41, boxSizing: 'border-box' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--on-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {seleccionado.name}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 1 }}>
+              {seleccionado.telefono || 'Sin teléfono registrado'}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => { onChange(''); setBusqueda(''); }}
+            style={{ flexShrink: 0, background: 'var(--surface-container-highest)', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Cambiar
+          </button>
+        </div>
+      ) : (
+        <div style={{ position: 'relative' }}>
+          <FocusInput
+            value={busqueda}
+            onChange={(e) => { setBusqueda(e.target.value); setAbierto(true); }}
+            onFocus={() => setAbierto(true)}
+            onBlur={() => setTimeout(() => setAbierto(false), 150)}
+            placeholder="Escribe el nombre o teléfono del paciente…"
+            autoComplete="off"
+          />
+          {abierto && busqueda.trim() && (
+            <div style={{
+              position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 20,
+              background: 'var(--surface-container-high)', borderRadius: 12, boxShadow: '0 12px 28px var(--shadow)',
+              border: '1px solid var(--outline-variant)', maxHeight: 240, overflowY: 'auto',
+            }}>
+              {filtrados.length === 0 ? (
+                <div style={{ padding: '12px 14px', fontSize: 13, color: 'var(--on-surface-variant)' }}>No se encontraron pacientes</div>
+              ) : (
+                filtrados.map((p) => (
+                  <div
+                    key={p.id}
+                    onMouseDown={() => { onChange(p.id); setBusqueda(''); setAbierto(false); }}
+                    style={{ padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--outline-variant)' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-container-highest)'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                  >
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)' }}>{p.name}</div>
+                    <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 1 }}>{p.telefono || 'Sin teléfono registrado'}</div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </Field>
+  );
+}
+
 export function FocusSelect(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
   const [f, setF] = useState(false);
   return (
@@ -953,9 +1039,9 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (open && !pid && pacientes.length) setPid(pacientes[0].id);
-  }, [open, pacientes]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Ya no se auto-selecciona el primer paciente de la lista — con el buscador,
+  // quien agenda debe confirmarlo a propósito (y ver el teléfono) para no
+  // agarrar por error a otro paciente con el mismo nombre.
 
   useEffect(() => {
     if (open && !medicoId && medicos.length === 1) setMedicoId(medicos[0].profileId);
@@ -1011,11 +1097,7 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* Paciente */}
-          <Field label="Paciente" icon="person" required>
-            <FocusSelect value={pid} onChange={(e) => setPid(e.target.value)}>
-              {pacientes.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </FocusSelect>
-          </Field>
+          <PatientSearchField patients={pacientes} value={pid} onChange={setPid} required />
 
           {/* Médico — solo se muestra si hay más de uno (o si quien agenda no es médico) */}
           {(medicos.length > 1 || !account.puedeEmitirClinico) && (
