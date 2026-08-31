@@ -12,13 +12,14 @@ import { fetchCandidatos, crearOportunidad, actualizarAdelanto } from '../lib/op
 import { Button, Segmented, useIsMobile } from '../components';
 import {
   IH, MONTHS, YEARS_CITA, pad,
-  type DateVal, type TimeVal, type ColDef,
-  dateValLabel, timeValLabel, dateTimeToISO,
+  type DateVal, type ColDef,
+  dateValLabel, dateHHMMToISO,
   WheelPickerSheet,
   ModalCard, CloseBtn, ModalBadge,
   Field, FocusInput, FocusSelect, PickerTrigger,
   ModalFooter, CancelBtn, PrimaryBtn,
-  useMedicos, OportunidadModal, type OportunidadModalSingle,
+  useMedicos, useCitasDelDia, computeOcupados, TimeSlotGrid,
+  OportunidadModal, type OportunidadModalSingle,
 } from './Clinical';
 
 // ── Constantes de layout ───────────────────────────────────────────────────────
@@ -730,14 +731,22 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
   const [pid,        setPid]        = useState('');
   const [medicoSel,  setMedicoSel]  = useState('');
   const [dateVal,    setDateVal]    = useState<DateVal>({ d: 1, m: 0, y: 2026 });
-  const [timeVal,    setTimeVal]    = useState<TimeVal>({ h: 9, min: 0, ap: 'AM' });
+  const [horaSel,    setHoraSel]    = useState('');
   const [dur,        setDur]        = useState('30');
   const [tipo,       setTipo]       = useState<TipoCita>('consulta');
   const [adelanto,   setAdelanto]   = useState(false);
-  const [pickerOpen, setPickerOpen] = useState<null | 'date' | 'time'>(null);
+  const [pickerOpen, setPickerOpen] = useState<null | 'date'>(null);
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState('');
   const [conflicto,  setConflicto]  = useState<ConflictoInfo | null>(null);
+
+  const dateStr = `${dateVal.y}-${pad(dateVal.m + 1)}-${pad(dateVal.d)}`;
+  const citasDelDia = useCitasDelDia(clinicaId, medicoSel, dateStr);
+  const ocupados = computeOcupados(citasDelDia, Number(dur) || 30);
+
+  useEffect(() => {
+    if (horaSel && ocupados.has(horaSel)) setHoraSel('');
+  }, [ocupados]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!open || !clinicaId) return;
@@ -746,9 +755,8 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
 
   useEffect(() => {
     if (open && date) {
-      const now = new Date();
       setDateVal({ d: date.getDate(), m: date.getMonth(), y: date.getFullYear() });
-      setTimeVal({ h: now.getHours() % 12 || 12, min: 0, ap: now.getHours() >= 12 ? 'PM' : 'AM' });
+      setHoraSel('');
       setDur('30'); setTipo('consulta'); setAdelanto(false);
       setPickerOpen(null); setSaving(false); setError(''); setConflicto(null);
       // Si el propio usuario es médico se autoselecciona; si no (asistente), vacío.
@@ -769,7 +777,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
   const dateLabel = cap(date.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
 
   async function doCreate() {
-    const fecha = dateTimeToISO(dateVal, timeVal);
+    const fecha = dateHHMMToISO(dateVal, horaSel);
     if (!fecha) throw new Error('Fecha u hora inválida');
     await createCita(clinicaId, medicoSel, creatorId, {
       paciente_id: pid,
@@ -787,7 +795,8 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
     if (account.accesoNivel === 'limitado') { setError('Tu suscripción venció. Renueva desde Configuración para agendar citas nuevas.'); return; }
     if (!pid) { setError('Selecciona un paciente.'); return; }
     if (!medicoSel) { setError('Selecciona a qué médico pertenece la cita.'); return; }
-    const fecha = dateTimeToISO(dateVal, timeVal);
+    if (!horaSel) { setError('Selecciona un horario.'); return; }
+    const fecha = dateHHMMToISO(dateVal, horaSel);
     if (!fecha) { setError('Fecha u hora inválida.'); return; }
     setSaving(true); setError(''); setConflicto(null);
     try {
@@ -805,21 +814,14 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
     finally { setSaving(false); }
   }
 
-  // Wheel picker columns
+  // Wheel picker de fecha (la hora ahora se elige en el grid, no en rueda)
   const days    = Array.from({ length: 31 }, (_, i) => String(i + 1));
   const years_c = YEARS_CITA.map(String);
-  const hours   = Array.from({ length: 12 }, (_, i) => String(i + 1));
-  const mins    = Array.from({ length: 60 }, (_, i) => pad(i));
 
   const dateColumns: ColDef[] = [
     { items: days,    selectedIdx: dateVal.d - 1,             flex: 1,   onChange: (i) => setDateVal(v => ({ ...v, d: i + 1 })) },
     { items: MONTHS,  selectedIdx: dateVal.m,                 flex: 1.1, onChange: (i) => setDateVal(v => ({ ...v, m: i })) },
     { items: years_c, selectedIdx: dateVal.y - YEARS_CITA[0], flex: 1.1, onChange: (i) => setDateVal(v => ({ ...v, y: YEARS_CITA[i] })) },
-  ];
-  const timeColumns: ColDef[] = [
-    { items: hours,       selectedIdx: timeVal.h - 1,                       flex: 1, onChange: (i) => setTimeVal(v => ({ ...v, h: i + 1 })) },
-    { items: mins,        selectedIdx: timeVal.min,                          flex: 1, onChange: (i) => setTimeVal(v => ({ ...v, min: i })) },
-    { items: ['AM','PM'], selectedIdx: timeVal.ap === 'AM' ? 0 : 1,         flex: 1, onChange: (i) => setTimeVal(v => ({ ...v, ap: i === 0 ? 'AM' : 'PM' })) },
   ];
 
   return (
@@ -852,8 +854,8 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
           </Field>
         )}
 
-        {/* Fecha / Hora / Duración */}
-        <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.1fr .9fr', gap: 22 }}>
+        {/* Fecha / Duración */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 22 }}>
           <div>
             <FL>Fecha</FL>
             <PickerTrigger
@@ -863,20 +865,17 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
               onClick={() => setPickerOpen('date')}
             />
           </div>
-          <div>
-            <FL>Hora</FL>
-            <PickerTrigger
-              icon="schedule"
-              value={timeValLabel(timeVal)}
-              active={pickerOpen === 'time'}
-              onClick={() => setPickerOpen('time')}
-            />
-          </div>
           <Field label="Duración (min)" icon="timer">
             <FocusSelect value={dur} onChange={e => setDur(e.target.value)}>
               {['15','30','45','60','90'].map(d => <option key={d} value={d}>{d}</option>)}
             </FocusSelect>
           </Field>
+        </div>
+
+        {/* Hora de inicio — grid, horarios ocupados de este médico ese día apagados */}
+        <div>
+          <FL>Hora de inicio</FL>
+          <TimeSlotGrid value={horaSel} onChange={(v) => { setHoraSel(v); setError(''); setConflicto(null); }} ocupados={ocupados} />
         </div>
 
         {/* Tipo de cita */}
@@ -938,18 +937,18 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
       <ModalFooter>
         <CancelBtn onClick={onClose} />
         {!conflicto && (
-          <PrimaryBtn onClick={handleCreate} disabled={saving || !pid || !medicoSel || account.accesoNivel === 'limitado'}>
+          <PrimaryBtn onClick={handleCreate} disabled={saving || !pid || !medicoSel || !horaSel || account.accesoNivel === 'limitado'}>
             {saving ? 'Verificando…' : 'Agendar Ahora'}
           </PrimaryBtn>
         )}
       </ModalFooter>
 
-      {/* Wheel picker de fecha/hora */}
-      {pickerOpen && (
+      {/* Wheel picker de fecha */}
+      {pickerOpen === 'date' && (
         <WheelPickerSheet
-          key={pickerOpen}
-          title={pickerOpen === 'date' ? 'Fecha' : 'Hora'}
-          columns={pickerOpen === 'date' ? dateColumns : timeColumns}
+          key="date"
+          title="Fecha"
+          columns={dateColumns}
           onClose={() => setPickerOpen(null)}
         />
       )}

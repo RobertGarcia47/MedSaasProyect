@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAccount } from '../context/AccountContext';
 import { createPaciente, fetchPacientesSelect } from '../lib/patients';
-import { createCita, encodeMotivoConTipo } from '../lib/citas';
+import { createCita, encodeMotivoConTipo, fetchCitasDia } from '../lib/citas';
+import type { ApptUI } from '../lib/consultas';
 import { crearInforme, TIPO_INFORME_LABEL } from '../lib/informes';
 import type { TipoInforme } from '../lib/informes';
 import { Icon, Button, Card, IconButton, Dialog, TextField, Select } from '../components';
@@ -39,6 +40,90 @@ export function dateTimeToISO(d: DateVal, t: TimeVal): string | null {
   return isNaN(dt.getTime()) ? null : dt.toISOString();
 }
 const dateValToISO = (v: DateVal) => `${v.y}-${pad(v.m + 1)}-${pad(v.d)}`;
+
+/** Combina DateVal + "HH:MM" (24h, del grid de horarios) → ISO. */
+export function dateHHMMToISO(d: DateVal, hhmm: string): string | null {
+  if (!hhmm) return null;
+  const dt = new Date(`${d.y}-${pad(d.m + 1)}-${pad(d.d)}T${hhmm}`);
+  return isNaN(dt.getTime()) ? null : dt.toISOString();
+}
+
+/* ── Grid de horarios (reemplaza la rueda de hora en "Nueva cita") ──────────
+   07:00–22:30 cada 30 min. Los horarios ya ocupados de ESE médico ese día se
+   ven apagados y no se pueden elegir — evita enterarte del choque hasta
+   después de darle a Agendar. */
+export function generarHorarios(): string[] {
+  const slots: string[] = [];
+  for (let h = 7; h <= 22; h++) {
+    slots.push(`${pad(h)}:00`);
+    slots.push(`${pad(h)}:30`);
+  }
+  return slots;
+}
+
+function hhmmToMin(hhmm: string): number {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + (m || 0);
+}
+
+export function computeOcupados(citasDelDia: ApptUI[], durMin: number): Set<string> {
+  const activos = citasDelDia.filter((c) => c.status !== 'cancelada');
+  const ocupados = new Set<string>();
+  for (const slot of generarHorarios()) {
+    const inicio = hhmmToMin(slot);
+    const fin = inicio + durMin;
+    const choca = activos.some((c) => inicio < hhmmToMin(c.end) && fin > hhmmToMin(c.start));
+    if (choca) ocupados.add(slot);
+  }
+  return ocupados;
+}
+
+/** Citas del día de un médico concreto — para saber qué horarios del grid apagar. */
+export function useCitasDelDia(clinicaId: string | null, medicoId: string, dateStr: string) {
+  const [citas, setCitas] = useState<ApptUI[]>([]);
+  useEffect(() => {
+    if (!clinicaId || !medicoId || !dateStr) { setCitas([]); return; }
+    const [y, m, d] = dateStr.split('-').map(Number);
+    fetchCitasDia(clinicaId, new Date(y, m - 1, d))
+      .then((rows) => setCitas(rows.filter((r) => r.medicoId === medicoId)))
+      .catch((e) => console.error('useCitasDelDia:', e));
+  }, [clinicaId, medicoId, dateStr]);
+  return citas;
+}
+
+export function TimeSlotGrid({ value, onChange, ocupados }: {
+  value: string; onChange: (v: string) => void; ocupados: Set<string>;
+}) {
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(62px, 1fr))', gap: 8 }}>
+      {generarHorarios().map((s) => {
+        const isOcupado = ocupados.has(s);
+        const isActivo = value === s;
+        return (
+          <button
+            key={s}
+            type="button"
+            disabled={isOcupado}
+            onClick={() => onChange(s)}
+            title={isOcupado ? 'Horario ocupado' : undefined}
+            style={{
+              padding: '9px 4px', borderRadius: 10, fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
+              cursor: isOcupado ? 'not-allowed' : 'pointer',
+              border: `1.5px solid ${isActivo ? 'var(--primary)' : 'var(--outline-variant)'}`,
+              background: isActivo ? 'var(--primary)' : isOcupado ? 'var(--surface-container-highest)' : 'var(--surface)',
+              color: isActivo ? 'var(--on-primary)' : isOcupado ? 'var(--on-surface-variant)' : 'var(--on-surface)',
+              opacity: isOcupado ? 0.55 : 1,
+              textDecoration: isOcupado ? 'line-through' : 'none',
+              transition: 'transform .1s, box-shadow .1s',
+            }}
+          >
+            {s}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
 
 /* ── WheelCol ─────────────────────────────────────────────── */
 interface WheelColProps {
@@ -829,17 +914,26 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
   const { medicos } = useMedicos(open, account.clinicaId);
 
   const initDate = (): DateVal => { const n = new Date(); return { d: n.getDate(), m: n.getMonth(), y: n.getFullYear() }; };
-  const initTime = (): TimeVal => ({ h: 10, min: 0, ap: 'AM' });
 
   const [pid,         setPid]        = useState('');
   const [medicoId,    setMedicoId]   = useState('');
   const [dateVal,     setDateVal]    = useState<DateVal>(initDate);
-  const [timeVal,     setTimeVal]    = useState<TimeVal>(initTime);
+  const [horaSel,     setHoraSel]    = useState('');
   const [dur,         setDur]        = useState('30');
   const [tipo,        setTipo]       = useState('consulta');
   const [adelanto,    setAdelanto]   = useState(false);
-  const [pickerOpen,  setPickerOpen] = useState<null | 'date' | 'time'>(null);
+  const [pickerOpen,  setPickerOpen] = useState<null | 'date'>(null);
   const [saving,      setSaving]     = useState(false);
+
+  const dateStr = dateValToISO(dateVal);
+  const citasDelDia = useCitasDelDia(account.clinicaId, medicoId, dateStr);
+  const ocupados = computeOcupados(citasDelDia, Number(dur) || 30);
+
+  // Si cambia médico/fecha/duración y el horario elegido ya no está libre, se limpia
+  // — mejor pedir que elija de nuevo a que se guarde un choque sin darse cuenta.
+  useEffect(() => {
+    if (horaSel && ocupados.has(horaSel)) setHoraSel('');
+  }, [ocupados]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Cualquier miembro activo puede agendar (no solo quien tiene cédula) — el
   // picker de "¿para qué médico?" de abajo es lo que mantiene la cita bien
@@ -854,7 +948,7 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
       // Si el propio usuario es médico (aparece en la lista), se autoselecciona;
       // si no (asistente), se deja vacío y hay que elegir.
       setMedicoId(account.puedeEmitirClinico ? account.userId : '');
-      setDateVal(initDate()); setTimeVal(initTime());
+      setDateVal(initDate()); setHoraSel('');
       setDur('30'); setTipo('consulta'); setAdelanto(false); setPickerOpen(null); setSaving(false);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -870,7 +964,8 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
   const guardar = async () => {
     if (!pid) { toast?.('Selecciona un paciente'); return; }
     if (!medicoId) { toast?.('Selecciona a qué médico pertenece la cita'); return; }
-    const fecha = dateTimeToISO(dateVal, timeVal);
+    if (!horaSel) { toast?.('Selecciona un horario'); return; }
+    const fecha = dateHHMMToISO(dateVal, horaSel);
     if (!fecha) { toast?.('Fecha u hora inválida'); return; }
     setSaving(true);
     try {
@@ -889,21 +984,14 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
 
   if (!open) return null;
 
-  // Wheel picker column definitions
+  // Wheel picker de fecha (la hora ahora se elige en el grid, no en rueda)
   const days    = Array.from({ length: 31 }, (_, i) => String(i + 1));
   const years_c = YEARS_CITA.map(String);
-  const hours   = Array.from({ length: 12 }, (_, i) => String(i + 1));
-  const mins    = Array.from({ length: 60 }, (_, i) => pad(i));
 
   const dateColumns: ColDef[] = [
     { items: days,    selectedIdx: dateVal.d - 1,              flex: 1,   onChange: (i) => setDateVal(v => ({ ...v, d: i + 1 })) },
     { items: MONTHS,  selectedIdx: dateVal.m,                  flex: 1.1, onChange: (i) => setDateVal(v => ({ ...v, m: i })) },
     { items: years_c, selectedIdx: dateVal.y - YEARS_CITA[0],  flex: 1.1, onChange: (i) => setDateVal(v => ({ ...v, y: YEARS_CITA[i] })) },
-  ];
-  const timeColumns: ColDef[] = [
-    { items: hours, selectedIdx: timeVal.h - 1,                            flex: 1, onChange: (i) => setTimeVal(v => ({ ...v, h: i + 1 })) },
-    { items: mins,  selectedIdx: timeVal.min,                              flex: 1, onChange: (i) => setTimeVal(v => ({ ...v, min: i })) },
-    { items: ['AM','PM'], selectedIdx: timeVal.ap === 'AM' ? 0 : 1,        flex: 1, onChange: (i) => setTimeVal(v => ({ ...v, ap: i === 0 ? 'AM' : 'PM' })) },
   ];
 
   return (
@@ -939,8 +1027,8 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
             </Field>
           )}
 
-          {/* Fecha / Hora / Duración */}
-          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.1fr .9fr', gap: 22 }}>
+          {/* Fecha / Duración */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 22 }}>
             <div>
               <label style={FL}>Fecha</label>
               <PickerTrigger
@@ -950,20 +1038,17 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
                 onClick={() => setPickerOpen('date')}
               />
             </div>
-            <div>
-              <label style={FL}>Hora</label>
-              <PickerTrigger
-                icon="schedule"
-                value={timeValLabel(timeVal)}
-                active={pickerOpen === 'time'}
-                onClick={() => setPickerOpen('time')}
-              />
-            </div>
             <Field label="Duración (min)" icon="timer">
               <FocusSelect value={dur} onChange={(e) => setDur(e.target.value)}>
                 {['15','30','45','60'].map((d) => <option key={d} value={d}>{d}</option>)}
               </FocusSelect>
             </Field>
+          </div>
+
+          {/* Hora de inicio — grid, horarios ocupados de este médico ese día apagados */}
+          <div>
+            <label style={FL}>Hora de inicio</label>
+            <TimeSlotGrid value={horaSel} onChange={setHoraSel} ocupados={ocupados} />
           </div>
 
           {/* Tipo de cita */}
@@ -1000,18 +1085,17 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
       <ModalFooter>
         <CancelBtn onClick={onClose} />
         {puede && pacientes.length > 0 && medicos.length > 0 && (
-          <PrimaryBtn onClick={guardar} disabled={saving || !pid || !medicoId}>
+          <PrimaryBtn onClick={guardar} disabled={saving || !pid || !medicoId || !horaSel}>
             {saving ? 'Agendando…' : 'Agendar cita'}
           </PrimaryBtn>
         )}
       </ModalFooter>
 
-      {/* Wheel picker — remount via key when type switches */}
-      {pickerOpen && (
+      {pickerOpen === 'date' && (
         <WheelPickerSheet
-          key={pickerOpen}
-          title={pickerOpen === 'date' ? 'Fecha' : 'Hora'}
-          columns={pickerOpen === 'date' ? dateColumns : timeColumns}
+          key="date"
+          title="Fecha"
+          columns={dateColumns}
           onClose={() => setPickerOpen(null)}
         />
       )}
