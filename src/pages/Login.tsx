@@ -158,8 +158,8 @@ function InviteAcceptView({ inviteCode, onLogin }: { inviteCode: string; onLogin
   if (preview === 'invalid' || !preview) {
     return (
       <div style={{ width: '100%', maxWidth: 380, margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--error-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-          <Icon name="link_off" size={30} fill style={{ color: 'var(--on-error-container)' }} />
+        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--error)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <Icon name="link_off" size={30} fill style={{ color: '#fff' }} />
         </div>
         <h2 className="headline-s" style={{ marginBottom: 10, letterSpacing: '-.3px' }}>Invitación no válida</h2>
         <p className="body-m" style={{ color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>
@@ -172,8 +172,8 @@ function InviteAcceptView({ inviteCode, onLogin }: { inviteCode: string; onLogin
   if (esperandoConfirmacion) {
     return (
       <div style={{ width: '100%', maxWidth: 380, margin: '0 auto', textAlign: 'center' }}>
-        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-          <Icon name="mark_email_read" size={30} fill style={{ color: 'var(--on-primary-container)' }} />
+        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+          <Icon name="mark_email_read" size={30} fill style={{ color: '#fff' }} />
         </div>
         <h2 className="headline-s" style={{ marginBottom: 10, letterSpacing: '-.3px' }}>Confirma tu correo</h2>
         <p className="body-m" style={{ color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>
@@ -311,8 +311,8 @@ function LoginForm({ onLogin, authError, onClearAuthError, inviteCode }) {
   // ── Vista: recuperación enviada ───────────────────────────────────────────
   if (view === 'forgot-sent') return (
     <div style={{ width: '100%', maxWidth: 380, margin: '0 auto', textAlign: 'center' }}>
-      <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-        <Icon name="mark_email_read" size={36} fill style={{ color: 'var(--on-primary-container)' }} />
+      <div style={{ width: 72, height: 72, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+        <Icon name="mark_email_read" size={36} fill style={{ color: '#fff' }} />
       </div>
       <h2 className="headline-s" style={{ marginBottom: 10, letterSpacing: '-.3px' }}>Revisa tu correo</h2>
       <p className="body-m" style={{ color: 'var(--on-surface-variant)', marginBottom: 8, lineHeight: 1.6 }}>
@@ -337,8 +337,8 @@ function LoginForm({ onLogin, authError, onClearAuthError, inviteCode }) {
   // ── Vista: nueva contraseña (desde el link del correo) ────────────────────
   if (view === 'reset') return (
     <div style={{ width: '100%', maxWidth: 380, margin: '0 auto' }} onKeyDown={handleKeyDown}>
-      <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
-        <Icon name="lock_reset" size={32} fill style={{ color: 'var(--on-primary-container)' }} />
+      <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+        <Icon name="lock_reset" size={32} fill style={{ color: '#fff' }} />
       </div>
       <h2 className="headline-s" style={{ marginBottom: 6, letterSpacing: '-.3px' }}>Crea una nueva contraseña</h2>
       <p className="body-m" style={{ color: 'var(--on-surface-variant)', marginBottom: 26 }}>

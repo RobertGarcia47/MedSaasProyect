@@ -10,15 +10,15 @@
   --on-primary-container: #00201C;
   --primary-fixed-dim: #82D5C8;
 
-  --secondary: #4A635E;
+  --secondary: #5B6B67;
   --on-secondary: #FFFFFF;
-  --secondary-container: #CCE8E1;
-  --on-secondary-container: #06201B;
+  --secondary-container: color-mix(in srgb, var(--secondary) 24%, #FFFFFF);
+  --on-secondary-container: color-mix(in srgb, var(--secondary) 75%, black);
 
-  --tertiary: #3F6375;
+  --tertiary: #0284C7;
   --on-tertiary: #FFFFFF;
-  --tertiary-container: #C2E8FD;
-  --on-tertiary-container: #001E2D;
+  --tertiary-container: color-mix(in srgb, var(--tertiary) 24%, #FFFFFF);
+  --on-tertiary-container: color-mix(in srgb, var(--tertiary) 75%, black);
 
   --error: #BA1A1A;
   --on-error: #FFFFFF;
@@ -33,22 +33,34 @@
   --warning-container: #FFDDB3;
   --on-warning-container: #2C1700;
 
-  --background: #F4FBF8;
+  /* Paleta extendida por acento — los mismos 6 tonos de la muestra de
+     Configuración (Base=primary, Análogo claro=accent-claro, Análogo
+     frío=tertiary, Contraste cálido=accent-warm, Alerta=error fijo,
+     Neutro=secondary). Usada por tipo de cita/informe y las tarjetas del
+     Dashboard. Los fondos pastel y el tono oscuro para insignias se calculan
+     con color-mix() en vez de tener una variable aparte por matiz. */
+  --accent-claro: #0D8A6F; /* análogo claro — Seguimiento / nota obstétrica */
+  --accent-warm: #C2700A;  /* contraste cálido — Revisión / notas de resumen */
+
+  /* El lienzo general es blanco liso, sin teñir por acento — el color vive
+     en piezas deliberadas (StatChip, badges de tipo, botones), no en el
+     fondo de toda la página. Ver [[propuesta-color-tarjetas-solidas]]. */
+  --background: #FFFFFF;
   --on-background: #161D1B;
-  --surface: #F4FBF8;
+  --surface: #FFFFFF;
   --on-surface: #161D1B;
-  --surface-variant: #DAE5E1;
+  --surface-variant: #E7EAE7;
   --on-surface-variant: #3F4946;
   --outline: #6F7976;
-  --outline-variant: #BEC9C5;
+  --outline-variant: #C5CAC5;
 
   --surface-dim: #D5DBD8;
   --surface-bright: #F4FBF8;
   --surface-container-lowest: #FFFFFF;
-  --surface-container-low: #EFF5F2;
-  --surface-container: #E9EFEC;
-  --surface-container-high: #E3EAE7;
-  --surface-container-highest: #DEE4E1;
+  --surface-container-low: #F1F3F1;
+  --surface-container: #ECEFEC;
+  --surface-container-high: #E6E9E6;
+  --surface-container-highest: #E0E4E0;
 
   --inverse-surface: #2B322F;
   --inverse-on-surface: #ECF2EE;
@@ -74,15 +86,15 @@
   --primary-container: #005048;
   --on-primary-container: #9EF2E4;
 
-  --secondary: #B1CCC5;
+  --secondary: #A8B8B4;
   --on-secondary: #1C3531;
-  --secondary-container: #334B47;
-  --on-secondary-container: #CCE8E1;
+  --secondary-container: color-mix(in srgb, var(--secondary) 30%, #1A211F);
+  --on-secondary-container: color-mix(in srgb, var(--secondary) 85%, white);
 
-  --tertiary: #A7CCE1;
+  --tertiary: #7DD3FC;
   --on-tertiary: #073447;
-  --tertiary-container: #254B5E;
-  --on-tertiary-container: #C2E8FD;
+  --tertiary-container: color-mix(in srgb, var(--tertiary) 30%, #1A211F);
+  --on-tertiary-container: color-mix(in srgb, var(--tertiary) 85%, white);
 
   --error: #FFB4AB;
   --on-error: #690005;
@@ -96,6 +108,9 @@
   --on-warning: #2C1700;
   --warning-container: #683E00;
   --on-warning-container: #FFDDB3;
+
+  --accent-claro: #5EC9AA;
+  --accent-warm: #F0B966;
 
   --background: #0E1513;
   --on-background: #DEE4E1;
@@ -127,12 +142,58 @@
 }
 
 /* ---------- Accent overrides ---------- */
-[data-accent="blue"] { --primary: #2D5DA0; --primary-container: #D6E3FF; --on-primary-container: #001A41; }
-[data-accent="blue"][data-theme="dark"] { --primary: #ABC7FF; --primary-container: #00439A; --on-primary-container: #D6E3FF; }
+/* Cada acento trae sus 6 tonos completos — los mismos que en la muestra de
+   Configuración → Apariencia (Base=primary, Análogo claro=accent-claro,
+   Análogo frío=tertiary, Contraste cálido=accent-warm, Neutro=secondary;
+   Alerta se queda fija en --error, no varía por acento). Todas las
+   -container/on-container se derivan con color-mix() del tono fuerte
+   correspondiente, así no hay que mantenerlas sincronizadas a mano.
+   El lienzo (background/surface/surface-container-*) es blanco liso y NO
+   se tiñe por acento (ver arriba) — el color se ve en piezas puntuales:
+   StatChip del Dashboard (bloque lateral sólido), tipo de cita/informe
+   (Calendar.tsx/Dashboard.tsx/Informe.tsx) y botones/badges. */
+[data-accent="blue"] {
+  --primary: #2D5DA0; --primary-container: #D6E3FF; --on-primary-container: #001A41;
+  --secondary: #5B6B7A; --on-secondary: #FFFFFF;
+  --secondary-container: color-mix(in srgb, var(--secondary) 24%, #FFFFFF);
+  --on-secondary-container: color-mix(in srgb, var(--secondary) 75%, black);
+  --tertiary: #4F5FAD; --on-tertiary: #FFFFFF;
+  --tertiary-container: color-mix(in srgb, var(--tertiary) 24%, #FFFFFF);
+  --on-tertiary-container: color-mix(in srgb, var(--tertiary) 75%, black);
+  --accent-claro: #0EA5E9; --accent-warm: #D97706;
+}
+[data-accent="blue"][data-theme="dark"] {
+  --primary: #ABC7FF; --primary-container: #00439A; --on-primary-container: #D6E3FF;
+  --secondary: #B7C4DE; --on-secondary: #263141;
+  --secondary-container: color-mix(in srgb, var(--secondary) 30%, #1A211F);
+  --on-secondary-container: color-mix(in srgb, var(--secondary) 85%, white);
+  --tertiary: #C0C6FF; --on-tertiary: #1B2374;
+  --tertiary-container: color-mix(in srgb, var(--tertiary) 30%, #1A211F);
+  --on-tertiary-container: color-mix(in srgb, var(--tertiary) 85%, white);
+  --accent-claro: #7DD3FC; --accent-warm: #F0B966;
+}
 [data-accent="green"] { --primary: #1E6E52; --primary-container: #A8F2CD; --on-primary-container: #002115; }
 [data-accent="green"][data-theme="dark"] { --primary: #8AD6B2; --primary-container: #005236; --on-primary-container: #A8F2CD; }
-[data-accent="indigo"] { --primary: #5450A8; --primary-container: #E3DFFF; --on-primary-container: #0E0069; }
-[data-accent="indigo"][data-theme="dark"] { --primary: #C5C0FF; --primary-container: #3B3891; --on-primary-container: #E3DFFF; }
+[data-accent="indigo"] {
+  --primary: #5450A8; --primary-container: #E3DFFF; --on-primary-container: #0E0069;
+  --secondary: #6B647A; --on-secondary: #FFFFFF;
+  --secondary-container: color-mix(in srgb, var(--secondary) 24%, #FFFFFF);
+  --on-secondary-container: color-mix(in srgb, var(--secondary) 75%, black);
+  --tertiary: #4361C4; --on-tertiary: #FFFFFF;
+  --tertiary-container: color-mix(in srgb, var(--tertiary) 24%, #FFFFFF);
+  --on-tertiary-container: color-mix(in srgb, var(--tertiary) 75%, black);
+  --accent-claro: #8B5CF6; --accent-warm: #B8860B;
+}
+[data-accent="indigo"][data-theme="dark"] {
+  --primary: #C5C0FF; --primary-container: #3B3891; --on-primary-container: #E3DFFF;
+  --secondary: #CBC0DE; --on-secondary: #322C42;
+  --secondary-container: color-mix(in srgb, var(--secondary) 30%, #1A211F);
+  --on-secondary-container: color-mix(in srgb, var(--secondary) 85%, white);
+  --tertiary: #B4C5FF; --on-tertiary: #1A2D6B;
+  --tertiary-container: color-mix(in srgb, var(--tertiary) 30%, #1A211F);
+  --on-tertiary-container: color-mix(in srgb, var(--tertiary) 85%, white);
+  --accent-claro: #C4B5FD; --accent-warm: #E8C468;
+}
 
 /* ---------- base reset ---------- */
 * { box-sizing: border-box; margin: 0; padding: 0; }

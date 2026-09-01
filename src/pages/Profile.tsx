@@ -635,9 +635,9 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
               {/* Avatar + online dot */}
               <div style={{ position: 'relative', flexShrink: 0 }}>
                 {logoDisplay
-                  ? <img src={logoDisplay} alt="Logo" style={{ width: 68, height: 68, borderRadius: '50%', objectFit: 'cover', background: 'var(--primary-container)', border: '3px solid var(--surface)' }} />
-                  : <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--primary-container)', border: '3px solid var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 22, fontWeight: 700, color: 'var(--primary)', letterSpacing: '-0.5px' }}>{account.iniciales}</span>
+                  ? <img src={logoDisplay} alt="Logo" style={{ width: 68, height: 68, borderRadius: '50%', objectFit: 'cover', background: 'var(--primary)', border: '3px solid var(--surface)' }} />
+                  : <div style={{ width: 68, height: 68, borderRadius: '50%', background: 'var(--primary)', border: '3px solid var(--surface)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: '-0.5px' }}>{account.iniciales}</span>
                     </div>
                 }
                 <div style={{ position: 'absolute', bottom: 2, right: 2, width: 13, height: 13, background: 'var(--success)', borderRadius: '50%', border: '2px solid var(--surface)' }} />
@@ -716,10 +716,10 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
 
             {/* Logo block */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface-container-low)', border: '1px solid var(--outline-variant)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
-              <div style={{ width: 52, height: 52, borderRadius: 10, background: 'var(--primary-container)', border: '1.5px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+              <div style={{ width: 52, height: 52, borderRadius: 10, background: 'var(--primary)', border: '1.5px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
                 {logoDisplay
                   ? <img src={logoDisplay} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <IGlobe />
+                  : <IGlobe c="#fff" />
                 }
               </div>
               <div style={{ flex: 1 }}>
@@ -783,10 +783,10 @@ export function Profile({ toast, refreshAccount }: { toast?: (m: string) => void
 
             {/* Logo de la universidad */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'var(--surface-container-low)', border: '1px solid var(--outline-variant)', borderRadius: 10, padding: '14px 16px', marginBottom: 20 }}>
-              <div style={{ width: 52, height: 52, borderRadius: 10, background: 'var(--primary-container)', border: '1.5px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+              <div style={{ width: 52, height: 52, borderRadius: 10, background: 'var(--primary)', border: '1.5px solid var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
                 {uniLogoDisplay
                   ? <img src={uniLogoDisplay} alt="Logo universidad" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : <ISchool s={24} />
+                  : <ISchool s={24} c="#fff" />
                 }
               </div>
               <div style={{ flex: 1 }}>
@@ -912,7 +912,7 @@ function SettingRow({ icon, title, desc, control, last }: {
 }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 0', borderBottom: last ? 'none' : '1px solid var(--outline-variant)' }}>
-      <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <span className="ms" style={{ fontSize: 20 }}>{icon}</span>
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>

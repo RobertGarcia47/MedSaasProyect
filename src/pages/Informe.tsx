@@ -28,15 +28,19 @@ interface TipoInfo {
   desc: string;
   icon: string;
   color: string;
-  bg: string;
 }
 
+// Tonos como variables de CSS (no hex fijo) — reaccionan solas al cambiar el
+// acento en Configuración → Apariencia, igual que TIPO_META en Calendar.tsx.
+// `color` se usa como fondo sólido del ícono (bloque lateral) — sin diluir
+// con color-mix(), a propósito: nada de pastel. Antes "interconsulta"
+// reusaba el mismo color que "nota_evolucion" — ahora las 5 tienen tono propio.
 const TIPOS: TipoInfo[] = [
-  { id: 'nota_evolucion',  label: 'Nota de evolución',  desc: 'Seguimiento clínico del paciente',        icon: 'monitoring',       color: '#0E8C86', bg: '#D6F0EC' },
-  { id: 'nota_consulta',   label: 'Nota de consulta',   desc: 'Valoración en la consulta actual',        icon: 'stethoscope',      color: '#1A6CCB', bg: '#E4EEFB' },
-  { id: 'nota_obstetrica', label: 'Nota obstétrica',    desc: 'Seguimiento obstétrico/perinatal',        icon: 'child_care',       color: '#7C3AED', bg: '#EDE6FB' },
-  { id: 'interconsulta',   label: 'Interconsulta',      desc: 'Solicitud a otra especialidad',           icon: 'forum',            color: '#0E8C86', bg: '#D6F0EC' },
-  { id: 'otro',            label: 'Resumen / Otro',     desc: 'Síntesis integral u otro tipo de nota',  icon: 'summarize',        color: '#C2410C', bg: '#FBE6D8' },
+  { id: 'nota_evolucion',  label: 'Nota de evolución',  desc: 'Seguimiento clínico del paciente',        icon: 'monitoring',       color: 'var(--primary)' },
+  { id: 'nota_consulta',   label: 'Nota de consulta',   desc: 'Valoración en la consulta actual',        icon: 'stethoscope',      color: 'var(--tertiary)' },
+  { id: 'nota_obstetrica', label: 'Nota obstétrica',    desc: 'Seguimiento obstétrico/perinatal',        icon: 'child_care',       color: 'var(--accent-claro)' },
+  { id: 'interconsulta',   label: 'Interconsulta',      desc: 'Solicitud a otra especialidad',           icon: 'forum',            color: 'var(--secondary)' },
+  { id: 'otro',            label: 'Resumen / Otro',     desc: 'Síntesis integral u otro tipo de nota',  icon: 'summarize',        color: 'var(--accent-warm)' },
 ];
 
 // ── Plantillas de contenido ───────────────────────────────────────────────────
@@ -227,7 +231,7 @@ export function Informe({ go, goBack, toast, patientId }: {
           <Icon name="folder_shared" size={18} />{paciente ? paciente.name : 'Expediente'}
         </button>
         <div style={{ width: 1, height: 32, background: 'var(--outline-variant)', flexShrink: 0 }} />
-        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Icon name="clinical_notes" size={22} fill />
         </div>
         <div style={{ minWidth: 0 }}>
@@ -308,8 +312,8 @@ export function Informe({ go, goBack, toast, patientId }: {
                 onClick={() => setTipoOpen(!tipoOpen)}
                 style={{ width: '100%', textAlign: 'left', border: '1px solid var(--outline-variant)', borderRadius: 12, padding: '10px 44px 10px 10px', background: 'var(--surface)', cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center', gap: 10 }}
               >
-                <div style={{ width: 34, height: 34, borderRadius: 10, background: tipoInfo.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon name={tipoInfo.icon} size={18} style={{ color: tipoInfo.color }} />
+                <div style={{ width: 34, height: 34, borderRadius: 10, background: tipoInfo.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon name={tipoInfo.icon} size={18} style={{ color: '#fff' }} />
                 </div>
                 <span style={{ fontSize: 15.5, fontWeight: 600, color: 'var(--on-surface)' }}>{tipoInfo.label}</span>
                 <Icon name="arrow_drop_down" size={22} style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: 'var(--on-surface-variant)' }} />
@@ -319,8 +323,8 @@ export function Informe({ go, goBack, toast, patientId }: {
                   {TIPOS.map((t) => (
                     <button key={t.id} onClick={() => { setTipoId(t.id); setTipoOpen(false); setDirty(true); }} className="state-layer"
                       style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer', padding: '10px 12px', borderRadius: 8, position: 'relative', background: t.id === tipoId ? 'color-mix(in srgb, var(--primary) 8%, var(--surface))' : 'transparent', fontFamily: 'var(--font-body)' }}>
-                      <div style={{ width: 30, height: 30, borderRadius: 8, background: t.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Icon name={t.icon} size={16} style={{ color: t.color }} />
+                      <div style={{ width: 30, height: 30, borderRadius: 8, background: t.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon name={t.icon} size={16} style={{ color: '#fff' }} />
                       </div>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--on-surface)' }}>{t.label}</div>
@@ -354,8 +358,8 @@ export function Informe({ go, goBack, toast, patientId }: {
             </div>
             {/* Médico autor */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, padding: '10px 12px', background: 'var(--surface-container-low)', borderRadius: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <Icon name="stethoscope" size={18} style={{ color: 'var(--on-primary-container)' }} />
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon name="stethoscope" size={18} style={{ color: '#fff' }} />
               </div>
               <div>
                 <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)' }}>{account.nombreCompleto || 'Médico'}</div>

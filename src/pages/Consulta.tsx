@@ -327,7 +327,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
           <Icon name="folder_shared" size={18} />{paciente ? paciente.name : 'Expediente'}
         </button>
         <div style={{ width: 1, height: 32, background: 'var(--outline-variant)', flexShrink: 0 }} />
-        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <Icon name="stethoscope" size={22} fill />
         </div>
         <div style={{ minWidth: 0 }}>

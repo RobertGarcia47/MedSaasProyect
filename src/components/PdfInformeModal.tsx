@@ -82,7 +82,7 @@ export function PdfInformeModal({ open, data, onClose, toast }: {
     <Dialog open={open} onClose={onClose} width={920} style={{ height: '95vh', maxHeight: '95vh' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 20px', borderBottom: '1px solid var(--outline-variant)' }}>
-        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <Icon name="description" size={22} fill />
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>

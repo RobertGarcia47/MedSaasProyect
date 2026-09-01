@@ -486,7 +486,7 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                   {pac.diagnosticos.map((d) => (
                     <div key={d.codigo} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--outline-variant)' }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--tertiary-container)', color: 'var(--on-tertiary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--tertiary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Icon name="diagnosis" size={20} />
                       </div>
                       <div style={{ flex: 1 }}>
@@ -555,7 +555,7 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
                 return (
                   <div key={c.id} style={{ display: 'flex', gap: 18, paddingBottom: i === consultasFull!.length - 1 ? 0 : 24, position: 'relative' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1 }}>
+                      <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, zIndex: 1 }}>
                         <Icon name="stethoscope" size={20} fill />
                       </div>
                       {i !== consultasFull!.length - 1 && <div style={{ width: 2, flex: 1, background: 'var(--outline-variant)', marginTop: 4 }} />}
@@ -636,7 +636,7 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
                       border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--on-surface)',
                     }}
                   >
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       <Icon name="prescriptions" size={20} fill />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -730,7 +730,7 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
             <Card variant="elevated" style={{ padding: 24 }}><EmptyState icon="description" text="Sin informes registrados" /></Card>
           ) : informes!.map((inf) => {
             const isOpen  = openInforme === inf.id;
-            const tipoCfg = TIPO_INFORME_COLOR[inf.tipo] ?? { color: 'var(--primary)', bg: 'var(--primary-container)' };
+            const tipoCfg = TIPO_INFORME_COLOR[inf.tipo] ?? { color: 'var(--primary)' };
             const tipoIcon = TIPO_INFORME_ICON[inf.tipo] ?? 'description';
             const fechaDisplay = inf.fecha_informe
               ? new Date(inf.fecha_informe + 'T00:00:00').toLocaleDateString('es-MX', { dateStyle: 'medium' })
@@ -752,8 +752,8 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
                       border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--on-surface)',
                     }}
                   >
-                    <div style={{ width: 40, height: 40, borderRadius: 10, background: tipoCfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                      <Icon name={tipoIcon} size={20} style={{ color: tipoCfg.color }} />
+                    <div style={{ width: 40, height: 40, borderRadius: 10, background: tipoCfg.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <Icon name={tipoIcon} size={20} style={{ color: '#fff' }} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
@@ -848,7 +848,7 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
                   aria-expanded={isOpen}
                   style={{ display: 'flex', alignItems: 'center', gap: 14, width: '100%', padding: '14px 20px', background: isOpen ? 'var(--surface-container)' : 'var(--surface-container-low)', border: 'none', borderBottom: isOpen ? '1px solid var(--outline-variant)' : 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-body)', color: 'var(--on-surface)' }}
                 >
-                  <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--secondary-container)', color: 'var(--on-secondary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 10, background: 'var(--secondary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     <Icon name="labs" size={20} fill />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

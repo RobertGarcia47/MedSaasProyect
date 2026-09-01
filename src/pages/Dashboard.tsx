@@ -8,12 +8,15 @@ import { Icon, Button, Card, Avatar, StatusPill, IconButton } from '../component
 import { PracticeStats } from '../components/PracticeStats';
 import { OportunidadModal } from './Clinical';
 
-// ── Tipo de cita — colores (mismo criterio que TIPO_META de Calendar.tsx, mapeado a variables CSS) ──
+// ── Tipo de cita — mismos 4 tonos que TIPO_META de Calendar.tsx (unificado a
+//    propósito, antes usaban --tertiary/--warning y no coincidían entre sí).
+//    Urgencia se queda en --error/--warning a propósito: fijo, no reacciona
+//    al acento — un color de "urgente" no debe cambiar según preferencia.
 const TYPE_META: Record<ApptUI['type'], { dot: string; bg: string; on: string; label: string }> = {
-  Consulta:    { dot: 'var(--primary)',   bg: 'var(--primary-container)',   on: 'var(--on-primary-container)',   label: 'Consulta' },
-  Urgencia:    { dot: 'var(--error)',     bg: 'var(--error-container)',     on: 'var(--on-error-container)',     label: 'Urgencia' },
-  Seguimiento: { dot: 'var(--tertiary)',  bg: 'var(--tertiary-container)',  on: 'var(--on-tertiary-container)',  label: 'Seguimiento' },
-  Revision:    { dot: 'var(--warning)',   bg: 'var(--warning-container)',   on: 'var(--on-warning-container)',   label: 'Revisión' },
+  Consulta:    { dot: 'var(--primary)',     bg: 'var(--primary-container)',                                     on: 'var(--on-primary-container)',                        label: 'Consulta' },
+  Urgencia:    { dot: 'var(--error)',       bg: 'var(--error-container)',                                       on: 'var(--on-error-container)',                          label: 'Urgencia' },
+  Seguimiento: { dot: 'var(--accent-claro)', bg: 'color-mix(in srgb, var(--accent-claro) 20%, var(--surface))', on: 'color-mix(in srgb, var(--accent-claro) 80%, black)', label: 'Seguimiento' },
+  Revision:    { dot: 'var(--accent-warm)', bg: 'color-mix(in srgb, var(--accent-warm) 20%, var(--surface))',   on: 'color-mix(in srgb, var(--accent-warm) 80%, black)',  label: 'Revisión' },
 };
 function typeMeta(t: ApptUI['type']) { return TYPE_META[t] ?? TYPE_META.Consulta; }
 
@@ -45,26 +48,30 @@ function tlTop(hhmm: string): number {
 }
 
 // ── Stat chip ─────────────────────────────────────────────────────────────────
+// Bloque lateral (Propuesta 2): panel de color sólido a la izquierda con el
+// ícono en blanco; el resto de la tarjeta queda blanca con texto oscuro.
+// Propuesta 1 (tarjeta 100% sólida) quedó guardada para más adelante —
+// ver [[propuesta-color-tarjetas-solidas]] en memoria.
 function StatChip({ icon, label, value, tone = 'primary', onClick, pulse }: {
   icon: string; label: string; value: string | number; tone?: 'primary' | 'tertiary' | 'secondary' | 'warning'; onClick?: () => void; pulse?: boolean;
 }) {
-  const tones: Record<string, [string, string]> = {
-    primary:   ['var(--primary-container)',   'var(--primary)'],
-    tertiary:  ['var(--tertiary-container)',  'var(--tertiary)'],
-    secondary: ['var(--secondary-container)', 'var(--secondary)'],
-    warning:   ['var(--warning-container)',   'var(--warning)'],
+  const tones: Record<string, string> = {
+    primary:   'var(--primary)',
+    tertiary:  'var(--tertiary)',
+    secondary: 'var(--secondary)',
+    warning:   'var(--warning)',
   };
-  const [bg, fg] = tones[tone] ?? tones.primary;
+  const fg = tones[tone] ?? tones.primary;
   return (
     <div onClick={onClick} className={onClick ? 'state-layer' : ''} style={{
-      flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12, position: 'relative',
+      flex: 1, minWidth: 0, display: 'flex', alignItems: 'stretch', position: 'relative',
       background: 'var(--surface)', border: '1px solid var(--outline-variant)',
-      borderRadius: 'var(--r-lg)', padding: '12px 16px', cursor: onClick ? 'pointer' : 'default',
+      borderRadius: 'var(--r-lg)', overflow: 'hidden', cursor: onClick ? 'pointer' : 'default',
     }}>
-      <div style={{ width: 36, height: 36, borderRadius: 'var(--r-md)', background: bg, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-        <Icon name={icon} size={20} fill />
+      <div style={{ width: 54, flexShrink: 0, background: fg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name={icon} size={22} fill />
       </div>
-      <div style={{ minWidth: 0 }}>
+      <div style={{ minWidth: 0, padding: '12px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, lineHeight: 1, letterSpacing: '-1px', color: 'var(--on-surface)' }}>{value}</div>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--on-surface-variant)', marginTop: 3 }}>{label}</div>
       </div>
@@ -298,7 +305,7 @@ function QuickAccessGrid({ openModal, go, puedePrescribir }: { openModal: (type:
             border: '1px solid var(--outline-variant)', borderRadius: 'var(--r-md)', background: 'transparent',
             cursor: 'pointer', position: 'relative',
           }}>
-            <div style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Icon name={ic} size={20} fill />
             </div>
             <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--on-surface)', textAlign: 'center', lineHeight: 1.2 }}>{label}</span>

@@ -34,11 +34,21 @@ type TipoCita = 'consulta' | 'seguimiento' | 'urgencia' | 'revision';
 // bg    = pastel claro (bloques de cita, leyenda)
 // header= pastel para rellenar el encabezado del modal de detalle
 // ink   = texto oscuro con buen contraste sobre el pastel del header
+//
+// Valores como variables/color-mix() de CSS (no hex fijo): el navegador los
+// resuelve en vivo, así que reaccionan solos al cambiar el acento en
+// Configuración → Apariencia (--primary/--accent-claro/--accent-warm cambian
+// por [data-accent] en index.css) sin que este objeto se vuelva a calcular.
+// Urgencia se queda en --error a propósito — un color de "urgente" no debe
+// cambiar según la preferencia de acento de cada quien.
+function tipoMix(varName: string, pct: number, mixWith = 'var(--surface)'): string {
+  return `color-mix(in srgb, var(${varName}) ${pct}%, ${mixWith})`;
+}
 const TIPO_META: Record<TipoCita, { text: string; bg: string; header: string; ink: string; label: string }> = {
-  consulta:    { text: '#0d8a6f', bg: '#d6efe8', header: '#cdeae0', ink: '#0c4a3c', label: 'Consulta'    },
-  seguimiento: { text: '#0284c7', bg: '#dbeefc', header: '#d2e9fb', ink: '#075985', label: 'Seguimiento' },
-  urgencia:    { text: '#e11d48', bg: '#fde0e4', header: '#fbd3d9', ink: '#9f1239', label: 'Urgencia'    },
-  revision:    { text: '#c2700a', bg: '#fdf0cd', header: '#fbe9b6', ink: '#8a4d0a', label: 'Revisión'    },
+  consulta:    { text: 'var(--primary)',      bg: tipoMix('--primary', 16),      header: tipoMix('--primary', 24),      ink: tipoMix('--primary', 70, 'black'),      label: 'Consulta'    },
+  seguimiento: { text: 'var(--accent-claro)', bg: tipoMix('--accent-claro', 16), header: tipoMix('--accent-claro', 24), ink: tipoMix('--accent-claro', 70, 'black'), label: 'Seguimiento' },
+  urgencia:    { text: 'var(--error)',        bg: 'var(--error-container)',      header: tipoMix('--error', 24),        ink: tipoMix('--error', 70, 'black'),        label: 'Urgencia'    },
+  revision:    { text: 'var(--accent-warm)',  bg: tipoMix('--accent-warm', 16),  header: tipoMix('--accent-warm', 24),  ink: tipoMix('--accent-warm', 70, 'black'),  label: 'Revisión'    },
 };
 function tipoFromType(type: string): TipoCita {
   const t = type.toLowerCase() as TipoCita;
@@ -129,7 +139,7 @@ function Legend() {
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', padding: '10px 0 4px' }}>
       {(Object.entries(TIPO_META) as [TipoCita, typeof TIPO_META[TipoCita]][]).map(([key, m]) => (
         <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12, color: 'var(--on-surface-variant)', fontWeight: 500 }}>
-          <span style={{ width: 10, height: 10, borderRadius: 3, background: m.bg, border: `1.5px solid ${m.text}`, flexShrink: 0 }} />
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: m.text, flexShrink: 0 }} />
           {m.label}
         </div>
       ))}

@@ -107,7 +107,7 @@ export function FAB({ icon, label, onClick, extended, style = {} }) {
         display: 'inline-flex', alignItems: 'center', gap: 12, height: 56,
         padding: extended ? '0 20px' : 0, width: extended ? 'auto' : 56,
         justifyContent: 'center', borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer',
-        background: 'var(--primary-container)', color: 'var(--on-primary-container)',
+        background: 'var(--primary)', color: '#fff',
         boxShadow: 'var(--elev-3)', fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 15,
         position: 'relative', ...style,
       }}

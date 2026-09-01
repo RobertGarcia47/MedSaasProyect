@@ -632,7 +632,7 @@ function PendingNotice({ icon = 'construction', text }: { icon?: string; text: s
 function ModalHeader({ icon, title, subtitle, onClose }: { icon: string; title: string; subtitle?: string; onClose: () => void }) {
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14, padding: '24px 24px 12px' }}>
-      <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--primary-container)', color: 'var(--on-primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+      <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <Icon name={icon} size={24} fill />
       </div>
       <div style={{ flex: 1 }}>

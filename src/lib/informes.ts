@@ -24,12 +24,15 @@ export const TIPO_INFORME_ICON: Record<TipoInforme, string> = {
   otro:            'summarize',
 };
 
-export const TIPO_INFORME_COLOR: Record<TipoInforme, { color: string; bg: string }> = {
-  nota_evolucion:  { color: '#0E8C86', bg: '#D6F0EC' },
-  nota_consulta:   { color: '#1A6CCB', bg: '#E4EEFB' },
-  nota_obstetrica: { color: '#7C3AED', bg: '#EDE6FB' },
-  interconsulta:   { color: '#0E8C86', bg: '#D6F0EC' },
-  otro:            { color: '#C2410C', bg: '#FBE6D8' },
+// Mismos tokens de acento que TIPOS en Informe.tsx (no hex fijo, reacciona al
+// acento elegido en Configuración → Apariencia). Antes "interconsulta" tenía
+// el mismo hex fijo que "nota_evolucion" — ahora las 5 tienen tono propio.
+export const TIPO_INFORME_COLOR: Record<TipoInforme, { color: string }> = {
+  nota_evolucion:  { color: 'var(--primary)' },
+  nota_consulta:   { color: 'var(--tertiary)' },
+  nota_obstetrica: { color: 'var(--accent-claro)' },
+  interconsulta:   { color: 'var(--secondary)' },
+  otro:            { color: 'var(--accent-warm)' },
 };
 
 export const VISIBILIDAD_LABEL: Record<VisibilidadInforme, string> = {
