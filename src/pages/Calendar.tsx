@@ -16,7 +16,7 @@ import {
   dateValLabel, dateHHMMToISO,
   WheelPickerSheet,
   ModalCard, CloseBtn, ModalBadge,
-  Field, FocusInput, FocusSelect, PickerTrigger,
+  Field, FocusInput, FocusSelect, PickerTrigger, Pills,
   ModalFooter, CancelBtn, PrimaryBtn,
   useMedicos, useCitasDelDia, computeOcupados, TimeSlotGrid, PatientSearchField,
   OportunidadModal, type OportunidadModalSingle,
@@ -835,9 +835,9 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
   ];
 
   return (
-    <ModalCard>
+    <ModalCard accentBar>
       <CloseBtn onClose={onClose} />
-      <ModalBadge icon="event_available" title="Nueva cita médica" subtitle={dateLabel} />
+      <ModalBadge icon="event_available" title="Nueva cita médica" subtitle={`${dateLabel} · ${dur} min`} />
 
       {account.accesoNivel === 'limitado' && (
         <div style={{ fontSize: 13, color: 'var(--on-error-container)', background: 'var(--error-container)', borderRadius: 10, padding: '11px 14px', marginBottom: 16 }}>
@@ -876,28 +876,33 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
               onClick={() => setPickerOpen('date')}
             />
           </div>
-          <Field label="Duración (min)" icon="timer">
-            <FocusSelect value={dur} onChange={e => setDur(e.target.value)}>
-              {['15','30','45','60','90'].map(d => <option key={d} value={d}>{d}</option>)}
-            </FocusSelect>
-          </Field>
+          <div>
+            <FL>Duración (min)</FL>
+            <Pills radius={9} options={['15', '30', '45', '60', '90'].map((d) => ({ value: d, label: d }))} value={dur} onChange={setDur} />
+          </div>
         </div>
 
         {/* Hora de inicio — grid, horarios ocupados de este médico ese día apagados */}
         <div>
-          <FL>Hora de inicio</FL>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+            <FL>Hora de inicio</FL>
+            {ocupados.size > 0 && (
+              <span style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>{ocupados.size} ocupado{ocupados.size === 1 ? '' : 's'}</span>
+            )}
+          </div>
           <TimeSlotGrid value={horaSel} onChange={(v) => { setHoraSel(v); setError(''); setConflicto(null); }} ocupados={ocupados} />
         </div>
 
         {/* Tipo de cita */}
-        <Field label="Tipo de cita" icon="category">
-          <FocusSelect value={tipo} onChange={e => setTipo(e.target.value as TipoCita)}>
-            <option value="consulta">Consulta</option>
-            <option value="seguimiento">Seguimiento</option>
-            <option value="revision">Revisión</option>
-            <option value="urgencia">Urgencia</option>
-          </FocusSelect>
-        </Field>
+        <div>
+          <FL>Tipo de cita</FL>
+          <Pills options={[
+            { value: 'consulta',    label: 'Consulta' },
+            { value: 'seguimiento', label: 'Seguimiento' },
+            { value: 'revision',    label: 'Revisión' },
+            { value: 'urgencia',    label: 'Urgencia' },
+          ] as { value: TipoCita; label: string }[]} value={tipo} onChange={setTipo} />
+        </div>
 
         {/* Adelanto de cita — solo aplica a citas de médico único (misma lógica que el
             picker de médico), el hueco liberado siempre se ofrece dentro del mismo médico. */}
@@ -945,7 +950,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
         </div>
       )}
 
-      <ModalFooter>
+      <ModalFooter left={!conflicto && horaSel && <>Seleccionado: <strong style={{ color: 'var(--primary)' }}>{horaSel}</strong></>}>
         <CancelBtn onClick={onClose} />
         {!conflicto && (
           <PrimaryBtn onClick={handleCreate} disabled={saving || !pid || !medicoSel || !horaSel || account.accesoNivel === 'limitado'}>

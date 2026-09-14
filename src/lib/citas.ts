@@ -129,6 +129,30 @@ export async function fetchCitasMes(clinicaId: string, year: number, month: numb
   return queryCitas(clinicaId, desde.toISOString(), hasta.toISOString());
 }
 
+/**
+ * Para un conjunto de pacientes, el id de su primera cita histórica no cancelada
+ * (en toda su relación con la clínica, no solo la de hoy) — usado en el Dashboard
+ * para resaltar en amarillo la cita de un paciente nuevo la primera vez que viene,
+ * a diferencia del color por tipo de cita que aplica siempre.
+ */
+export async function fetchPrimeraCitaIdPorPaciente(clinicaId: string, pacienteIds: string[]): Promise<Map<string, string>> {
+  if (pacienteIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from('citas')
+    .select('id, paciente_id, fecha')
+    .eq('clinica_id', clinicaId)
+    .in('paciente_id', pacienteIds)
+    .neq('estado', 'cancelada')
+    .order('fecha', { ascending: true });
+  if (error) throw error;
+  const map = new Map<string, string>();
+  for (const row of (data ?? []) as { id: string; paciente_id: string; fecha: string }[]) {
+    // order() ascendente → la primera fila que se ve por paciente es su cita más antigua.
+    if (!map.has(row.paciente_id)) map.set(row.paciente_id, row.id);
+  }
+  return map;
+}
+
 /** Cuenta citas en un rango. */
 export async function countCitas(clinicaId: string, desde: Date, hasta: Date): Promise<number> {
   const { count, error } = await supabase

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from '../context/AccountContext';
 import { countConsultas, type ApptUI } from '../lib/consultas';
-import { fetchCitasDia, fetchCitasMes } from '../lib/citas';
+import { fetchCitasDia, fetchCitasMes, fetchPrimeraCitaIdPorPaciente } from '../lib/citas';
 import { countPacientes } from '../lib/patients';
 import { countOportunidadesAbiertas } from '../lib/oportunidades';
 import { Icon, Button, Card, Avatar, StatusPill, IconButton } from '../components';
@@ -19,6 +19,19 @@ const TYPE_META: Record<ApptUI['type'], { dot: string; label: string }> = {
   Revision:    { dot: 'var(--accent-warm)',  label: 'Revisión' },
 };
 function typeMeta(t: ApptUI['type']) { return TYPE_META[t] ?? TYPE_META.Consulta; }
+
+// Amarillo fijo (no reacciona al acento, igual que Urgencia con --error) para
+// marcar la PRIMERA cita de un paciente en toda su relación con la clínica —
+// no solo la primera del día — se calcula aparte en el Dashboard con
+// fetchPrimeraCitaIdPorPaciente y pisa el color por tipo de esa cita puntual.
+const PRIMERA_CITA_COLOR = '#FBBF24';
+const PRIMERA_CITA_TEXT  = '#3D2C00';
+
+/** Fondo en degradado (tenue → color normal) en vez de un relleno 100% plano —
+ *  mantiene el mismo color por tipo pero menos intenso visualmente. */
+function tipoGradient(color: string): string {
+  return `linear-gradient(90deg, color-mix(in srgb, ${color} 35%, var(--surface)) 0%, ${color} 100%)`;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const DIAS_S = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -83,7 +96,7 @@ function StatChip({ icon, label, value, tone = 'primary', onClick, pulse }: {
 }
 
 // ── Timeline de agenda de hoy ──────────────────────────────────────────────────
-function TimelineAgenda({ appts, onView }: { appts: ApptUI[]; onView: (id: string) => void }) {
+function TimelineAgenda({ appts, onView, primerasCitasIds }: { appts: ApptUI[]; onView: (id: string) => void; primerasCitasIds: Set<string> }) {
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60_000);
@@ -118,6 +131,9 @@ function TimelineAgenda({ appts, onView }: { appts: ApptUI[]; onView: (id: strin
               <span style={{ width: 8, height: 8, borderRadius: 2, background: typeMeta(k).dot, flexShrink: 0 }} />{typeMeta(k).label}
             </div>
           ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, color: 'var(--on-surface-variant)' }}>
+            <span style={{ width: 8, height: 8, borderRadius: 2, background: PRIMERA_CITA_COLOR, flexShrink: 0 }} />Primera cita
+          </div>
         </div>
       </div>
 
@@ -166,7 +182,10 @@ function TimelineAgenda({ appts, onView }: { appts: ApptUI[]; onView: (id: strin
             })}
 
             {visibles.map((a) => {
-              const meta = typeMeta(a.type);
+              const esPrimera = primerasCitasIds.has(a.id);
+              const color = esPrimera ? PRIMERA_CITA_COLOR : typeMeta(a.type).dot;
+              const textColor = esPrimera ? PRIMERA_CITA_TEXT : '#fff';
+              const timeColor = esPrimera ? 'rgba(61,44,0,.7)' : 'rgba(255,255,255,.85)';
               const top = tlTop(a.start);
               const height = Math.max(tlTop(a.end) - top, 18);
               const enCurso = a.status === 'en-curso';
@@ -174,15 +193,15 @@ function TimelineAgenda({ appts, onView }: { appts: ApptUI[]; onView: (id: strin
               return (
                 <div key={a.id} onClick={() => onView(a.pacienteId)} className="state-layer" style={{
                   position: 'absolute', left: 4, right: 4, top, height, cursor: 'pointer',
-                  borderRadius: 'var(--r-sm)', background: meta.dot,
+                  borderRadius: 'var(--r-sm)', background: tipoGradient(color),
                   padding: '0 8px', display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden',
-                  opacity: completada ? .55 : 1, boxShadow: enCurso ? `0 0 0 2px var(--surface), 0 0 0 3.5px ${meta.dot}` : 'none',
+                  opacity: completada ? .55 : 1, boxShadow: enCurso ? `0 0 0 2px var(--surface), 0 0 0 3.5px ${color}` : 'none',
                 }}>
-                  {enCurso && <Icon name="radio_button_checked" size={11} style={{ color: '#fff', flexShrink: 0 }} />}
-                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 11, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {enCurso && <Icon name="radio_button_checked" size={11} style={{ color: textColor, flexShrink: 0 }} />}
+                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 11, color: textColor, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {a.pacienteName}
                   </span>
-                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,.85)', flexShrink: 0, marginLeft: 'auto' }}>{a.start}</span>
+                  <span style={{ fontSize: 10, color: timeColor, flexShrink: 0, marginLeft: 'auto' }}>{a.start}</span>
                 </div>
               );
             })}
@@ -368,6 +387,7 @@ export function Dashboard({ go, openModal, toast, dataVersion = 0 }: { go: (name
 
   const [loading,        setLoading]        = useState(true);
   const [appts,          setAppts]          = useState<ApptUI[]>([]);
+  const [primerasCitasIds, setPrimerasCitasIds] = useState<Set<string>>(new Set());
   const [totalPacientes, setTotalPacientes] = useState<number>(0);
   const [consultasHoy,   setConsultasHoy]   = useState<number>(0);
   const [consultasMes,   setConsultasMes]   = useState<number>(0);
@@ -399,6 +419,11 @@ export function Dashboard({ go, openModal, toast, dataVersion = 0 }: { go: (name
         setTotalPacientes(totalP);
         setConsultasMes(totalMes);
         setOportunidades(totalOport);
+
+        const pacienteIds = [...new Set(apptsDia.map((a) => a.pacienteId))];
+        fetchPrimeraCitaIdPorPaciente(clinicaId, pacienteIds)
+          .then((mapa) => setPrimerasCitasIds(new Set(mapa.values())))
+          .catch((e) => console.error('Dashboard primera cita error:', e));
       })
       .catch((e) => console.error('Dashboard load error:', e))
       .finally(() => setLoading(false));
@@ -458,7 +483,7 @@ export function Dashboard({ go, openModal, toast, dataVersion = 0 }: { go: (name
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 18 }} className="dash-grid">
-            <TimelineAgenda appts={appts} onView={(pid) => go('patient', { id: pid })} />
+            <TimelineAgenda appts={appts} onView={(pid) => go('patient', { id: pid })} primerasCitasIds={primerasCitasIds} />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minWidth: 0 }}>
               <CalendarBig year={calYear} month={calMonth} appts={apptsMes} onPrev={prevMonth} onNext={nextMonth} onPickDay={(day) => {

@@ -25,6 +25,7 @@ const YEAR_NOW = new Date().getFullYear();
 const YEARS_NAC  = Array.from({ length: YEAR_NOW - 1939 }, (_, i) => 1940 + i); // 1940–now
 
 export function pad(n: number) { return String(n).padStart(2, '0'); }
+function cap(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1); }
 
 export type DateVal = { d: number; m: number; y: number }; // m 0-indexed (Jan=0)
 export type TimeVal = { h: number; min: number; ap: 'AM' | 'PM' };
@@ -91,33 +92,92 @@ export function useCitasDelDia(clinicaId: string | null, medicoId: string, dateS
   return citas;
 }
 
+// Agrupa los horarios por franja del día — Mañana/Tarde/Noche, como en el
+// diseño de referencia "Modal con horarios en teal" — para que sea más fácil
+// ubicar un horario a simple vista que en una rejilla plana de 32 chips.
+const FRANJAS: { label: string; test: (hora: number) => boolean }[] = [
+  { label: 'Mañana', test: (h) => h < 12 },
+  { label: 'Tarde',   test: (h) => h >= 12 && h < 18 },
+  { label: 'Noche',   test: (h) => h >= 18 },
+];
+
 export function TimeSlotGrid({ value, onChange, ocupados }: {
   value: string; onChange: (v: string) => void; ocupados: Set<string>;
 }) {
+  const slots = generarHorarios();
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(62px, 1fr))', gap: 8 }}>
-      {generarHorarios().map((s) => {
-        const isOcupado = ocupados.has(s);
-        const isActivo = value === s;
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {FRANJAS.map(({ label, test }) => {
+        const items = slots.filter((s) => test(Number(s.slice(0, 2))));
+        if (items.length === 0) return null;
+        return (
+          <div key={label}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--primary)', letterSpacing: '.12em', textTransform: 'uppercase' }}>{label}</span>
+              <span style={{ flex: 1, height: 1, background: 'var(--outline-variant)' }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(62px, 1fr))', gap: 7 }}>
+              {items.map((s) => {
+                const isOcupado = ocupados.has(s);
+                const isActivo = value === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    disabled={isOcupado}
+                    onClick={() => onChange(s)}
+                    title={isOcupado ? 'Horario ocupado' : undefined}
+                    style={{
+                      padding: '9px 4px', borderRadius: 999, fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
+                      cursor: isOcupado ? 'not-allowed' : 'pointer',
+                      border: `1.5px solid ${isActivo ? 'var(--primary)' : isOcupado ? 'var(--outline-variant)' : 'color-mix(in srgb, var(--primary) 45%, var(--outline-variant))'}`,
+                      background: isActivo ? 'var(--primary)' : isOcupado ? 'var(--surface-container-highest)' : 'var(--surface)',
+                      color: isActivo ? 'var(--on-primary)' : isOcupado ? 'var(--on-surface-variant)' : 'var(--primary)',
+                      opacity: isOcupado ? 0.55 : 1,
+                      textDecoration: isOcupado ? 'line-through' : 'none',
+                      boxShadow: isActivo ? '0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent)' : 'none',
+                      transition: 'all .12s ease',
+                    }}
+                  >
+                    {s}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ── Pills / segmented selector — reemplaza los <select> de Duración y Tipo de
+   cita en los modales de nueva cita con botones tipo chip, igual que en el
+   diseño de referencia. Genérico: se reutiliza para strings o unions literales. */
+export function Pills<T extends string>({ options, value, onChange, radius = 999 }: {
+  options: { value: T; label: string }[];
+  value: T;
+  onChange: (v: T) => void;
+  radius?: number;
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+      {options.map((o) => {
+        const active = o.value === value;
         return (
           <button
-            key={s}
+            key={o.value}
             type="button"
-            disabled={isOcupado}
-            onClick={() => onChange(s)}
-            title={isOcupado ? 'Horario ocupado' : undefined}
+            onClick={() => onChange(o.value)}
             style={{
-              padding: '9px 4px', borderRadius: 10, fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit',
-              cursor: isOcupado ? 'not-allowed' : 'pointer',
-              border: `1.5px solid ${isActivo ? 'var(--primary)' : 'var(--outline-variant)'}`,
-              background: isActivo ? 'var(--primary)' : isOcupado ? 'var(--surface-container-highest)' : 'var(--surface)',
-              color: isActivo ? 'var(--on-primary)' : isOcupado ? 'var(--on-surface-variant)' : 'var(--on-surface)',
-              opacity: isOcupado ? 0.55 : 1,
-              textDecoration: isOcupado ? 'line-through' : 'none',
-              transition: 'transform .1s, box-shadow .1s',
+              padding: '8px 16px', borderRadius: radius, fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
+              border: `1px solid ${active ? 'var(--primary)' : 'var(--outline-variant)'}`,
+              background: active ? 'var(--primary-container)' : 'var(--surface)',
+              color: active ? 'var(--on-primary-container)' : 'var(--on-surface-variant)',
+              cursor: 'pointer', transition: 'all .12s ease', whiteSpace: 'nowrap',
             }}
           >
-            {s}
+            {o.label}
           </button>
         );
       })}
@@ -494,8 +554,10 @@ export function PickerTrigger({ icon, value, active, placeholder, onClick }: {
   );
 }
 
-// Outer fixed backdrop + inner card (position:relative for picker overlay)
-export function ModalCard({ children }: { children: React.ReactNode }) {
+// Outer fixed backdrop + inner card (position:relative for picker overlay).
+// `accentBar`: franja de 4px en degradado del acento pegada al borde superior
+// — usada por los modales de agendar cita (ver "Modal con horarios en teal").
+export function ModalCard({ children, accentBar }: { children: React.ReactNode; accentBar?: boolean }) {
   return (
     <div className="modal-card-backdrop" style={{
       position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
@@ -508,9 +570,13 @@ export function ModalCard({ children }: { children: React.ReactNode }) {
         background: 'var(--surface-container-high)', borderRadius: 24,
         boxShadow: '0 30px 70px var(--shadow)',
         padding: '30px 36px 28px',
+        overflow: 'hidden',
         animation: 'scaleIn .25s cubic-bezier(.2,0,0,1)',
         fontFamily: 'var(--font-body, system-ui, sans-serif)',
       }}>
+        {accentBar && (
+          <span style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, var(--primary), var(--accent-claro))' }} />
+        )}
         {children}
       </div>
     </div>
@@ -555,13 +621,14 @@ export function ModalBadge({ icon, title, subtitle }: { icon: string; title: str
   );
 }
 
-export function ModalFooter({ children }: { children: React.ReactNode }) {
+export function ModalFooter({ children, left }: { children: React.ReactNode; left?: React.ReactNode }) {
   return (
     <div style={{
-      display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
+      display: 'flex', justifyContent: left ? 'space-between' : 'flex-end', alignItems: 'center',
       gap: 8, marginTop: 30, paddingTop: 22, borderTop: '1px solid var(--outline-variant)',
     }}>
-      {children}
+      {left && <div style={{ fontSize: 13, color: 'var(--on-surface-variant)' }}>{left}</div>}
+      <div style={{ display: 'flex', gap: 8 }}>{children}</div>
     </div>
   );
 }
@@ -1080,10 +1147,12 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
     { items: years_c, selectedIdx: dateVal.y - YEARS_CITA[0],  flex: 1.1, onChange: (i) => setDateVal(v => ({ ...v, y: YEARS_CITA[i] })) },
   ];
 
+  const subtitleCita = `${cap(new Date(`${dateStr}T00:00:00`).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' }))} · ${dur} min`;
+
   return (
-    <ModalCard>
+    <ModalCard accentBar>
       <CloseBtn onClose={onClose} />
-      <ModalBadge icon="event_available" title="Agendar cita" subtitle="Programa una consulta para un paciente" />
+      <ModalBadge icon="event_available" title="Agendar cita" subtitle={subtitleCita} />
 
       {!account.clinicaId ? (
         <PendingNotice text="No perteneces a ninguna clínica todavía." />
@@ -1120,28 +1189,33 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
                 onClick={() => setPickerOpen('date')}
               />
             </div>
-            <Field label="Duración (min)" icon="timer">
-              <FocusSelect value={dur} onChange={(e) => setDur(e.target.value)}>
-                {['15','30','45','60'].map((d) => <option key={d} value={d}>{d}</option>)}
-              </FocusSelect>
-            </Field>
+            <div>
+              <label style={FL}>Duración (min)</label>
+              <Pills radius={9} options={['15', '30', '45', '60'].map((d) => ({ value: d, label: d }))} value={dur} onChange={setDur} />
+            </div>
           </div>
 
           {/* Hora de inicio — grid, horarios ocupados de este médico ese día apagados */}
           <div>
-            <label style={FL}>Hora de inicio</label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+              <label style={{ ...FL, marginBottom: 0 }}>Hora de inicio</label>
+              {ocupados.size > 0 && (
+                <span style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>{ocupados.size} ocupado{ocupados.size === 1 ? '' : 's'}</span>
+              )}
+            </div>
             <TimeSlotGrid value={horaSel} onChange={setHoraSel} ocupados={ocupados} />
           </div>
 
           {/* Tipo de cita */}
-          <Field label="Tipo de cita" icon="category">
-            <FocusSelect value={tipo} onChange={(e) => setTipo(e.target.value)}>
-              <option value="consulta">Consulta</option>
-              <option value="seguimiento">Seguimiento</option>
-              <option value="revision">Revisión</option>
-              <option value="urgencia">Urgencia</option>
-            </FocusSelect>
-          </Field>
+          <div>
+            <label style={FL}>Tipo de cita</label>
+            <Pills options={[
+              { value: 'consulta',    label: 'Consulta' },
+              { value: 'seguimiento', label: 'Seguimiento' },
+              { value: 'revision',    label: 'Revisión' },
+              { value: 'urgencia',    label: 'Urgencia' },
+            ]} value={tipo} onChange={setTipo} />
+          </div>
 
           {/* Adelanto de cita — lista de espera si se libera un hueco más cercano con el
               mismo médico (ver src/lib/oportunidades.ts). */}
@@ -1164,7 +1238,7 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
         </div>
       )}
 
-      <ModalFooter>
+      <ModalFooter left={horaSel && <>Seleccionado: <strong style={{ color: 'var(--primary)' }}>{horaSel}</strong></>}>
         <CancelBtn onClick={onClose} />
         {puede && pacientes.length > 0 && medicos.length > 0 && (
           <PrimaryBtn onClick={guardar} disabled={saving || !pid || !medicoId || !horaSel}>
