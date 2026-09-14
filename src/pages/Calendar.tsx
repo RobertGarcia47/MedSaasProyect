@@ -972,17 +972,21 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
 // ══════════════════════════════════════════════════════════════════════════════
 type CalView = 'mes' | 'semana' | 'dia';
 
-export function Calendar({ go, toast, dataVersion = 0 }: {
+export function Calendar({ go, toast, dataVersion = 0, initialDate }: {
   go: (name: string, params?: any) => void;
   toast?: (m: string) => void;
   dataVersion?: number;
+  /** Fecha "YYYY-MM-DD" con la que se debe abrir el calendario (p. ej. al venir de un día
+   *  puntual en el Dashboard) — si viene, arranca directo en vista Día sobre esa fecha en
+   *  vez del mes actual. */
+  initialDate?: string;
 }) {
   const account   = useAccount();
   const clinicaId = account.clinicaId ?? '';
   const medicoId  = account.userId    ?? '';
 
-  const [view,    setView]    = useState<CalView>('mes');
-  const [current, setCurrent] = useState(new Date());
+  const [view,    setView]    = useState<CalView>(initialDate ? 'dia' : 'mes');
+  const [current, setCurrent] = useState(() => initialDate ? new Date(`${initialDate}T00:00:00`) : new Date());
   const [appts,   setAppts]   = useState<ApptUI[]>([]);
   const [loading, setLoading] = useState(true);
   const [localV,  setLocalV]  = useState(0);

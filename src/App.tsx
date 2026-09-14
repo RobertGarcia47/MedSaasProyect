@@ -498,7 +498,7 @@ export default function App() {
   let page;
   switch (route.name) {
     case 'dashboard':    page = <Dashboard    {...pageProps} />; break;
-    case 'calendar':     page = <Calendar     {...pageProps} />; break;
+    case 'calendar':     page = <Calendar     initialDate={route.params.initialDate} {...pageProps} />; break;
     case 'patients':     page = <PatientList  {...pageProps} />; break;
     case 'patient':      page = <PatientRecord id={route.params.id} {...pageProps} />; break;
     case 'consulta':     page = <Consulta patientId={route.params.patientId} {...pageProps} />; break;

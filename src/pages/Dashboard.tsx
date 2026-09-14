@@ -12,11 +12,11 @@ import { OportunidadModal } from './Clinical';
 //    propósito, antes usaban --tertiary/--warning y no coincidían entre sí).
 //    Urgencia se queda en --error/--warning a propósito: fijo, no reacciona
 //    al acento — un color de "urgente" no debe cambiar según preferencia.
-const TYPE_META: Record<ApptUI['type'], { dot: string; bg: string; on: string; label: string }> = {
-  Consulta:    { dot: 'var(--primary)',     bg: 'var(--primary-container)',                                     on: 'var(--on-primary-container)',                        label: 'Consulta' },
-  Urgencia:    { dot: 'var(--error)',       bg: 'var(--error-container)',                                       on: 'var(--on-error-container)',                          label: 'Urgencia' },
-  Seguimiento: { dot: 'var(--accent-claro)', bg: 'color-mix(in srgb, var(--accent-claro) 20%, var(--surface))', on: 'color-mix(in srgb, var(--accent-claro) 80%, black)', label: 'Seguimiento' },
-  Revision:    { dot: 'var(--accent-warm)', bg: 'color-mix(in srgb, var(--accent-warm) 20%, var(--surface))',   on: 'color-mix(in srgb, var(--accent-warm) 80%, black)',  label: 'Revisión' },
+const TYPE_META: Record<ApptUI['type'], { dot: string; label: string }> = {
+  Consulta:    { dot: 'var(--primary)',      label: 'Consulta' },
+  Urgencia:    { dot: 'var(--error)',        label: 'Urgencia' },
+  Seguimiento: { dot: 'var(--accent-claro)', label: 'Seguimiento' },
+  Revision:    { dot: 'var(--accent-warm)',  label: 'Revisión' },
 };
 function typeMeta(t: ApptUI['type']) { return TYPE_META[t] ?? TYPE_META.Consulta; }
 
@@ -174,15 +174,15 @@ function TimelineAgenda({ appts, onView }: { appts: ApptUI[]; onView: (id: strin
               return (
                 <div key={a.id} onClick={() => onView(a.pacienteId)} className="state-layer" style={{
                   position: 'absolute', left: 4, right: 4, top, height, cursor: 'pointer',
-                  borderRadius: 'var(--r-sm)', borderLeft: `3px solid ${meta.dot}`, background: meta.bg,
+                  borderRadius: 'var(--r-sm)', background: meta.dot,
                   padding: '0 8px', display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden',
-                  opacity: completada ? .5 : 1, boxShadow: enCurso ? `0 0 0 1.5px ${meta.dot}` : 'none',
+                  opacity: completada ? .55 : 1, boxShadow: enCurso ? `0 0 0 2px var(--surface), 0 0 0 3.5px ${meta.dot}` : 'none',
                 }}>
-                  {enCurso && <Icon name="radio_button_checked" size={11} style={{ color: 'var(--error)', flexShrink: 0 }} />}
-                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 11, color: meta.on, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {enCurso && <Icon name="radio_button_checked" size={11} style={{ color: '#fff', flexShrink: 0 }} />}
+                  <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: 11, color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {a.pacienteName}
                   </span>
-                  <span style={{ fontSize: 10, color: 'var(--on-surface-variant)', flexShrink: 0, marginLeft: 'auto' }}>{a.start}</span>
+                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,.85)', flexShrink: 0, marginLeft: 'auto' }}>{a.start}</span>
                 </div>
               );
             })}
@@ -196,7 +196,7 @@ function TimelineAgenda({ appts, onView }: { appts: ApptUI[]; onView: (id: strin
 // ── Calendario grande ───────────────────────────────────────────────────────
 function CalendarBig({ year, month, appts, onPrev, onNext, onPickDay }: {
   year: number; month: number; appts: ApptUI[];
-  onPrev: () => void; onNext: () => void; onPickDay: () => void;
+  onPrev: () => void; onNext: () => void; onPickDay: (day: number) => void;
 }) {
   const hoy = new Date();
   const isCurrentMonth = hoy.getFullYear() === year && hoy.getMonth() === month;
@@ -259,7 +259,7 @@ function CalendarBig({ year, month, appts, onPrev, onNext, onPickDay }: {
           const weekend = dow >= 5;
           const dots = topDots(d);
           return (
-            <div key={i} onClick={onPickDay} className="state-layer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4px 2px', borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>
+            <div key={i} onClick={() => onPickDay(d)} className="state-layer" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '4px 2px', borderRadius: 'var(--r-sm)', cursor: 'pointer' }}>
               <div style={{
                 width: 38, height: 38, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 14, fontWeight: isToday ? 700 : hasAppts ? 500 : 400,
@@ -461,7 +461,10 @@ export function Dashboard({ go, openModal, toast, dataVersion = 0 }: { go: (name
             <TimelineAgenda appts={appts} onView={(pid) => go('patient', { id: pid })} />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minWidth: 0 }}>
-              <CalendarBig year={calYear} month={calMonth} appts={apptsMes} onPrev={prevMonth} onNext={nextMonth} onPickDay={() => go('calendar')} />
+              <CalendarBig year={calYear} month={calMonth} appts={apptsMes} onPrev={prevMonth} onNext={nextMonth} onPickDay={(day) => {
+                const fecha = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                go('calendar', { initialDate: fecha });
+              }} />
               <QuickAccessGrid openModal={openModal} go={go} puedePrescribir={account.puedePrescribir} />
               <WaitingRoom appts={appts} />
             </div>
