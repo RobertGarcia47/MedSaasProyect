@@ -380,8 +380,10 @@ a { color: inherit; text-decoration: none; }
      que la pantalla arranca centrado y el scroll no alcanza a subir lo suficiente
      para llegar al botón "×" (queda ~250px por encima del viewport, inalcanzable);
      con flex-start el modal arranca en su borde superior real y sí se puede llegar. */
-  .modal-card-backdrop { padding: 12px; align-items: flex-start !important; }
-  .modal-card { padding: 22px 18px 20px; margin-top: 12px; }
+  /* !important necesario: ModalCard fija el padding por estilo inline (Clinical.tsx),
+     que le gana a una regla de clase normal sin importar el viewport. */
+  .modal-card-backdrop { padding: 12px !important; align-items: flex-start !important; }
+  .modal-card { padding: 22px 18px 20px !important; margin-top: 12px; }
   .grid-2, .grid-3, .grid-cedula { grid-template-columns: 1fr !important; }
 
   /* Modal de PDF (receta/informe): pie de 3 botones apilado, con la acción

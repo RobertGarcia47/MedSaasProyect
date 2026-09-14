@@ -1178,8 +1178,9 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
             </Field>
           )}
 
-          {/* Fecha / Duración */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 22 }}>
+          {/* Fecha / Duración — className grid-2 para que colapse a 1 columna en
+              móvil (<560px, ver index.css), igual que el resto de formularios. */}
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 22 }}>
             <div>
               <label style={FL}>Fecha</label>
               <PickerTrigger
