@@ -27,10 +27,12 @@ function typeMeta(t: ApptUI['type']) { return TYPE_META[t] ?? TYPE_META.Consulta
 const PRIMERA_CITA_COLOR = '#FBBF24';
 const PRIMERA_CITA_TEXT  = '#3D2C00';
 
-/** Fondo en degradado (tenue → color normal) en vez de un relleno 100% plano —
- *  mantiene el mismo color por tipo pero menos intenso visualmente. */
+/** Fondo en degradado (color normal → tenue) en vez de un relleno 100% plano —
+ *  mantiene el mismo color por tipo pero menos intenso visualmente. El extremo
+ *  intenso queda a la izquierda (donde va el nombre del paciente) para que no
+ *  pierda contraste; se va aclarando hacia la derecha (la hora). */
 function tipoGradient(color: string): string {
-  return `linear-gradient(90deg, color-mix(in srgb, ${color} 35%, var(--surface)) 0%, ${color} 100%)`;
+  return `linear-gradient(90deg, ${color} 0%, color-mix(in srgb, ${color} 35%, var(--surface)) 100%)`;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -185,7 +187,10 @@ function TimelineAgenda({ appts, onView, primerasCitasIds }: { appts: ApptUI[]; 
               const esPrimera = primerasCitasIds.has(a.id);
               const color = esPrimera ? PRIMERA_CITA_COLOR : typeMeta(a.type).dot;
               const textColor = esPrimera ? PRIMERA_CITA_TEXT : '#fff';
-              const timeColor = esPrimera ? 'rgba(61,44,0,.7)' : 'rgba(255,255,255,.85)';
+              // El extremo derecho del degradado siempre queda claro (tenue), así que
+              // la hora usa un texto oscuro ahí — el blanco/oscuro del nombre a la
+              // izquierda no le sirve porque ese lado siempre es el intenso.
+              const timeColor = esPrimera ? 'rgba(61,44,0,.7)' : 'var(--on-surface-variant)';
               const top = tlTop(a.start);
               const height = Math.max(tlTop(a.end) - top, 18);
               const enCurso = a.status === 'en-curso';
