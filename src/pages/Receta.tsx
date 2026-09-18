@@ -37,6 +37,14 @@ function RailCard({ icon, title, action, children }: { icon: string; title: stri
   );
 }
 
+/** Fecha de hoy en LOCAL, no UTC — `new Date().toISOString().slice(0,10)` se
+ *  adelanta un día entre las 18:00 y medianoche en zonas detrás de UTC (México
+ *  es UTC-6): mismo bug que ya se corrigió en citas.ts/consultas.ts. */
+function todayLocalStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function calcEdad(birth: string): string {
   if (!birth) return '—';
   const b = new Date(birth); if (isNaN(b.getTime())) return '—';
@@ -63,7 +71,7 @@ export function Receta({ go, goBack, toast, patientId }: {
   const [pid, setPid]             = useState(patientId || '');
   const [patientOpen, setPatOpen] = useState(false);
   const [birth, setBirth]         = useState('');
-  const [recipeDate, setRecipeDate] = useState(new Date().toISOString().slice(0, 10));
+  const [recipeDate, setRecipeDate] = useState(todayLocalStr());
   const [dx, setDx]               = useState('');
   const [dxDesc, setDxDesc]       = useState('');
   const [meds, setMeds]           = useState<Med[]>([nuevoMed(1)]);

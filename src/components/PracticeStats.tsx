@@ -6,7 +6,8 @@ import {
   type DxFrecuente, type MedicamentosResumen, type CitasResumen, type DiaSemanaCount,
 } from '../lib/stats';
 
-const DIAS_VENTANA_CITAS = 90;
+const RANGOS_CITAS = [7, 30, 90] as const;
+const DIAS_VENTANA_CITAS_DEFAULT = 90;
 
 // ── Exportar CSV ──────────────────────────────────────────────────────────────
 // Un solo archivo con las 4 secciones. Escapa comas/comillas (las descripciones
@@ -19,7 +20,7 @@ function csvRows(rows: (string | number)[][]): string {
   return rows.map((r) => r.map(csvCell).join(',')).join('\n');
 }
 
-function exportarCsv(dx: DxFrecuente[], meds: MedicamentosResumen, citas: CitasResumen, porDia: DiaSemanaCount[]) {
+function exportarCsv(dx: DxFrecuente[], meds: MedicamentosResumen, citas: CitasResumen, porDia: DiaSemanaCount[], rangoDias: number) {
   const otras = citas.total - citas.completadas - citas.canceladas - citas.noAsistio;
   const partes = [
     'Diagnósticos más frecuentes',
@@ -28,7 +29,7 @@ function exportarCsv(dx: DxFrecuente[], meds: MedicamentosResumen, citas: CitasR
     'Medicamentos más recetados',
     csvRows([['Medicamento', 'Recetas', 'Controlados'], ...meds.top.map((m) => [m.medicamento, m.count, m.controlados])]),
     '',
-    `Citas (últimos ${DIAS_VENTANA_CITAS} días)`,
+    `Citas (últimos ${rangoDias} días)`,
     csvRows([
       ['Estado', 'Cantidad'],
       ['Completadas', citas.completadas],
@@ -51,8 +52,8 @@ function exportarCsv(dx: DxFrecuente[], meds: MedicamentosResumen, citas: CitasR
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
-function StatCardShell({ icon, title, sub, children }: {
-  icon: string; title: string; sub?: string; children: React.ReactNode;
+function StatCardShell({ icon, title, sub, extra, children }: {
+  icon: string; title: string; sub?: string; extra?: React.ReactNode; children: React.ReactNode;
 }) {
   return (
     <Card variant="elevated" style={{ padding: 20 }}>
@@ -60,9 +61,37 @@ function StatCardShell({ icon, title, sub, children }: {
         <Icon name={icon} size={20} style={{ color: 'var(--primary)' }} />
         <span className="title-s" style={{ fontSize: 16 }}>{title}</span>
         {sub && <span style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>{sub}</span>}
+        {/* no-print: un control interactivo no aporta nada en el PDF/impresión —
+            mismo criterio que ya se aplica a los botones Imprimir/Exportar CSV. */}
+        {extra && <div className="no-print" style={{ marginLeft: 'auto' }}>{extra}</div>}
       </div>
       {children}
     </Card>
+  );
+}
+
+/** Segmentado 7/30/90 días — hoy solo controla la ventana de la tarjeta de Citas
+ *  (diagnósticos/medicamentos/consultas-por-día son histórico completo en el
+ *  backend, sin filtro de fecha todavía). */
+function RangeToggle({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div style={{ display: 'flex', gap: 3, background: 'var(--surface-container-highest)', borderRadius: 999, padding: 3 }}>
+      {RANGOS_CITAS.map((o) => (
+        <button
+          key={o}
+          type="button"
+          onClick={() => onChange(o)}
+          style={{
+            fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 999, border: 'none', cursor: 'pointer',
+            fontFamily: 'inherit', transition: 'background .12s, color .12s',
+            background: value === o ? 'var(--primary)' : 'transparent',
+            color: value === o ? 'var(--on-primary)' : 'var(--on-surface-variant)',
+          }}
+        >
+          {o}d
+        </button>
+      ))}
+    </div>
   );
 }
 
@@ -136,7 +165,7 @@ function TopMedicamentosCard({ resumen }: { resumen: MedicamentosResumen }) {
   );
 }
 
-function CitasResumenCard({ resumen }: { resumen: CitasResumen }) {
+function CitasResumenCard({ resumen, rango, onRangoChange }: { resumen: CitasResumen; rango: number; onRangoChange: (v: number) => void }) {
   const otras = resumen.total - resumen.completadas - resumen.canceladas - resumen.noAsistio;
   const items = [
     { label: 'Completadas', value: resumen.completadas, color: 'var(--success)' },
@@ -148,7 +177,7 @@ function CitasResumenCard({ resumen }: { resumen: CitasResumen }) {
     ...(otras > 0 ? [{ label: 'Pendientes / en curso', value: otras, color: 'var(--outline)' }] : []),
   ];
   return (
-    <StatCardShell icon="event_busy" title="Citas" sub={`últimos ${DIAS_VENTANA_CITAS} días`}>
+    <StatCardShell icon="event_busy" title="Citas" sub={`últimos ${rango} días`} extra={<RangeToggle value={rango} onChange={onRangoChange} />}>
       {resumen.total === 0 ? (
         <EmptyMini text="Sin citas registradas en este periodo." />
       ) : (
@@ -214,11 +243,12 @@ export function PracticeStats({ clinicaId }: { clinicaId: string }) {
   const [meds, setMeds] = useState<MedicamentosResumen>({ top: [], totalLineas: 0, totalControladas: 0 });
   const [citas, setCitas] = useState<CitasResumen>({ total: 0, completadas: 0, canceladas: 0, noAsistio: 0, tasaCancelacion: 0 });
   const [porDia, setPorDia] = useState<DiaSemanaCount[]>([]);
+  const [rangoCitas, setRangoCitas] = useState(DIAS_VENTANA_CITAS_DEFAULT);
 
   useEffect(() => {
     if (!clinicaId) { setLoading(false); return; }
     let mounted = true;
-    const desdeCitas = new Date(Date.now() - DIAS_VENTANA_CITAS * 24 * 60 * 60 * 1000);
+    const desdeCitas = new Date(Date.now() - rangoCitas * 24 * 60 * 60 * 1000);
     setLoading(true);
     Promise.all([
       fetchTopDiagnosticos(clinicaId, 5),
@@ -233,7 +263,7 @@ export function PracticeStats({ clinicaId }: { clinicaId: string }) {
       .catch((e) => console.error('PracticeStats error:', e))
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
-  }, [clinicaId]);
+  }, [clinicaId, rangoCitas]);
 
   return (
     <div className="practice-stats-print" style={{ marginTop: 24 }}>
@@ -243,7 +273,7 @@ export function PracticeStats({ clinicaId }: { clinicaId: string }) {
         {!loading && (
           <div style={{ display: 'flex', gap: 8 }}>
             <Button variant="outlined" icon="print" size="sm" onClick={() => window.print()}>Imprimir / PDF</Button>
-            <Button variant="outlined" icon="download" size="sm" onClick={() => exportarCsv(dx, meds, citas, porDia)}>Exportar CSV</Button>
+            <Button variant="outlined" icon="download" size="sm" onClick={() => exportarCsv(dx, meds, citas, porDia, rangoCitas)}>Exportar CSV</Button>
           </div>
         )}
       </div>
@@ -257,7 +287,7 @@ export function PracticeStats({ clinicaId }: { clinicaId: string }) {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 18 }}>
           <TopDiagnosticosCard items={dx} />
           <TopMedicamentosCard resumen={meds} />
-          <CitasResumenCard resumen={citas} />
+          <CitasResumenCard resumen={citas} rango={rangoCitas} onRangoChange={setRangoCitas} />
           <ConsultasPorDiaCard data={porDia} />
         </div>
       )}

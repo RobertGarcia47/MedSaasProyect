@@ -269,9 +269,15 @@ body { transition: background-color .35s ease, color .35s ease; }
 @keyframes scaleIn { from { transform: scale(.97); } to { transform: scale(1); } }
 @keyframes spin    { to { transform: rotate(360deg); } }
 @keyframes blink   { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(1.35); } }
+@keyframes skelPulse { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
 
 .fade-up { animation: fadeUp .45s cubic-bezier(.2,0,0,1) both; }
 @media (prefers-reduced-motion: reduce) { .fade-up { animation: none; } }
+
+/* Esqueleto de carga (Dashboard) — silueta gris pulsante del layout final en vez
+   de un spinner de página completa; se percibe más rápido aunque tarde lo mismo. */
+.skel-block { background: var(--surface-container-highest); animation: skelPulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .skel-block { animation: none; opacity: .7; } }
 
 /* ---------- autofill (detección + restyle) ---------- */
 /* Truco estándar: el navegador dispara esta animación al autocompletar un campo;

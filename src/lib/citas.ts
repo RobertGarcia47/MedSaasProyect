@@ -26,6 +26,14 @@ function hhmm(iso: string): string {
 function addMin(iso: string, min: number): string {
   return new Date(new Date(iso).getTime() + min * 60000).toISOString();
 }
+/** Día calendario LOCAL de un timestamp — NO usar `iso.slice(0, 10)`: Supabase
+ *  devuelve el timestamp en UTC, y con América/Ciudad_de_México (UTC-6) una cita
+ *  de las 18:00 en adelante ya cae en el día siguiente en UTC, apareciendo en el
+ *  día equivocado en calendario/agenda aunque la hora (hhmm, sí local) se vea bien. */
+function localDateStr(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 const ESTADO_TO_STATUS: Record<EstadoCita, ApptUI['status']> = {
   programada:  'pendiente',
@@ -68,8 +76,8 @@ type CitaRow = {
   pacientes: { id: string; nombre: string; apellido_paterno: string | null } | null;
 };
 
-async function queryCitas(clinicaId: string, desde: string, hasta: string): Promise<ApptUI[]> {
-  const { data, error } = await supabase
+async function queryCitas(clinicaId: string, desde: string, hasta: string, medicoId?: string): Promise<ApptUI[]> {
+  let q = supabase
     .from('citas')
     .select(`
       id, fecha, duracion_min, estado, motivo, paciente_id, medico_id, acepta_adelanto,
@@ -77,8 +85,9 @@ async function queryCitas(clinicaId: string, desde: string, hasta: string): Prom
     `)
     .eq('clinica_id', clinicaId)
     .gte('fecha', desde)
-    .lte('fecha', hasta)
-    .order('fecha');
+    .lte('fecha', hasta);
+  if (medicoId) q = q.eq('medico_id', medicoId);
+  const { data, error } = await q.order('fecha');
   if (error) throw error;
   const rows = (data as unknown as CitaRow[]) ?? [];
 
@@ -92,7 +101,7 @@ async function queryCitas(clinicaId: string, desde: string, hasta: string): Prom
       pacienteName: name,
       pacienteInitials: iniciales(pac?.nombre ?? '?', pac?.apellido_paterno ?? null),
       pacienteColor: colorById(pacId),
-      date: c.fecha.slice(0, 10),
+      date: localDateStr(c.fecha),
       start: hhmm(c.fecha),
       end: hhmm(addMin(c.fecha, c.duracion_min || 30)),
       type: decodeTipoCita(c.motivo) as ApptUI['type'],
@@ -105,11 +114,12 @@ async function queryCitas(clinicaId: string, desde: string, hasta: string): Prom
   });
 }
 
-/** Citas de un día concreto (Date en hora local). */
-export async function fetchCitasDia(clinicaId: string, dia: Date): Promise<ApptUI[]> {
+/** Citas de un día concreto (Date en hora local). `medicoId` opcional filtra a un
+ *  solo médico — usado por el filtro de Agenda de hoy/calendario en el Dashboard. */
+export async function fetchCitasDia(clinicaId: string, dia: Date, medicoId?: string): Promise<ApptUI[]> {
   const base = new Date(dia); base.setHours(0, 0, 0, 0);
   const fin = new Date(dia);  fin.setHours(23, 59, 59, 999);
-  return queryCitas(clinicaId, base.toISOString(), fin.toISOString());
+  return queryCitas(clinicaId, base.toISOString(), fin.toISOString(), medicoId);
 }
 
 /** Citas de la semana (lunes–domingo) de un día dado. */
@@ -122,11 +132,41 @@ export async function fetchCitasSemana(clinicaId: string, diaDeLaSemana: Date): 
   return queryCitas(clinicaId, lunes.toISOString(), domingo.toISOString());
 }
 
-/** Citas del mes completo (año/mes en números, month = 0-based). */
-export async function fetchCitasMes(clinicaId: string, year: number, month: number): Promise<ApptUI[]> {
+/** Citas del mes completo (año/mes en números, month = 0-based). `medicoId` opcional,
+ *  ver fetchCitasDia. */
+export async function fetchCitasMes(clinicaId: string, year: number, month: number, medicoId?: string): Promise<ApptUI[]> {
   const desde = new Date(year, month, 1); desde.setHours(0, 0, 0, 0);
   const hasta = new Date(year, month + 1, 0); hasta.setHours(23, 59, 59, 999);
-  return queryCitas(clinicaId, desde.toISOString(), hasta.toISOString());
+  return queryCitas(clinicaId, desde.toISOString(), hasta.toISOString(), medicoId);
+}
+
+/** Conteo de citas no canceladas por día en un rango [desde, hasta] inclusive —
+ *  usado para la tendencia y el mini-gráfico de "Citas hoy" en el Dashboard. */
+export async function fetchConteoCitasPorDia(clinicaId: string, desde: Date, hasta: Date): Promise<{ date: string; count: number }[]> {
+  const base = new Date(desde); base.setHours(0, 0, 0, 0);
+  const fin = new Date(hasta); fin.setHours(23, 59, 59, 999);
+  const { data, error } = await supabase
+    .from('citas')
+    .select('fecha')
+    .eq('clinica_id', clinicaId)
+    .neq('estado', 'cancelada')
+    .gte('fecha', base.toISOString())
+    .lte('fecha', fin.toISOString());
+  if (error) throw error;
+
+  const counts = new Map<string, number>();
+  for (const row of (data ?? []) as { fecha: string }[]) {
+    const day = localDateStr(row.fecha);
+    counts.set(day, (counts.get(day) ?? 0) + 1);
+  }
+  const dias: { date: string; count: number }[] = [];
+  const cursor = new Date(base);
+  while (cursor <= fin) {
+    const key = cursor.toISOString().slice(0, 10);
+    dias.push({ date: key, count: counts.get(key) ?? 0 });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return dias;
 }
 
 /**

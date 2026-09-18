@@ -16,6 +16,14 @@ function RailCard({ icon, title, children }: { icon: string; title: string; chil
   );
 }
 
+/** Fecha de hoy en LOCAL, no UTC — `new Date().toISOString().slice(0,10)` se
+ *  adelanta un día entre las 18:00 y medianoche en zonas detrás de UTC (México
+ *  es UTC-6): mismo bug que ya se corrigió en citas.ts/consultas.ts. */
+function todayLocalStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 
 export function Laboratorio({ go, goBack, toast, patientId }: {
   go: (n: string, p?: any) => void; goBack?: () => void; toast?: (m: string) => void; patientId?: string;
@@ -30,7 +38,7 @@ export function Laboratorio({ go, goBack, toast, patientId }: {
   const [tipos,        setTipos]       = useState<TipoEstudioLab[]>([]);
   const [tipoEstudio,  setTipo]        = useState('');
   const [tipoOpen,     setTipoOpen]    = useState(false);
-  const [fechaEstudio, setFecha]       = useState(new Date().toISOString().slice(0, 10));
+  const [fechaEstudio, setFecha]       = useState(todayLocalStr());
   const [labExterno,   setLabExterno]  = useState('');
   const [archivo,      setArchivo]     = useState<File | null>(null);
   const [archivoErr,   setArchivoErr]  = useState(false);

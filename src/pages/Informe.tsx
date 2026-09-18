@@ -8,6 +8,14 @@ import { Icon, Button, Card } from '../components';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
+/** Fecha de hoy en LOCAL, no UTC — `new Date().toISOString().slice(0,10)` se
+ *  adelanta un día entre las 18:00 y medianoche en zonas detrás de UTC (México
+ *  es UTC-6): mismo bug que ya se corrigió en citas.ts/consultas.ts. */
+function todayLocalStr(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function RailCard({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
   return (
     <Card variant="outlined" style={{ padding: 18, borderRadius: 20 }}>
@@ -86,7 +94,7 @@ export function Informe({ go, goBack, toast, patientId }: {
   const [tipoOpen,    setTipoOpen]    = useState(false);
   const [titulo,      setTitulo]      = useState('');
   const [tituloError, setTituloError] = useState(false);
-  const [fecha,       setFecha]       = useState(new Date().toISOString().slice(0, 10));
+  const [fecha,       setFecha]       = useState(todayLocalStr());
   const [visibilidad, setVisibilidad] = useState<VisibilidadInforme>('expediente');
   const [tags,        setTags]        = useState<string[]>([]);
   const [wordCount,   setWordCount]   = useState(0);

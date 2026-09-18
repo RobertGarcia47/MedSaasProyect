@@ -44,6 +44,14 @@ function hhmm(iso: string): string {
 function addMinutes(iso: string, min: number): string {
   return new Date(new Date(iso).getTime() + min * 60000).toISOString();
 }
+/** Día calendario LOCAL de un timestamp — NO usar `iso.slice(0, 10)`: Supabase
+ *  devuelve el timestamp en UTC, y con América/Ciudad_de_México (UTC-6) una
+ *  consulta de las 18:00 en adelante ya cae en el día siguiente en UTC. Mismo
+ *  fix que en citas.ts (ambos producen el mismo ApptUI). */
+function localDateStr(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 function calcStatus(fecha: string): ApptUI['status'] {
   const consulta = new Date(fecha).getTime();
   const now = Date.now();
@@ -92,7 +100,7 @@ async function queryConsultas(clinicaId: string, desde: string, hasta: string): 
       pacienteName: name,
       pacienteInitials: initiales(pac?.nombre ?? '?', pac?.apellido_paterno ?? null),
       pacienteColor: colorById(pacId),
-      date: c.fecha.slice(0, 10),
+      date: localDateStr(c.fecha),
       start: hhmm(c.fecha),
       end: hhmm(addMinutes(c.fecha, 30)),
       type: 'Consulta',
