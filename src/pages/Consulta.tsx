@@ -6,10 +6,12 @@ import type { GrupoSanguineo } from '../lib/types';
 import {
   crearConsulta, obtenerConsultas, type ConsultaDetalleUI,
   type EstadoMentalInput, type TamizajeRiesgoInput, type NivelIdeacion, type NivelAutolesion,
-  type EscalasInput, type EscalaResultado,
+  type EscalasInput,
 } from '../lib/consultas';
 import { obtenerAntecedentes, guardarAntecedentes, ANTECEDENTES_VACIOS, type Antecedentes,
          obtenerAlergias, agregarAlergia, eliminarAlergia, type Alergia } from '../lib/antecedentes';
+import { obtenerPlanTratamiento, guardarPlanTratamiento, PLAN_TRATAMIENTO_VACIO, type PlanTratamiento } from '../lib/planTratamiento';
+import { guardarNotaPrivada } from '../lib/notasPrivadas';
 import { Cie10Picker } from '../components/Cie10Picker';
 import { Icon, Button, Card, IconButton, Select } from '../components';
 import { Pills } from './Clinical';
@@ -297,6 +299,13 @@ export function Consulta({ go, goBack, toast, patientId }: {
   const [tamizaje, setTamizaje]         = useState<TamizajeRiesgoInput>({ ...TAMIZAJE_VACIO });
   const [phq9, setPhq9]                 = useState<(number | null)[]>(Array(9).fill(null));
   const [gad7, setGad7]                 = useState<(number | null)[]>(Array(7).fill(null));
+  const [notaPrivada, setNotaPrivada]   = useState('');
+  // Plan de tratamiento — vive en el EXPEDIENTE, no por consulta (persistente
+  // sesión tras sesión, igual patrón que antecedentes).
+  const [planTrat, setPlanTrat]         = useState<PlanTratamiento>({ ...PLAN_TRATAMIENTO_VACIO });
+  const [planLoading, setPlanLoading]   = useState(false);
+  const [planSaving, setPlanSaving]     = useState(false);
+  const [planDirty, setPlanDirty]       = useState(false);
 
   const suscripcionVencida = account.accesoNivel === 'limitado';
   const puede = account.puedeEmitirClinico && !!account.clinicaId && !suscripcionVencida;
@@ -324,7 +333,12 @@ export function Consulta({ go, goBack, toast, patientId }: {
     setOpenCat(null);
     setAntDirty(false);
     setAlergiaInput('');
-    if (!expedienteSel) { setHistorial([]); setAntecedentes(ANTECEDENTES_VACIOS); setAlergias([]); return; }
+    setPlanDirty(false);
+    if (!expedienteSel) {
+      setHistorial([]); setAntecedentes(ANTECEDENTES_VACIOS); setAlergias([]);
+      setPlanTrat({ ...PLAN_TRATAMIENTO_VACIO });
+      return;
+    }
     setHistLoading(true);
     obtenerConsultas(expedienteSel)
       .then(setHistorial)
@@ -338,7 +352,14 @@ export function Consulta({ go, goBack, toast, patientId }: {
     obtenerAlergias(expedienteSel)
       .then(setAlergias)
       .catch((e) => { console.error(e); setAlergias([]); });
-  }, [expedienteSel]);
+    if (esSaludMental) {
+      setPlanLoading(true);
+      obtenerPlanTratamiento(expedienteSel)
+        .then(setPlanTrat)
+        .catch((e) => { console.error(e); setPlanTrat({ ...PLAN_TRATAMIENTO_VACIO }); })
+        .finally(() => setPlanLoading(false));
+    }
+  }, [expedienteSel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const updVital = (k: string, v: string) => { setVitales((p) => ({ ...p, [k]: v })); setDirty(true); };
   const addDx = (c: { codigo: string; descripcion: string }) => {
@@ -377,7 +398,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
     setSaving(true);
     try {
       const expId = await getOrCreateExpediente(pid, account.clinicaId!);
-      await crearConsulta(account.clinicaId!, expId, {
+      const consultaId = await crearConsulta(account.clinicaId!, expId, {
         motivo,
         notas,
         vitales: {
@@ -394,6 +415,17 @@ export function Consulta({ go, goBack, toast, patientId }: {
         tamizajeRiesgo: esSaludMental ? tamizaje : null,
         escalas: esSaludMental ? escalas : null,
       });
+
+      // Nota de proceso privada — llamada aparte, a propósito: vive en una
+      // tabla con su propia RLS (solo el autor la ve), nunca en crear_consulta.
+      if (esSaludMental && notaPrivada.trim()) {
+        try {
+          await guardarNotaPrivada(consultaId, notaPrivada.trim());
+        } catch (e: any) {
+          toast?.('La consulta se guardó, pero la nota privada no: ' + (e?.message ?? String(e)));
+        }
+      }
+
       toast?.('Consulta registrada correctamente');
       go('patient', { id: pid });
     } catch (e: any) {
@@ -418,6 +450,23 @@ export function Consulta({ go, goBack, toast, patientId }: {
     } catch (e: any) {
       toast?.('Error al guardar antecedentes: ' + (e?.message ?? String(e)));
     } finally { setAntSaving(false); }
+  };
+
+  const guardarPlan = async () => {
+    if (!pid) { toast?.('Selecciona un paciente'); return; }
+    setPlanSaving(true);
+    try {
+      let expId = expedienteSel;
+      if (!expId) {
+        expId = await getOrCreateExpediente(pid, account.clinicaId!);
+        setPacientes((prev) => prev.map((p) => p.id === pid ? { ...p, expediente_id: expId } : p));
+      }
+      await guardarPlanTratamiento(expId!, planTrat);
+      setPlanDirty(false);
+      toast?.('Plan de tratamiento guardado');
+    } catch (e: any) {
+      toast?.('Error al guardar el plan de tratamiento: ' + (e?.message ?? String(e)));
+    } finally { setPlanSaving(false); }
   };
 
   const updGrupo = async (g: string) => {
@@ -753,6 +802,46 @@ export function Consulta({ go, goBack, toast, patientId }: {
             )}
           </RailCard>
 
+          {/* Plan de tratamiento — vive en el EXPEDIENTE (no por consulta),
+              mismo patrón de guardado independiente que Antecedentes médicos. */}
+          {esSaludMental && (
+            <RailCard icon="track_changes" title="Plan de tratamiento"
+              action={<Button variant="text" size="sm" icon="save" onClick={guardarPlan} disabled={planSaving || !planDirty}>
+                {planSaving ? 'Guardando…' : 'Guardar'}
+              </Button>}>
+              {!paciente ? (
+                <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>Selecciona un paciente para ver su plan de tratamiento.</div>
+              ) : planLoading ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--on-surface-variant)' }}>
+                  <Icon name="hourglass_empty" size={16} />Cargando plan de tratamiento…
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', marginBottom: 5 }}>Objetivos terapéuticos</label>
+                    <textarea value={planTrat.objetivos} rows={2}
+                      onChange={(e) => { setPlanTrat((p) => ({ ...p, objetivos: e.target.value })); setPlanDirty(true); }}
+                      placeholder="Ej. Reducir síntomas de ansiedad, mejorar higiene del sueño…"
+                      style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--outline-variant)', borderRadius: 10, padding: '8px 10px', fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--on-surface)', background: 'var(--surface)', resize: 'vertical', outline: 'none' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', marginBottom: 5 }}>Intervenciones / modalidad</label>
+                    <textarea value={planTrat.intervenciones} rows={2}
+                      onChange={(e) => { setPlanTrat((p) => ({ ...p, intervenciones: e.target.value })); setPlanDirty(true); }}
+                      placeholder="Ej. TCC, psicoeducación, manejo farmacológico…"
+                      style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--outline-variant)', borderRadius: 10, padding: '8px 10px', fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--on-surface)', background: 'var(--surface)', resize: 'vertical', outline: 'none' }} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <Field label="Frecuencia" value={planTrat.frecuencia}
+                      onChange={(v) => { setPlanTrat((p) => ({ ...p, frecuencia: v })); setPlanDirty(true); }} />
+                    <Field label="Próxima revisión" type="date" value={planTrat.fecha_revision}
+                      onChange={(v) => { setPlanTrat((p) => ({ ...p, fecha_revision: v })); setPlanDirty(true); }} />
+                  </div>
+                </div>
+              )}
+            </RailCard>
+          )}
+
           {/* Signos vitales — no toda práctica los captura (psicología, etc.) */}
           {account.usaSignosVitales && (
             <RailCard icon="monitor_heart" title="Signos vitales">
@@ -938,6 +1027,29 @@ export function Consulta({ go, goBack, toast, patientId }: {
               </div>
             </div>
           </Card>
+
+          {/* Nota privada — reflexiones propias, NUNCA parte del expediente
+              compartido: tabla con su propia RLS (solo autor_id = auth.uid()),
+              no se audita, no sale en informes ni exportaciones. */}
+          {esSaludMental && (
+            <Card variant="outlined" style={{ padding: '18px 22px', borderRadius: 20 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
+                <Icon name="lock" size={18} style={{ color: 'var(--on-surface-variant)' }} />
+                <span className="title-s" style={{ fontSize: 15 }}>Nota privada</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--on-surface-variant)', background: 'var(--surface-container-highest)', padding: '3px 10px', borderRadius: 999 }}>Solo tú la ves</span>
+              </div>
+              <p style={{ fontSize: 12, color: 'var(--on-surface-variant)', margin: '0 0 10px', lineHeight: 1.4 }}>
+                Reflexiones personales de la sesión — nunca aparece en informes, exportaciones, ni la ve nadie más de la clínica.
+              </p>
+              <textarea
+                value={notaPrivada}
+                onChange={(e) => { setNotaPrivada(e.target.value); setDirty(true); }}
+                rows={4}
+                placeholder="Hipótesis, contratransferencia, temas para supervisión…"
+                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--outline-variant)', borderRadius: 10, padding: '10px 12px', fontSize: 13.5, lineHeight: 1.5, fontFamily: 'var(--font-body)', color: 'var(--on-surface)', background: 'var(--surface)', resize: 'vertical', outline: 'none' }}
+              />
+            </Card>
+          )}
 
           {/* Diagnósticos CIE-10 — cierra la nota: se codifica después de explorar
               y de escribir la impresión diagnóstica (orden de la NOM-004).
