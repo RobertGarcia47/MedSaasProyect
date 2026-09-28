@@ -69,6 +69,10 @@ export interface AccountContext {
   usaSignosVitales: boolean;
   /** Mismo patrón que puedePrescribir: no todo profesional solicita laboratorio. */
   usaLaboratorio: boolean;
+  /** 'medico_general' | 'psicologo' | 'nutriologo' | 'psiquiatra' | 'otro' | null —
+   *  mismo campo que edita Profile.tsx; se usa para adaptar Consulta (antecedentes,
+   *  plantillas de nota) a salud mental sin depender de los 3 toggles de arriba. */
+  tipoProfesional: string | null;
 }
 
 /** Resultado del arranque de sesión: distingue "sin onboarding" de "listo". */
@@ -176,21 +180,24 @@ export async function loadAccountContext(): Promise<AccountLoad | null> {
   let puedePrescribir = false;
   let usaSignosVitales = false;
   let usaLaboratorio = false;
+  let tipoProfesional: string | null = null;
   if (rol === 'owner' || rol === 'medico') {
     const { data: medico } = await supabase
       .from('medico_detalles')
-      .select('cedula_profesional, puede_prescribir, usa_signos_vitales, usa_laboratorio')
+      .select('cedula_profesional, puede_prescribir, usa_signos_vitales, usa_laboratorio, tipo_profesional')
       .eq('profile_id', user.id)
       .maybeSingle<{
         cedula_profesional: string | null;
         puede_prescribir: boolean | null;
         usa_signos_vitales: boolean | null;
         usa_laboratorio: boolean | null;
+        tipo_profesional: string | null;
       }>();
     puedeEmitirClinico = !!medico?.cedula_profesional;
     puedePrescribir = puedeEmitirClinico && (medico?.puede_prescribir ?? true);
     usaSignosVitales = puedeEmitirClinico && (medico?.usa_signos_vitales ?? true);
     usaLaboratorio = puedeEmitirClinico && (medico?.usa_laboratorio ?? true);
+    tipoProfesional = medico?.tipo_profesional ?? null;
   }
 
   const nombreCompleto = [profile.nombre, profile.apellido_paterno, profile.apellido_materno]
@@ -216,6 +223,7 @@ export async function loadAccountContext(): Promise<AccountLoad | null> {
     puedePrescribir,
     usaSignosVitales,
     usaLaboratorio,
+    tipoProfesional,
   };
 
   return { state: 'ok', account };

@@ -87,6 +87,20 @@ const PLANTILLAS: Record<string, string> = {
     '<p><b>Padecimiento actual:</b> </p><p><b>Exploración física:</b> </p><p><b>Impresión diagnóstica:</b> </p><p><b>Plan e indicaciones:</b> </p>',
 };
 
+// Mismos formatos de nota que ya usan plataformas de salud mental (SOAP, DAP,
+// BIRP) — ninguno es "el correcto", cada clínico usa el que le enseñó su
+// formación. Solo se muestran a psicología/psiquiatría (ver PLANTILLAS_ACTIVAS).
+const PLANTILLAS_SALUD_MENTAL: Record<string, string> = {
+  'Nota SOAP (salud mental)':
+    '<p><b>S — Subjetivo:</b> Reporte del paciente sobre su estado, síntomas y eventos relevantes desde la última sesión.</p><p><b>O — Objetivo:</b> Observaciones del terapeuta (apariencia, conducta, afecto observado).</p><p><b>A — Análisis:</b> Impresión clínica y avance hacia los objetivos del plan de tratamiento.</p><p><b>P — Plan:</b> Intervención realizada en esta sesión y enfoque o tarea para la siguiente.</p>',
+  'Nota DAP':
+    '<p><b>D — Datos:</b> Lo que el paciente compartió y lo observado durante la sesión.</p><p><b>A — Análisis:</b> Interpretación clínica de los datos anteriores.</p><p><b>P — Plan:</b> Próximos pasos, tarea entre sesiones y fecha de la siguiente cita.</p>',
+  'Nota BIRP':
+    '<p><b>B — Conducta:</b> Lo que el paciente presentó o reportó en la sesión.</p><p><b>I — Intervención:</b> Técnica o enfoque terapéutico utilizado.</p><p><b>R — Respuesta:</b> Cómo respondió el paciente a la intervención.</p><p><b>P — Plan:</b> Plan para la siguiente sesión.</p>',
+  'Evaluación inicial / primera entrevista':
+    '<p><b>Motivo de consulta (en palabras del paciente):</b> </p><p><b>Historia del padecimiento actual:</b> </p><p><b>Antecedentes relevantes:</b> </p><p><b>Impresión diagnóstica inicial:</b> </p><p><b>Plan de tratamiento propuesto:</b> </p>',
+};
+
 const VITAL_VACIO = { peso: '', talla: '', taSist: '', taDiast: '', fc: '', temp: '', fr: '', spo2: '', glucosa: '', periAbdo: '', grasaPct: '' };
 
 // Opciones de grupo sanguíneo (mismo enum que la BD)
@@ -96,13 +110,23 @@ const GRUPO_SANGRE_OPTS = [
   { value: 'desconocido', label: 'Desconocido' },
 ];
 
-// Categorías de antecedentes (las 4 narrativas que guarda la RPC guardar_antecedentes)
-const CATS_ANT: { key: keyof Antecedentes; label: string; icon: string }[] = [
+// Categorías de antecedentes (las 4 narrativas que guarda la RPC guardar_antecedentes).
+// Mismas 4 llaves siempre (no cambia el modelo de datos) — solo la etiqueta y el
+// ícono cambian según el tipo de profesional, siguiendo la NOM-004: la historia
+// clínica debe ajustarse "a la naturaleza del servicio que se presta".
+const CATS_ANT_GENERAL: { key: keyof Antecedentes; label: string; icon: string }[] = [
   { key: 'patologicos',      label: 'Patológicos',      icon: 'coronavirus' },
   { key: 'no_patologicos',   label: 'No patológicos',   icon: 'self_improvement' },
   { key: 'heredofamiliares', label: 'Heredofamiliares', icon: 'family_restroom' },
   { key: 'quirurgicos',      label: 'Quirúrgicos',      icon: 'vaccines' },
 ];
+const CATS_ANT_SALUD_MENTAL: { key: keyof Antecedentes; label: string; icon: string }[] = [
+  { key: 'patologicos',      label: 'Antecedentes psiquiátricos',      icon: 'psychology' },
+  { key: 'no_patologicos',   label: 'Consumo de sustancias',           icon: 'local_bar' },
+  { key: 'heredofamiliares', label: 'Eventos vitales significativos',  icon: 'timeline' },
+  { key: 'quirurgicos',      label: 'Red de apoyo',                    icon: 'diversity_3' },
+];
+const TIPOS_SALUD_MENTAL = ['psicologo', 'psiquiatra'];
 
 interface Dx { code: string; label: string }
 
@@ -141,6 +165,12 @@ export function Consulta({ go, goBack, toast, patientId }: {
 
   const suscripcionVencida = account.accesoNivel === 'limitado';
   const puede = account.puedeEmitirClinico && !!account.clinicaId && !suscripcionVencida;
+
+  // Psicología/psiquiatría: antecedentes y plantillas de nota se adaptan al
+  // servicio (NOM-004) en vez de usar el set pensado para medicina general.
+  const esSaludMental = TIPOS_SALUD_MENTAL.includes(account.tipoProfesional ?? '');
+  const catsAnt = esSaludMental ? CATS_ANT_SALUD_MENTAL : CATS_ANT_GENERAL;
+  const plantillasActivas = esSaludMental ? PLANTILLAS_SALUD_MENTAL : PLANTILLAS;
 
   useEffect(() => {
     if (!account.clinicaId) return;
@@ -506,7 +536,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
             ) : (
               <>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {CATS_ANT.map(({ key, label, icon }) => {
+                {catsAnt.map(({ key, label, icon }) => {
                   const isOpen = openCat === key;
                   const val = antecedentes[key];
                   return (
@@ -632,8 +662,8 @@ export function Consulta({ go, goBack, toast, patientId }: {
                 <Button variant="outlined" size="sm" icon="description" trailingIcon="arrow_drop_down" onClick={() => setPlantOpen(!plantillaOpen)}>Plantillas</Button>
                 {plantillaOpen && (
                   <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 4, background: 'var(--surface-container-high)', borderRadius: 12, boxShadow: 'var(--elev-3)', zIndex: 30, padding: 6, width: 260 }}>
-                    {Object.keys(PLANTILLAS).map((k) => (
-                      <button key={k} onMouseDown={(e) => { e.preventDefault(); insertHTML(PLANTILLAS[k]); }} className="state-layer" style={{
+                    {Object.keys(plantillasActivas).map((k) => (
+                      <button key={k} onMouseDown={(e) => { e.preventDefault(); insertHTML(plantillasActivas[k]); }} className="state-layer" style={{
                         display: 'block', width: '100%', textAlign: 'left', border: 'none', cursor: 'pointer',
                         padding: '10px 12px', borderRadius: 8, background: 'transparent', color: 'var(--on-surface)',
                         fontFamily: 'var(--font-body)', fontSize: 14, position: 'relative',
