@@ -75,6 +75,14 @@ export interface AccountContext {
   tipoProfesional: string | null;
 }
 
+/** Tipos de práctica que adaptan Consulta a salud mental (antecedentes, plantillas
+ *  de nota, Estado Mental en vez de/además de Signos vitales, tamizaje de riesgo,
+ *  escalas PHQ-9/GAD-7) — ver [[plan de salud mental]] en memoria del proyecto. */
+export const TIPOS_SALUD_MENTAL = ['psicologo', 'psiquiatra'];
+export function esPracticaSaludMental(tipoProfesional: string | null | undefined): boolean {
+  return TIPOS_SALUD_MENTAL.includes(tipoProfesional ?? '');
+}
+
 /** Resultado del arranque de sesión: distingue "sin onboarding" de "listo". */
 export type AccountLoad =
   | { state: 'no-profile' }            // no existe perfil (caso raro: sin trigger)

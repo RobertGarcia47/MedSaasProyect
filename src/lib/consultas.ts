@@ -167,11 +167,49 @@ export interface DiagnosticoInput {
   es_principal: boolean;
 }
 
+// ── Salud mental (solo psicología/psiquiatría — ver esPracticaSaludMental) ────
+
+/** Mental Status Exam — equivalente a "signos vitales" en salud mental. Todos
+ *  los campos son texto libre (con chips de opciones rápidas en la UI). */
+export interface EstadoMentalInput {
+  apariencia?: string;
+  habla?: string;
+  animo_afecto?: string;
+  proceso_pensamiento?: string;
+  contenido_pensamiento?: string;
+  percepcion?: string;
+  cognicion?: string;
+  introspeccion_juicio?: string;
+}
+
+export type NivelIdeacion = 'ninguna' | 'pasiva' | 'activa_sin_plan' | 'activa_con_plan';
+export type NivelAutolesion = 'ninguna' | 'pasada' | 'reciente';
+
+export interface TamizajeRiesgoInput {
+  ideacion_suicida: NivelIdeacion;
+  autolesion: NivelAutolesion;
+  notas?: string;
+}
+
+/** `respuestas`: un valor 0-3 por reactivo (null = sin responder). `total` solo
+ *  cuenta los reactivos respondidos — no se exige completar la escala entera. */
+export interface EscalaResultado {
+  respuestas: (number | null)[];
+  total: number;
+}
+export interface EscalasInput {
+  phq9?: EscalaResultado;
+  gad7?: EscalaResultado;
+}
+
 export interface NuevaConsulta {
   motivo?: string | null;      // S — motivo de consulta
   notas?: string | null;       // O/A/P — narrativa compuesta (exploración/análisis/plan)
   vitales: VitalesInput;       // O — signos vitales
   diagnosticos: DiagnosticoInput[]; // A — CIE-10
+  estadoMental?: EstadoMentalInput | null;
+  tamizajeRiesgo?: TamizajeRiesgoInput | null;
+  escalas?: EscalasInput | null;
 }
 
 /**
@@ -199,6 +237,9 @@ export async function crearConsulta(
     p_glucosa:             input.vitales.glucosa ?? null,
     p_perimetro_abdominal: input.vitales.perimetro_abdominal_cm ?? null,
     p_grasa_corporal_pct:  input.vitales.grasa_corporal_pct ?? null,
+    p_estado_mental:       input.estadoMental ?? null,
+    p_tamizaje_riesgo:     input.tamizajeRiesgo ?? null,
+    p_escalas:             input.escalas ?? null,
   });
   if (error) throw error;
   const consultaId = data as string;
@@ -235,6 +276,9 @@ export interface ConsultaDetalleUI {
   grasa_corporal_pct: number | null;
   motivo: string | null;
   notas: string | null;
+  estado_mental: EstadoMentalInput | null;
+  tamizaje_riesgo: TamizajeRiesgoInput | null;
+  escalas: EscalasInput | null;
 }
 
 /** Historial de consultas con narrativa descifrada (RPC obtener_consultas). */

@@ -7,6 +7,8 @@ import { construirRecetaPdfDesdeReceta, construirInformePdfDesdeInforme, type Re
 import { PdfRecetaModal } from '../components/PdfRecetaModal';
 import { PdfInformeModal } from '../components/PdfInformeModal';
 import { VitalsTrends } from '../components/VitalsTrends';
+import { EscalasTrends } from '../components/EscalasTrends';
+import { esPracticaSaludMental } from '../lib/db';
 import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, TIPO_INFORME_ICON, TIPO_INFORME_COLOR, VISIBILIDAD_ICON, VISIBILIDAD_LABEL, type InformeUI } from '../lib/informes';
 import { obtenerEstudios, urlDescarga, type EstudioUI } from '../lib/laboratorio';
 import { obtenerConsultas, type ConsultaDetalleUI } from '../lib/consultas';
@@ -294,11 +296,13 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
   // Al crear una consulta/receta/informe (dataVersion cambia) invalida lo cargado.
   useEffect(() => { setConsultasFull(null); setRecetas(null); setInformes(null); setEstudios(null); setOpenConsulta(null); setOpenReceta(null); setOpenInforme(null); }, [dataVersion]);
 
+  // Tendencias grafica signos vitales y/o escalas PHQ-9/GAD-7 — se muestra si
+  // aplica cualquiera de los dos (un psiquiatra puede tener ambos).
+  const esSaludMentalPatients = esPracticaSaludMental(account.tipoProfesional);
   const tabs = [
     ['resumen',    'Expediente',   'summarize'],
     ['timeline',   'Consultas',    'history'],
-    // Tendencias grafica signos vitales — sin ellos no hay nada que mostrar.
-    ...(account.usaSignosVitales ? [['tendencias', 'Tendencias', 'monitoring']] : []),
+    ...((account.usaSignosVitales || esSaludMentalPatients) ? [['tendencias', 'Tendencias', 'monitoring']] : []),
     // Sin toggle "puede prescribir" (psicólogos, nutriólogos…), la pestaña de
     // recetas ni se muestra — no solo el botón de crear.
     ...(account.puedePrescribir ? [['recetas', 'Recetas', 'prescriptions']] : []),
@@ -606,7 +610,12 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
 
       {/* Tendencias — mismos datos de obtener_consultas que el tab Consultas, sin llamada propia */}
       {tab === 'tendencias' && (
-        loadingDoc && consultasFull === null ? <Spinner /> : <VitalsTrends consultas={consultasFull ?? []} />
+        loadingDoc && consultasFull === null ? <Spinner /> : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {account.usaSignosVitales && <VitalsTrends consultas={consultasFull ?? []} />}
+            {esSaludMentalPatients && <EscalasTrends consultas={consultasFull ?? []} />}
+          </div>
+        )
       )}
 
       {/* Recetas — RPC obtener_recetas */}

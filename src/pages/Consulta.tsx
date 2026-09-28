@@ -1,12 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAccount } from '../context/AccountContext';
+import { esPracticaSaludMental } from '../lib/db';
 import { fetchPacientesSelect, getOrCreateExpediente, actualizarGrupoSanguineo, type PacienteSelect } from '../lib/patients';
 import type { GrupoSanguineo } from '../lib/types';
-import { crearConsulta, obtenerConsultas, type ConsultaDetalleUI } from '../lib/consultas';
+import {
+  crearConsulta, obtenerConsultas, type ConsultaDetalleUI,
+  type EstadoMentalInput, type TamizajeRiesgoInput, type NivelIdeacion, type NivelAutolesion,
+  type EscalasInput, type EscalaResultado,
+} from '../lib/consultas';
 import { obtenerAntecedentes, guardarAntecedentes, ANTECEDENTES_VACIOS, type Antecedentes,
          obtenerAlergias, agregarAlergia, eliminarAlergia, type Alergia } from '../lib/antecedentes';
 import { Cie10Picker } from '../components/Cie10Picker';
 import { Icon, Button, Card, IconButton, Select } from '../components';
+import { Pills } from './Clinical';
 
 // ── Campo outlined con label flotante (estilo del diseño) ────────────────────────
 function Field({
@@ -126,7 +132,131 @@ const CATS_ANT_SALUD_MENTAL: { key: keyof Antecedentes; label: string; icon: str
   { key: 'heredofamiliares', label: 'Eventos vitales significativos',  icon: 'timeline' },
   { key: 'quirurgicos',      label: 'Red de apoyo',                    icon: 'diversity_3' },
 ];
-const TIPOS_SALUD_MENTAL = ['psicologo', 'psiquiatra'];
+
+// ── Estado Mental (MSE) — equivalente a "signos vitales" en salud mental ─────
+const ESTADO_MENTAL_VACIO: EstadoMentalInput = {
+  apariencia: '', habla: '', animo_afecto: '', proceso_pensamiento: '',
+  contenido_pensamiento: '', percepcion: '', cognicion: '', introspeccion_juicio: '',
+};
+const MSE_DOMINIOS: { key: keyof EstadoMentalInput; label: string; opciones: string[] }[] = [
+  { key: 'apariencia', label: 'Apariencia y actitud', opciones: ['Aseado(a), acorde a la edad', 'Higiene descuidada', 'Cooperador(a)'] },
+  { key: 'habla', label: 'Habla', opciones: ['Normal en ritmo y volumen', 'Lenta', 'Acelerada / presionada'] },
+  { key: 'animo_afecto', label: 'Ánimo y afecto', opciones: ['Eutímico, afecto congruente', 'Deprimido', 'Ansioso', 'Irritable'] },
+  { key: 'proceso_pensamiento', label: 'Proceso de pensamiento', opciones: ['Lineal y coherente', 'Tangencial', 'Fuga de ideas'] },
+  { key: 'contenido_pensamiento', label: 'Contenido del pensamiento', opciones: ['Sin ideas delirantes', 'Ideas de referencia', 'Preocupaciones obsesivas'] },
+  { key: 'percepcion', label: 'Percepción', opciones: ['Sin alteraciones perceptuales', 'Alucinaciones auditivas', 'Alucinaciones visuales'] },
+  { key: 'cognicion', label: 'Cognición', opciones: ['Orientado(a) en las 3 esferas', 'Desorientado(a) en tiempo', 'Memoria reciente alterada'] },
+  { key: 'introspeccion_juicio', label: 'Introspección y juicio', opciones: ['Conservados', 'Introspección limitada', 'Juicio comprometido'] },
+];
+
+function MseField({ label, value, opciones, onChange }: {
+  label: string; value: string; opciones: string[]; onChange: (v: string) => void;
+}) {
+  return (
+    <div>
+      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', marginBottom: 6 }}>{label}</label>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 6 }}>
+        {opciones.map((o) => (
+          <button key={o} type="button" onClick={() => onChange(value ? `${value}; ${o}` : o)} style={{
+            fontSize: 11, fontWeight: 600, padding: '4px 9px', borderRadius: 999,
+            border: '1px solid var(--outline-variant)', background: 'var(--surface-container-highest)',
+            color: 'var(--on-surface-variant)', cursor: 'pointer', fontFamily: 'inherit',
+          }}>{o}</button>
+        ))}
+      </div>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        rows={2}
+        placeholder="Descripción libre…"
+        style={{
+          width: '100%', boxSizing: 'border-box', border: '1px solid var(--outline-variant)', borderRadius: 10,
+          padding: '8px 10px', fontSize: 13, lineHeight: 1.4, fontFamily: 'var(--font-body)',
+          color: 'var(--on-surface)', background: 'var(--surface)', resize: 'vertical', outline: 'none',
+        }}
+      />
+    </div>
+  );
+}
+
+// ── Tamizaje de riesgo — visible siempre para salud mental, no oculto ────────
+const TAMIZAJE_VACIO: TamizajeRiesgoInput = { ideacion_suicida: 'ninguna', autolesion: 'ninguna', notas: '' };
+const OPCIONES_IDEACION: { value: NivelIdeacion; label: string }[] = [
+  { value: 'ninguna', label: 'Ninguna' },
+  { value: 'pasiva', label: 'Pasiva' },
+  { value: 'activa_sin_plan', label: 'Activa sin plan' },
+  { value: 'activa_con_plan', label: 'Activa con plan' },
+];
+const OPCIONES_AUTOLESION: { value: NivelAutolesion; label: string }[] = [
+  { value: 'ninguna', label: 'Ninguna' },
+  { value: 'pasada', label: 'Pasada' },
+  { value: 'reciente', label: 'Reciente' },
+];
+function hayRiesgo(t: TamizajeRiesgoInput): boolean {
+  return t.ideacion_suicida !== 'ninguna' || t.autolesion === 'reciente';
+}
+
+// ── Escalas PHQ-9 / GAD-7 — medición basada en resultados ────────────────────
+const PHQ9_PREGUNTAS = [
+  'Poco interés o placer en hacer las cosas',
+  'Se ha sentido decaído(a), deprimido(a) o sin esperanza',
+  'Dificultad para dormir o dormir demasiado',
+  'Sensación de cansancio o poca energía',
+  'Poco apetito o comer en exceso',
+  'Sentirse mal con usted mismo(a), o que ha quedado mal con usted o su familia',
+  'Dificultad para concentrarse (leer, ver televisión)',
+  'Moverse o hablar lento, o lo contrario: muy inquieto(a)',
+  'Pensamientos de que estaría mejor muerto(a) o de hacerse daño',
+];
+const GAD7_PREGUNTAS = [
+  'Sentirse nervioso(a), ansioso(a) o con los nervios de punta',
+  'No poder dejar de preocuparse o controlar la preocupación',
+  'Preocuparse demasiado por diferentes cosas',
+  'Dificultad para relajarse',
+  'Estar tan inquieto(a) que es difícil quedarse quieto(a)',
+  'Volverse fácilmente molesto(a) o irritable',
+  'Sentir miedo como si algo terrible fuera a suceder',
+];
+function totalEscala(respuestas: (number | null)[]): number {
+  return respuestas.reduce((sum: number, r) => sum + (r ?? 0), 0);
+}
+function respondidas(respuestas: (number | null)[]): number {
+  return respuestas.filter((r) => r != null).length;
+}
+function severidadPHQ9(total: number): string {
+  if (total <= 4) return 'Mínima';
+  if (total <= 9) return 'Leve';
+  if (total <= 14) return 'Moderada';
+  if (total <= 19) return 'Moderadamente severa';
+  return 'Severa';
+}
+function severidadGAD7(total: number): string {
+  if (total <= 4) return 'Mínima';
+  if (total <= 9) return 'Leve';
+  if (total <= 14) return 'Moderada';
+  return 'Severa';
+}
+
+function EscalaPregunta({ n, texto, value, onChange }: {
+  n: number; texto: string; value: number | null; onChange: (v: number) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--outline-variant)' }}>
+      <span style={{ flex: 1, fontSize: 12.5, color: 'var(--on-surface)' }}>{n}. {texto}</span>
+      <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+        {[0, 1, 2, 3].map((v) => (
+          <button key={v} type="button" onClick={() => onChange(v)} style={{
+            width: 26, height: 26, borderRadius: '50%', fontFamily: 'inherit',
+            border: `1.5px solid ${value === v ? 'var(--primary)' : 'var(--outline-variant)'}`,
+            background: value === v ? 'var(--primary)' : 'var(--surface)',
+            color: value === v ? 'var(--on-primary)' : 'var(--on-surface)',
+            fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
+          }}>{v}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface Dx { code: string; label: string }
 
@@ -162,13 +292,18 @@ export function Consulta({ go, goBack, toast, patientId }: {
   const [openCat, setOpenCat]           = useState<string | null>(null);
   const [alergias, setAlergias]         = useState<Alergia[]>([]);
   const [alergiaInput, setAlergiaInput] = useState('');
+  // Salud mental (solo se envían si el profesional es psicología/psiquiatría)
+  const [estadoMental, setEstadoMental] = useState<EstadoMentalInput>({ ...ESTADO_MENTAL_VACIO });
+  const [tamizaje, setTamizaje]         = useState<TamizajeRiesgoInput>({ ...TAMIZAJE_VACIO });
+  const [phq9, setPhq9]                 = useState<(number | null)[]>(Array(9).fill(null));
+  const [gad7, setGad7]                 = useState<(number | null)[]>(Array(7).fill(null));
 
   const suscripcionVencida = account.accesoNivel === 'limitado';
   const puede = account.puedeEmitirClinico && !!account.clinicaId && !suscripcionVencida;
 
   // Psicología/psiquiatría: antecedentes y plantillas de nota se adaptan al
   // servicio (NOM-004) en vez de usar el set pensado para medicina general.
-  const esSaludMental = TIPOS_SALUD_MENTAL.includes(account.tipoProfesional ?? '');
+  const esSaludMental = esPracticaSaludMental(account.tipoProfesional);
   const catsAnt = esSaludMental ? CATS_ANT_SALUD_MENTAL : CATS_ANT_GENERAL;
   const plantillasActivas = esSaludMental ? PLANTILLAS_SALUD_MENTAL : PLANTILLAS;
 
@@ -228,6 +363,17 @@ export function Consulta({ go, goBack, toast, patientId }: {
     const notasHtml = (editorRef.current?.innerHTML || '').trim();
     const notas = notasHtml && notasHtml !== '<br>' ? notasHtml : null;
 
+    // Estado mental: solo si al menos un dominio tiene texto — no mandar un
+    // objeto de puros strings vacíos a guardar.
+    const estadoMentalLleno = Object.values(estadoMental).some((v) => v && v.trim());
+    // Escalas: solo si se respondió al menos un reactivo de cada una.
+    const phq9Resp = respondidas(phq9);
+    const gad7Resp = respondidas(gad7);
+    const escalas: EscalasInput | null = (phq9Resp > 0 || gad7Resp > 0) ? {
+      ...(phq9Resp > 0 ? { phq9: { respuestas: phq9, total: totalEscala(phq9) } } : {}),
+      ...(gad7Resp > 0 ? { gad7: { respuestas: gad7, total: totalEscala(gad7) } } : {}),
+    } : null;
+
     setSaving(true);
     try {
       const expId = await getOrCreateExpediente(pid, account.clinicaId!);
@@ -244,6 +390,9 @@ export function Consulta({ go, goBack, toast, patientId }: {
           grasa_corporal_pct: num(vitales.grasaPct),
         },
         diagnosticos: diagnosticos.map((d, i) => ({ codigo: d.code, es_principal: i === 0 })),
+        estadoMental: esSaludMental && estadoMentalLleno ? estadoMental : null,
+        tamizajeRiesgo: esSaludMental ? tamizaje : null,
+        escalas: esSaludMental ? escalas : null,
       });
       toast?.('Consulta registrada correctamente');
       go('patient', { id: pid });
@@ -624,10 +773,106 @@ export function Consulta({ go, goBack, toast, patientId }: {
             </RailCard>
           )}
 
+          {/* Estado Mental (MSE) — equivalente a "signos vitales" en salud mental.
+              No excluyente con Signos vitales: un psiquiatra ve ambas tarjetas. */}
+          {esSaludMental && (
+            <RailCard icon="psychology" title="Estado mental">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {MSE_DOMINIOS.map(({ key, label, opciones }) => (
+                  <MseField
+                    key={key}
+                    label={label}
+                    opciones={opciones}
+                    value={estadoMental[key] ?? ''}
+                    onChange={(v) => { setEstadoMental((p) => ({ ...p, [key]: v })); setDirty(true); }}
+                  />
+                ))}
+              </div>
+            </RailCard>
+          )}
+
         </div>
 
         {/* Lienzo */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 18 }}>
+          {/* Tamizaje de riesgo — visible siempre para salud mental, arriba de
+              la nota, no oculto en un acordeón. Una respuesta positiva dispara
+              una alerta imposible de ignorar. */}
+          {esSaludMental && (() => {
+            const riesgo = hayRiesgo(tamizaje);
+            return (
+              <Card variant="outlined" style={{ padding: '18px 22px', borderRadius: 20, borderColor: riesgo ? 'var(--error)' : 'var(--outline-variant)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+                  <Icon name="emergency" size={20} style={{ color: riesgo ? 'var(--error)' : 'var(--primary)' }} />
+                  <span className="title-s" style={{ fontSize: 16 }}>Tamizaje de riesgo</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', marginBottom: 6 }}>Ideación suicida</label>
+                    <Pills options={OPCIONES_IDEACION} value={tamizaje.ideacion_suicida}
+                      onChange={(v) => { setTamizaje((p) => ({ ...p, ideacion_suicida: v })); setDirty(true); }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)', marginBottom: 6 }}>Autolesión</label>
+                    <Pills options={OPCIONES_AUTOLESION} value={tamizaje.autolesion}
+                      onChange={(v) => { setTamizaje((p) => ({ ...p, autolesion: v })); setDirty(true); }} />
+                  </div>
+                  <input
+                    value={tamizaje.notas ?? ''}
+                    onChange={(e) => { setTamizaje((p) => ({ ...p, notas: e.target.value })); setDirty(true); }}
+                    placeholder="Notas adicionales (opcional)"
+                    style={{ width: '100%', boxSizing: 'border-box', border: '1px solid var(--outline-variant)', borderRadius: 10, padding: '8px 12px', fontSize: 13, fontFamily: 'var(--font-body)', color: 'var(--on-surface)', background: 'var(--surface)', outline: 'none' }}
+                  />
+                </div>
+                {riesgo && (
+                  <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: 'var(--error-container)', color: 'var(--on-error-container)', display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <Icon name="warning" size={20} style={{ flexShrink: 0 }} />
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 13 }}>Riesgo detectado en el tamizaje</div>
+                      <div style={{ fontSize: 12.5, marginTop: 2, lineHeight: 1.4 }}>Revisa un plan de seguridad con el paciente antes de cerrar la consulta.</div>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            );
+          })()}
+
+          {/* Escalas PHQ-9 / GAD-7 — medición basada en resultados, capturable
+              desde la propia consulta. Opcionales: no exigen respuesta completa. */}
+          {esSaludMental && (
+            <RailCard icon="checklist" title="Escalas de tamizaje" action={
+              <span style={{ fontSize: 11.5, color: 'var(--on-surface-variant)' }}>PHQ-9 / GAD-7</span>
+            }>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 700 }}>PHQ-9 (depresión)</span>
+                    <span style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>
+                      {respondidas(phq9) === 0 ? 'Sin responder' : `${totalEscala(phq9)} pts · ${severidadPHQ9(totalEscala(phq9))} (${respondidas(phq9)}/9)`}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--on-surface-variant)', marginBottom: 6 }}>0 = Nunca · 1 = Varios días · 2 = Más de la mitad de los días · 3 = Casi todos los días</div>
+                  {PHQ9_PREGUNTAS.map((texto, i) => (
+                    <EscalaPregunta key={i} n={i + 1} texto={texto} value={phq9[i]}
+                      onChange={(v) => { setPhq9((p) => p.map((x, idx) => idx === i ? v : x)); setDirty(true); }} />
+                  ))}
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 700 }}>GAD-7 (ansiedad)</span>
+                    <span style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>
+                      {respondidas(gad7) === 0 ? 'Sin responder' : `${totalEscala(gad7)} pts · ${severidadGAD7(totalEscala(gad7))} (${respondidas(gad7)}/7)`}
+                    </span>
+                  </div>
+                  {GAD7_PREGUNTAS.map((texto, i) => (
+                    <EscalaPregunta key={i} n={i + 1} texto={texto} value={gad7[i]}
+                      onChange={(v) => { setGad7((p) => p.map((x, idx) => idx === i ? v : x)); setDirty(true); }} />
+                  ))}
+                </div>
+              </div>
+            </RailCard>
+          )}
+
           {/* Motivo */}
           <Card variant="outlined" style={{ padding: '20px 22px', borderRadius: 20, borderColor: motivoErr ? 'var(--error)' : 'var(--outline-variant)' }}>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: motivoErr ? 'var(--error)' : 'var(--primary)', marginBottom: 6 }}>Motivo de consulta *</label>
