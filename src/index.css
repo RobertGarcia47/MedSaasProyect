@@ -42,10 +42,13 @@
   --accent-claro: #0D8A6F; /* análogo claro — Seguimiento / nota obstétrica */
   --accent-warm: #C2700A;  /* contraste cálido — Revisión / notas de resumen */
 
-  /* El lienzo general es blanco liso, sin teñir por acento — el color vive
+  /* El lienzo general va casi liso, sin teñir por acento — el color vive
      en piezas deliberadas (StatChip, badges de tipo, botones), no en el
-     fondo de toda la página. Ver [[propuesta-color-tarjetas-solidas]]. */
+     fondo de toda la página. Ver [[propuesta-color-tarjetas-solidas]].
+     La única textura de fondo es --app-bg-image (capa decorativa fija,
+     ver bloque "fondo decorativo" más abajo). */
   --background: #FFFFFF;
+  --app-bg-image: url('/bg-textura.svg');
   --on-background: #161D1B;
   --surface: #FFFFFF;
   --on-surface: #161D1B;
@@ -113,6 +116,7 @@
   --accent-warm: #F0B966;
 
   --background: #0E1513;
+  --app-bg-image: none;
   --on-background: #DEE4E1;
   --surface: #0E1513;
   --on-surface: #DEE4E1;
@@ -209,6 +213,24 @@ html, body {
 
 #root { height: 100%; }
 body { transition: background-color .35s ease, color .35s ease; }
+
+/* ---------- fondo decorativo ----------
+   Capa fija con curvas suaves y filo dorado (solo tema claro; --app-bg-image
+   se apaga a "none" en [data-theme="dark"]). Va sobre el contenedor real de
+   la app (.density-regular, en App.tsx) y no sobre <body>, porque ese
+   contenedor pinta su propio fondo opaco encima; !important es necesario
+   para ganarle al `background` inline de ese div. */
+.density-regular {
+  background-color: var(--background) !important;
+  background-image: var(--app-bg-image) !important;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+@media (max-width: 760px) {
+  .density-regular { background-image: none !important; }
+}
 ::selection { background: var(--primary-container); color: var(--on-primary-container); }
 
 /* ---------- Material Symbols ---------- */
