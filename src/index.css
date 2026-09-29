@@ -215,18 +215,26 @@ html, body {
 body { transition: background-color .35s ease, color .35s ease; }
 
 /* ---------- fondo decorativo ----------
-   Capa fija con curvas suaves y filo dorado (solo tema claro; --app-bg-image
-   se apaga a "none" en [data-theme="dark"]). Va sobre el contenedor real de
-   la app (.density-regular, en App.tsx) y no sobre <body>, porque ese
-   contenedor pinta su propio fondo opaco encima; !important es necesario
-   para ganarle al `background` inline de ese div. */
+   Resplandores suaves (solo tema claro; --app-bg-image se apaga a "none" en
+   [data-theme="dark"]). Va sobre el contenedor real de la app
+   (.density-regular, en App.tsx) y no sobre <body>, porque ese contenedor
+   pinta su propio fondo opaco encima con `background: var(--background)`
+   inline — ese shorthand resetea TODAS las sub-propiedades (size, position,
+   repeat...) a su valor inicial, así que cada una necesita su propio
+   !important o si no gana el inline y la imagen termina en su tamaño
+   natural repitiéndose en mosaico (el "corte" se veía justo donde una
+   copia terminaba y empezaba la siguiente).
+   Sin background-attachment:fixed a propósito: con "fixed" el tamaño de
+   "cover" se calcula contra el viewport pero la imagen queda anclada a
+   .density-regular — si una página hace que ese contenedor sea más ancho
+   que el viewport, el cálculo no coincide. Con el valor por defecto
+   (scroll), tamaño y posición usan la misma base (el propio div). */
 .density-regular {
   background-color: var(--background) !important;
   background-image: var(--app-bg-image) !important;
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+  background-size: cover !important;
+  background-position: center !important;
+  background-repeat: no-repeat !important;
 }
 @media (max-width: 760px) {
   .density-regular { background-image: none !important; }
