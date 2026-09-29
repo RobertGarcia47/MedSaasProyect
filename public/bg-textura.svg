@@ -1,19 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
   <defs>
-    <linearGradient id="gold1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#C9A227" stop-opacity="0"/>
-      <stop offset="45%" stop-color="#D9B23C" stop-opacity=".8"/>
-      <stop offset="100%" stop-color="#C9A227" stop-opacity="0"/>
-    </linearGradient>
-    <linearGradient id="gold2" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#C9A227" stop-opacity="0"/>
-      <stop offset="55%" stop-color="#D9B23C" stop-opacity=".45"/>
-      <stop offset="100%" stop-color="#C9A227" stop-opacity="0"/>
-    </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#FFF6DD" stop-opacity=".95"/>
-      <stop offset="100%" stop-color="#FFF6DD" stop-opacity="0"/>
-    </radialGradient>
     <filter id="blurBand" x="-60%" y="-60%" width="220%" height="220%">
       <feGaussianBlur stdDeviation="90"/>
     </filter>
@@ -25,13 +11,4 @@
        "papel apilado" sin que se note ninguna línea recta de corte -->
   <ellipse cx="1460" cy="30" rx="520" ry="360" fill="#F1EEE7" opacity=".65" filter="url(#blurBand)"/>
   <ellipse cx="90" cy="870" rx="560" ry="390" fill="#ECE9E2" opacity=".6" filter="url(#blurBand)"/>
-
-  <!-- filo dorado superior derecho, con un punto de brillo -->
-  <path d="M1600,-40 C1306,79 1201,234 1015,298 C881,344 802,386 748,461" fill="none" stroke="url(#gold1)" stroke-width="2.2"/>
-  <circle cx="1206" cy="234" r="12" fill="url(#glow)"/>
-  <circle cx="1206" cy="234" r="2.6" fill="#FFFDF4"/>
-
-  <!-- filo dorado inferior izquierdo, doble línea como en la referencia -->
-  <path d="M0,939 C300,819 406,717 593,664 C746,625 838,601 926,566" fill="none" stroke="url(#gold2)" stroke-width="1.8"/>
-  <path d="M0,915 C300,797 406,697 593,645 C740,607 827,585 913,550" fill="none" stroke="url(#gold2)" stroke-width="1"/>
 </svg>
