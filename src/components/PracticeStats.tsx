@@ -56,7 +56,9 @@ function StatCardShell({ icon, title, sub, extra, children }: {
   icon: string; title: string; sub?: string; extra?: React.ReactNode; children: React.ReactNode;
 }) {
   return (
-    <Card variant="elevated" style={{ padding: 20 }}>
+    // fondo blanco intenso (no el gris de "elevated" por defecto): estas 4
+    // tarjetas necesitan destacar sobre el fondo decorativo de la página.
+    <Card variant="elevated" style={{ padding: 20, background: 'var(--surface)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
         <span style={{ width: 4, height: 18, borderRadius: 2, background: '#0E6B5E', flexShrink: 0 }} />
         <Icon name={icon} size={20} style={{ color: 'var(--primary)' }} />
