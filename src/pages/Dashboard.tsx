@@ -411,6 +411,16 @@ function CalendarBig({ year, month, appts, onPrev, onNext, onPickDay }: {
 }
 
 // ── Accesos rápidos ────────────────────────────────────────────────────────
+// Un color por acción (en vez del --primary plano) para distinguirlas de un
+// vistazo; violeta y coral se probaron y se descartaron (el coral se
+// confundía con el rojo de "Canceladas" en Panorama de tu práctica).
+const QUICK_ACCESS_COLORS: Record<string, { grad: string; gradHover: string; shadow: string }> = {
+  'Nuevo paciente': { grad: 'linear-gradient(135deg, #0B7A68 0%, #14B89A 100%)', gradHover: 'linear-gradient(135deg, #096B5B 0%, #10A88C 100%)', shadow: '#0E6B5E' },
+  'Agendar cita':   { grad: 'linear-gradient(135deg, #1F5FAF 0%, #3B9BF0 100%)', gradHover: 'linear-gradient(135deg, #1A52A0 0%, #328CE0 100%)', shadow: '#2F6497' },
+  'Crear receta':   { grad: 'linear-gradient(135deg, #5B4B8A 0%, #8C74C7 100%)', gradHover: 'linear-gradient(135deg, #4E3F78 0%, #7A64B5 100%)', shadow: '#5B4B8A' },
+  'Ver expediente': { grad: 'linear-gradient(135deg, #B8790F 0%, #F2B84B 100%)', gradHover: 'linear-gradient(135deg, #A86C0A 0%, #E6A93A 100%)', shadow: '#B8790F' },
+};
+
 function QuickAccessGrid({ openModal, go, puedePrescribir }: { openModal: (type: string) => void; go: (name: string, params?: any) => void; puedePrescribir: boolean }) {
   const items: [string, string, () => void][] = [
     ['person_add',      'Nuevo paciente', () => openModal('patient')],
@@ -424,18 +434,23 @@ function QuickAccessGrid({ openModal, go, puedePrescribir }: { openModal: (type:
       {/* auto-fit en vez de una rejilla fija de 4 — con solo 3 accesos (perfil que
           no prescribe) ya no queda un hueco vacío al final. */}
       <div className="quick-access-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 10 }}>
-        {items.map(([ic, label, fn]) => (
-          <button key={label} onClick={fn} className="state-layer" style={{
-            display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '14px 8px',
-            border: '1px solid var(--outline-variant)', borderRadius: 'var(--r-md)', background: 'transparent',
-            cursor: 'pointer', position: 'relative',
-          }}>
-            <div style={{ width: 40, height: 40, borderRadius: 'var(--r-sm)', background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Icon name={ic} size={20} fill />
-            </div>
-            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--on-surface)', textAlign: 'center', lineHeight: 1.2 }}>{label}</span>
-          </button>
-        ))}
+        {items.map(([ic, label, fn]) => {
+          const c = QUICK_ACCESS_COLORS[label];
+          return (
+            <button
+              key={label} onClick={fn} className="quick-access-btn"
+              style={{
+                '--qa-grad': c.grad, '--qa-grad-hover': c.gradHover,
+                '--qa-shadow-a': `${c.shadow}88`, '--qa-shadow-b': `${c.shadow}aa`,
+              } as React.CSSProperties}
+            >
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,.22)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <Icon name={ic} size={22} fill />
+              </div>
+              <span style={{ fontSize: 14, fontWeight: 600, color: '#fff', textAlign: 'center', lineHeight: 1.2 }}>{label}</span>
+            </button>
+          );
+        })}
       </div>
     </Card>
   );

@@ -324,6 +324,24 @@ input:-webkit-autofill, textarea:-webkit-autofill {
   transition: background-color 9999s ease-in-out 0s;
 }
 
+/* ---------- Dashboard: Accesos rápidos (botones con degradado) ----------
+   El color de cada botón viene por variables inline (--qa-grad/--qa-shadow-*,
+   ver QuickAccessGrid en Dashboard.tsx) — la clase solo pone la forma común
+   y el :hover, que un style inline no puede expresar. */
+.quick-access-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 22px 12px; border: none; border-radius: 12px; cursor: pointer; position: relative;
+  background-image: var(--qa-grad);
+  box-shadow: 0 6px 16px -6px var(--qa-shadow-a);
+  transition: transform .15s ease, box-shadow .15s ease, background-image .15s ease;
+}
+.quick-access-btn:hover {
+  background-image: var(--qa-grad-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px -8px var(--qa-shadow-b);
+}
+.quick-access-btn:active { transform: translateY(0); }
+
 /* ---------- utilities ---------- */
 .scroll-y { overflow-y: auto; }
 button { font-family: inherit; cursor: pointer; }

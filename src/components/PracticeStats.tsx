@@ -58,6 +58,7 @@ function StatCardShell({ icon, title, sub, extra, children }: {
   return (
     <Card variant="elevated" style={{ padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
+        <span style={{ width: 4, height: 18, borderRadius: 2, background: '#0E6B5E', flexShrink: 0 }} />
         <Icon name={icon} size={20} style={{ color: 'var(--primary)' }} />
         <span className="title-s" style={{ fontSize: 16 }}>{title}</span>
         {sub && <span style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>{sub}</span>}
@@ -103,7 +104,18 @@ function EmptyMini({ text }: { text: string }) {
   );
 }
 
-function RankedBar({ label, count, max, sub }: { label: string; count: number; max: number; sub?: string }) {
+// Colores del spec de "Panorama de tu práctica" — deliberadamente distintos
+// de los tokens semánticos genéricos (--success/--error/--warning): esta
+// sección quería su propio lenguaje de color (ej. terracota en vez del rojo
+// puro para "Canceladas", para que alarme menos).
+const DX_COLOR = '#0E6B5E';
+const MED_COLOR = '#0E6B5E';
+const MED_CONTROLADO_COLOR = '#C98A1A';
+const TRACK_COLOR = '#E3EAE7';
+
+function RankedBar({ label, count, max, sub, color = DX_COLOR, badge }: {
+  label: string; count: number; max: number; sub?: string; color?: string; badge?: string;
+}) {
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, marginBottom: 4 }}>
@@ -112,10 +124,19 @@ function RankedBar({ label, count, max, sub }: { label: string; count: number; m
         </span>
         <span style={{ fontSize: 12, color: 'var(--on-surface-variant)', flexShrink: 0, fontVariantNumeric: 'tabular-nums' }}>{count}</span>
       </div>
-      <div style={{ height: 6, borderRadius: 999, background: 'var(--surface-container-highest)', overflow: 'hidden' }}>
-        <div style={{ height: '100%', width: `${max > 0 ? (count / max) * 100 : 0}%`, borderRadius: 999, background: 'var(--primary)' }} />
+      <div style={{ height: 6, borderRadius: 999, background: TRACK_COLOR, overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${max > 0 ? (count / max) * 100 : 0}%`, borderRadius: 999, background: color }} />
       </div>
-      {sub && <div style={{ fontSize: 11, color: 'var(--on-surface-variant)', marginTop: 3 }}>{sub}</div>}
+      {(sub || badge) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 3 }}>
+          {sub && <span style={{ fontSize: 11, color: 'var(--on-surface-variant)' }}>{sub}</span>}
+          {badge && (
+            <span style={{ fontSize: 11, fontWeight: 600, color: '#8A5A0B', background: '#FBF0DA', padding: '1px 8px', borderRadius: 999 }}>
+              {badge}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -129,7 +150,7 @@ function TopDiagnosticosCard({ items }: { items: DxFrecuente[] }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {items.map((d) => (
-            <RankedBar key={d.codigo} label={d.descripcion} count={d.count} max={max} sub={d.codigo} />
+            <RankedBar key={d.codigo} label={d.descripcion} count={d.count} max={max} sub={d.codigo} color={DX_COLOR} />
           ))}
         </div>
       )}
@@ -156,7 +177,9 @@ function TopMedicamentosCard({ resumen }: { resumen: MedicamentosResumen }) {
               label={m.medicamento}
               count={m.count}
               max={max}
-              sub={m.controlados > 0 ? `${m.controlados} de ${m.count} controlado${m.controlados === 1 ? '' : 's'}` : undefined}
+              color={m.controlados > 0 ? MED_CONTROLADO_COLOR : MED_COLOR}
+              badge={m.controlados > 0 ? 'Controlado' : undefined}
+              sub={m.controlados > 0 ? `${m.controlados} de ${m.count}` : undefined}
             />
           ))}
         </div>
@@ -165,16 +188,26 @@ function TopMedicamentosCard({ resumen }: { resumen: MedicamentosResumen }) {
   );
 }
 
+// Colores semánticos propios de esta tarjeta (deliberadamente distintos de
+// --success/--error/--warning): "Canceladas" usa terracota, no el rojo puro
+// del resto de la app, para que alarme menos que una urgencia real.
+const CITAS_COLOR = {
+  completadas: '#2E8A5F',
+  canceladas: '#C4553B',
+  noAsistio: '#C98A1A',
+  pendientes: '#8A96A0',
+};
+
 function CitasResumenCard({ resumen, rango, onRangoChange }: { resumen: CitasResumen; rango: number; onRangoChange: (v: number) => void }) {
   const otras = resumen.total - resumen.completadas - resumen.canceladas - resumen.noAsistio;
   const items = [
-    { label: 'Completadas', value: resumen.completadas, color: 'var(--success)' },
-    { label: 'Canceladas', value: resumen.canceladas, color: 'var(--error)' },
-    { label: 'No asistió', value: resumen.noAsistio, color: 'var(--warning)' },
+    { label: 'Completadas', value: resumen.completadas, color: CITAS_COLOR.completadas },
+    { label: 'Canceladas', value: resumen.canceladas, color: CITAS_COLOR.canceladas },
+    { label: 'No asistió', value: resumen.noAsistio, color: CITAS_COLOR.noAsistio },
     // El resto (programada/confirmada/sala_espera/en_curso): citas del periodo que
     // aún no llegan a un estado final — sin esto, el total no cuadraba con las 3
     // filas de arriba y parecía que no había datos cuando sí los había.
-    ...(otras > 0 ? [{ label: 'Pendientes / en curso', value: otras, color: 'var(--outline)' }] : []),
+    ...(otras > 0 ? [{ label: 'Pendientes / en curso', value: otras, color: CITAS_COLOR.pendientes }] : []),
   ];
   return (
     <StatCardShell icon="event_busy" title="Citas" sub={`últimos ${rango} días`} extra={<RangeToggle value={rango} onChange={onRangoChange} />}>
@@ -182,11 +215,17 @@ function CitasResumenCard({ resumen, rango, onRangoChange }: { resumen: CitasRes
         <EmptyMini text="Sin citas registradas en este periodo." />
       ) : (
         <>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-            <span className="headline-m">{resumen.tasaCancelacion}%</span>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+            <span className="headline-m" style={{ color: CITAS_COLOR.canceladas }}>{resumen.tasaCancelacion}%</span>
             <span style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>
               tasa de cancelación / no-show · {resumen.total} cita{resumen.total === 1 ? '' : 's'} en total
             </span>
+          </div>
+          {/* barra apilada: proporción de cada estado de un vistazo */}
+          <div style={{ display: 'flex', gap: 2, height: 10, borderRadius: 5, overflow: 'hidden', marginBottom: 16 }}>
+            {items.map((it) => (
+              <div key={it.label} style={{ flex: it.value || 0.0001, background: it.color }} title={`${it.label}: ${it.value}`} />
+            ))}
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {items.map((it) => (
@@ -214,8 +253,17 @@ function ConsultasPorDiaCard({ data }: { data: DiaSemanaCount[] }) {
       ) : (
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={data} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
-            <CartesianGrid stroke={c['outline-variant']} strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="dia" tick={{ fontSize: 11, fill: c['on-surface-variant'] }} axisLine={{ stroke: c['outline-variant'] }} tickLine={false} />
+            <CartesianGrid stroke="#E4E0D8" strokeDasharray="3 3" vertical={false} />
+            <XAxis
+              dataKey="dia"
+              tick={({ x, y, payload, index }) => (
+                <text x={x} y={y + 14} textAnchor="middle" fontSize={11} fontWeight={index === maxIdx ? 700 : 400} fill={index === maxIdx ? '#0E6B5E' : c['on-surface-variant']}>
+                  {payload.value}
+                </text>
+              )}
+              axisLine={{ stroke: '#E4E0D8' }}
+              tickLine={false}
+            />
             <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: c['on-surface-variant'] }} axisLine={false} tickLine={false} />
             <Tooltip
               cursor={{ fill: c['surface-container-high'] }}
@@ -223,7 +271,7 @@ function ConsultasPorDiaCard({ data }: { data: DiaSemanaCount[] }) {
               labelStyle={{ color: c['on-surface'] }}
             />
             <Bar dataKey="count" name="Consultas" radius={[6, 6, 0, 0]}>
-              {data.map((_, i) => <Cell key={i} fill={i === maxIdx ? c.primary : c['outline-variant']} />)}
+              {data.map((_, i) => <Cell key={i} fill={i === maxIdx ? '#0E6B5E' : '#B9CFC8'} />)}
             </Bar>
           </BarChart>
         </ResponsiveContainer>
