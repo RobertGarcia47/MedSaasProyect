@@ -4,7 +4,10 @@
 
 /* ---------- LIGHT THEME ---------- */
 :root {
-  --primary: #006A60;
+  --primary: #027966;
+  /* Degradado sutil de la marca hacia blanco — usado por los botones rellenos
+     (Button filled). Se calcula con --primary, así sigue al acento elegido. */
+  --primary-gradient: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 80%, white) 100%);
   --on-primary: #FFFFFF;
   --primary-container: #9EF2E4;
   --on-primary-container: #00201C;
@@ -135,7 +138,7 @@
 
   --inverse-surface: #DEE4E1;
   --inverse-on-surface: #2B322F;
-  --inverse-primary: #006A60;
+  --inverse-primary: #027966;
 
   --scrim: rgba(0,0,0,0.5);
   --shadow: rgba(0,0,0,0.5);
@@ -485,7 +488,7 @@ a { color: inherit; text-decoration: none; }
     --surface-container-low: #EFF5F2; --surface-container: #E9EFEC;
     --surface-container-high: #E3EAE7; --surface-container-highest: #DEE4E1;
     --on-surface-variant: #3F4946; --outline-variant: #BEC9C5;
-    --primary: #006A60; --on-primary: #FFFFFF;
+    --primary: #027966; --on-primary: #FFFFFF;
     --success: #2E6B4F; --error: #BA1A1A; --warning: #8A5A00; --outline: #6F7976;
     --elev-1: none; --elev-2: none; --elev-3: none;
   }

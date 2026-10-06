@@ -16,7 +16,7 @@ import {
 } from '../lib/suscripciones';
 
 const ACENTOS: { id: AccentColor; nombre: string; desc: string; color: string }[] = [
-  { id: 'teal',   nombre: 'Verde clínico', desc: 'Identidad base de MedSaaS',   color: '#006A60' },
+  { id: 'teal',   nombre: 'Verde clínico', desc: 'Identidad base de MedSaaS',   color: '#027966' },
   { id: 'blue',   nombre: 'Azul médico',   desc: 'Tono azulado, hospitalario',  color: '#2D5DA0' },
   { id: 'indigo', nombre: 'Morado',        desc: 'Tono violeta, distintivo',    color: '#5450A8' },
 ];

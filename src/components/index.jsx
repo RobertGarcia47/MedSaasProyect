@@ -45,7 +45,7 @@ export function useRipple() {
 export function Button({ variant = 'filled', icon, trailingIcon, children, onClick, disabled, full, size = 'md', style = {}, type = 'button', danger }) {
   const ripple = useRipple();
   const variants = {
-    filled:      { background: danger ? 'var(--error)' : 'var(--primary)', color: danger ? 'var(--on-error)' : 'var(--on-primary)', border: 'none', boxShadow: 'none' },
+    filled:      { background: danger ? 'var(--error)' : 'var(--primary-gradient)', color: danger ? 'var(--on-error)' : 'var(--on-primary)', border: 'none', boxShadow: 'none' },
     tonal:       { background: 'var(--secondary-container)', color: 'var(--on-secondary-container)', border: 'none' },
     primaryTonal:{ background: 'var(--primary-container)', color: 'var(--on-primary-container)', border: 'none' },
     outlined:    { background: 'transparent', color: 'var(--primary)', border: '1px solid var(--outline-variant)' },
