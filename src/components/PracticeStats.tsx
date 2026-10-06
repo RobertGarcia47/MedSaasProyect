@@ -87,7 +87,7 @@ function RangeToggle({ value, onChange }: { value: number; onChange: (v: number)
           style={{
             fontSize: 11.5, fontWeight: 700, padding: '4px 10px', borderRadius: 999, border: 'none', cursor: 'pointer',
             fontFamily: 'inherit', transition: 'background .12s, color .12s',
-            background: value === o ? 'var(--primary)' : 'transparent',
+            background: value === o ? 'var(--primary-gradient)' : 'transparent',
             color: value === o ? 'var(--on-primary)' : 'var(--on-surface-variant)',
           }}
         >

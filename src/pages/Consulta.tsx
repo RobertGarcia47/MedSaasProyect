@@ -250,7 +250,7 @@ function EscalaPregunta({ n, texto, value, onChange }: {
           <button key={v} type="button" onClick={() => onChange(v)} style={{
             width: 26, height: 26, borderRadius: '50%', fontFamily: 'inherit',
             border: `1.5px solid ${value === v ? 'var(--primary)' : 'var(--outline-variant)'}`,
-            background: value === v ? 'var(--primary)' : 'var(--surface)',
+            background: value === v ? 'var(--primary-gradient)' : 'var(--surface)',
             color: value === v ? 'var(--on-primary)' : 'var(--on-surface)',
             fontSize: 11.5, fontWeight: 700, cursor: 'pointer',
           }}>{v}</button>
