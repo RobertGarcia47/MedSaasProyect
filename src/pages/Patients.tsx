@@ -14,6 +14,8 @@ import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, TIPO_INFORME_ICON, TI
 import { obtenerEstudios, urlDescarga, type EstudioUI } from '../lib/laboratorio';
 import { obtenerConsultas, type ConsultaDetalleUI } from '../lib/consultas';
 import { fetchProximasCitasPaciente, type CitaProximaUI } from '../lib/citas';
+import { obtenerAntecedentes } from '../lib/antecedentes';
+import { detectarAlertasClinicas, type AlertaClinica } from '../lib/alertasClinicas';
 import { Icon, Button, Card, Chip, Avatar, IconButton, Segmented, Divider, SectionHeader } from '../components';
 
 // "39 a · F"; solo lo que exista, y "—" si no hay ninguno (antes salía "— · —").
@@ -354,6 +356,19 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
 
   // Carga perezosa de recetas/informes según la pestaña activa.
   const expedienteId = pac?.expedienteId ?? null;
+
+  // Alertas clínicas derivadas de los antecedentes (anticoagulantes, diabetes…):
+  // viven en el encabezado, junto a las alergias, para que no se pasen por alto.
+  const [alertasClin, setAlertasClin] = useState<AlertaClinica[]>([]);
+  useEffect(() => {
+    setAlertasClin([]);
+    if (!expedienteId) return;
+    let vigente = true;
+    obtenerAntecedentes(expedienteId)
+      .then((a) => { if (vigente) setAlertasClin(detectarAlertasClinicas(a)); })
+      .catch((e) => console.error('Alertas clínicas error:', e));
+    return () => { vigente = false; };
+  }, [expedienteId, dataVersion]);
   useEffect(() => {
     if (!expedienteId) return;
     if ((tab === 'resumen' || tab === 'timeline' || tab === 'tendencias') && consultasFull === null) {
@@ -509,6 +524,16 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
             <Icon name="warning" size={20} fill />
             <span style={{ fontWeight: 600, fontSize: 14 }}>Alergias:</span>
             <span style={{ fontSize: 14 }}>{pac.alergias.join(', ')}</span>
+          </div>
+        )}
+        {alertasClin.length > 0 && (
+          <div title="Detectado en el texto de los antecedentes del paciente; confirma en Antecedentes médicos"
+            style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: pac.alergias.length > 0 ? 8 : 18, padding: '10px 16px', background: 'var(--warning-container)', color: 'var(--on-warning-container)', borderRadius: 'var(--r-sm)' }}>
+            <Icon name="medical_information" size={20} fill style={{ color: 'var(--warning)' }} />
+            <span style={{ fontWeight: 600, fontSize: 14 }}>Revisar antecedentes:</span>
+            {alertasClin.map((a) => (
+              <span key={a.clave} style={{ fontSize: 12.5, fontWeight: 600, padding: '3px 10px', borderRadius: 999, background: 'var(--surface)', border: '1px solid var(--outline-variant)', color: 'var(--on-surface)' }}>{a.label}</span>
+            ))}
           </div>
         )}
       </Card>
