@@ -202,6 +202,8 @@ export interface EscalasInput {
   gad7?: EscalaResultado;
 }
 
+import type { ExamenOralInput } from './examenOral';
+
 export interface NuevaConsulta {
   motivo?: string | null;      // S — motivo de consulta
   notas?: string | null;       // O/A/P — narrativa compuesta (exploración/análisis/plan)
@@ -210,6 +212,7 @@ export interface NuevaConsulta {
   estadoMental?: EstadoMentalInput | null;
   tamizajeRiesgo?: TamizajeRiesgoInput | null;
   escalas?: EscalasInput | null;
+  examenOral?: ExamenOralInput | null;   // solo dentistas; se cifra en la BD
 }
 
 /**
@@ -240,6 +243,9 @@ export async function crearConsulta(
     p_estado_mental:       input.estadoMental ?? null,
     p_tamizaje_riesgo:     input.tamizajeRiesgo ?? null,
     p_escalas:             input.escalas ?? null,
+    // Solo si hay examen oral: así una llamada sin él sigue funcionando aunque la BD
+    // aún no tenga el parámetro nuevo (sql/2026-10-22_dentista_examen_oral.sql).
+    ...(input.examenOral ? { p_examen_oral: input.examenOral } : {}),
   });
   if (error) throw error;
   const consultaId = data as string;
@@ -279,6 +285,7 @@ export interface ConsultaDetalleUI {
   estado_mental: EstadoMentalInput | null;
   tamizaje_riesgo: TamizajeRiesgoInput | null;
   escalas: EscalasInput | null;
+  examen_oral?: ExamenOralInput | null;
 }
 
 /** Historial de consultas con narrativa descifrada (RPC obtener_consultas). */

@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAccount } from '../context/AccountContext';
-import { esPracticaSaludMental } from '../lib/db';
+import { esPracticaSaludMental, esPracticaDental } from '../lib/db';
+import { EXAMEN_ORAL_CAMPOS, EXAMEN_ORAL_VACIO, hayExamenOral, type ExamenOralInput } from '../lib/examenOral';
+import { ExamenOralResumen } from '../components/ExamenOralResumen';
 import { fetchPacientesSelect, getOrCreateExpediente, actualizarGrupoSanguineo, type PacienteSelect } from '../lib/patients';
 import type { GrupoSanguineo } from '../lib/types';
 import {
@@ -109,6 +111,17 @@ const PLANTILLAS_SALUD_MENTAL: Record<string, string> = {
     '<p><b>Motivo de consulta (en palabras del paciente):</b> </p><p><b>Historia del padecimiento actual:</b> </p><p><b>Antecedentes relevantes:</b> </p><p><b>Impresión diagnóstica inicial:</b> </p><p><b>Plan de tratamiento propuesto:</b> </p>',
 };
 
+// Mismos formatos que MedSaaS usa para medicina general, pero con la exploración
+// intraoral; solo se muestran a dentistas (ver plantillasActivas).
+const PLANTILLAS_DENTAL: Record<string, string> = {
+  'Consulta odontológica':
+    '<p><b>Motivo de consulta:</b> </p><p><b>Padecimiento actual:</b> </p><p><b>Exploración intraoral:</b> </p><p><b>Impresión diagnóstica:</b> </p><p><b>Plan de tratamiento:</b> </p>',
+  'Profilaxis y control':
+    '<p><b>Índice de placa / sangrado:</b> </p><p><b>Procedimiento realizado:</b> Profilaxis, remoción de cálculo y pulido.</p><p><b>Instrucciones de higiene:</b> </p><p><b>Próximo control:</b> </p>',
+  'Procedimiento realizado':
+    '<p><b>Diente(s) / zona:</b> </p><p><b>Anestesia:</b> </p><p><b>Técnica y material:</b> </p><p><b>Evolución durante el procedimiento:</b> </p><p><b>Indicaciones postoperatorias:</b> </p>',
+};
+
 const VITAL_VACIO = { peso: '', talla: '', taSist: '', taDiast: '', fc: '', temp: '', fr: '', spo2: '', glucosa: '', periAbdo: '', grasaPct: '' };
 
 // Opciones de grupo sanguíneo (mismo enum que la BD)
@@ -135,6 +148,15 @@ const CATS_ANT_SALUD_MENTAL: { key: keyof Antecedentes; label: string; icon: str
   { key: 'quirurgicos',      label: 'Red de apoyo',                    icon: 'diversity_3' },
 ];
 
+// Antecedentes del dentista: mismas 4 llaves del modelo de datos, solo cambia la
+// etiqueta (NOM-004: la historia clínica se ajusta al servicio que se presta).
+const CATS_ANT_DENTAL: { key: keyof Antecedentes; label: string; icon: string }[] = [
+  { key: 'patologicos',      label: 'Antecedentes médicos relevantes', icon: 'coronavirus' },
+  { key: 'no_patologicos',   label: 'Hábitos y higiene oral',          icon: 'dentistry' },
+  { key: 'heredofamiliares', label: 'Antecedentes familiares',         icon: 'family_restroom' },
+  { key: 'quirurgicos',      label: 'Tratamientos dentales previos',   icon: 'vaccines' },
+];
+
 // ── Estado Mental (MSE) — equivalente a "signos vitales" en salud mental ─────
 const ESTADO_MENTAL_VACIO: EstadoMentalInput = {
   apariencia: '', habla: '', animo_afecto: '', proceso_pensamiento: '',
@@ -151,8 +173,8 @@ const MSE_DOMINIOS: { key: keyof EstadoMentalInput; label: string; opciones: str
   { key: 'introspeccion_juicio', label: 'Introspección y juicio', opciones: ['Conservados', 'Introspección limitada', 'Juicio comprometido'] },
 ];
 
-function MseField({ label, value, opciones, onChange }: {
-  label: string; value: string; opciones: string[]; onChange: (v: string) => void;
+function MseField({ label, value, opciones, onChange, placeholder = 'Descripción libre…' }: {
+  label: string; value: string; opciones: string[]; onChange: (v: string) => void; placeholder?: string;
 }) {
   return (
     <div>
@@ -170,7 +192,7 @@ function MseField({ label, value, opciones, onChange }: {
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={2}
-        placeholder="Descripción libre…"
+        placeholder={placeholder}
         style={{
           width: '100%', boxSizing: 'border-box', border: '1px solid var(--outline-variant)', borderRadius: 10,
           padding: '8px 10px', fontSize: 13, lineHeight: 1.4, fontFamily: 'var(--font-body)',
@@ -300,6 +322,8 @@ export function Consulta({ go, goBack, toast, patientId }: {
   const [phq9, setPhq9]                 = useState<(number | null)[]>(Array(9).fill(null));
   const [gad7, setGad7]                 = useState<(number | null)[]>(Array(7).fill(null));
   const [notaPrivada, setNotaPrivada]   = useState('');
+  // Dentista: examen oral (se cifra dentro de la consulta)
+  const [examenOral, setExamenOral]     = useState<ExamenOralInput>({ ...EXAMEN_ORAL_VACIO });
   // Plan de tratamiento — vive en el EXPEDIENTE, no por consulta (persistente
   // sesión tras sesión, igual patrón que antecedentes).
   const [planTrat, setPlanTrat]         = useState<PlanTratamiento>({ ...PLAN_TRATAMIENTO_VACIO });
@@ -313,8 +337,9 @@ export function Consulta({ go, goBack, toast, patientId }: {
   // Psicología/psiquiatría: antecedentes y plantillas de nota se adaptan al
   // servicio (NOM-004) en vez de usar el set pensado para medicina general.
   const esSaludMental = esPracticaSaludMental(account.tipoProfesional);
-  const catsAnt = esSaludMental ? CATS_ANT_SALUD_MENTAL : CATS_ANT_GENERAL;
-  const plantillasActivas = esSaludMental ? PLANTILLAS_SALUD_MENTAL : PLANTILLAS;
+  const esDental = esPracticaDental(account.tipoProfesional);
+  const catsAnt = esSaludMental ? CATS_ANT_SALUD_MENTAL : esDental ? CATS_ANT_DENTAL : CATS_ANT_GENERAL;
+  const plantillasActivas = esSaludMental ? PLANTILLAS_SALUD_MENTAL : esDental ? PLANTILLAS_DENTAL : PLANTILLAS;
 
   useEffect(() => {
     if (!account.clinicaId) return;
@@ -414,6 +439,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
         estadoMental: esSaludMental && estadoMentalLleno ? estadoMental : null,
         tamizajeRiesgo: esSaludMental ? tamizaje : null,
         escalas: esSaludMental ? escalas : null,
+        examenOral: esDental && hayExamenOral(examenOral) ? examenOral : null,
       });
 
       // Nota de proceso privada — llamada aparte, a propósito: vive en una
@@ -708,7 +734,8 @@ export function Consulta({ go, goBack, toast, patientId }: {
                               style={{ marginTop: 8, padding: '10px 12px', background: 'var(--surface-container-high)', borderRadius: 10, fontSize: 13, color: 'var(--on-surface)', lineHeight: 1.55 }}
                               dangerouslySetInnerHTML={{ __html: c.notas }} />
                           )}
-                          {!vit && !c.notas && <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>Sin detalles registrados.</div>}
+                          <ExamenOralResumen examen={c.examen_oral} compacto />
+                          {!vit && !c.notas && !c.examen_oral && <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>Sin detalles registrados.</div>}
                         </div>
                       )}
                     </div>
@@ -858,6 +885,24 @@ export function Consulta({ go, goBack, toast, patientId }: {
                 <Field label="Glucosa (mg/dL)" type="number" value={vitales.glucosa} onChange={(v) => updVital('glucosa', v)} />
                 <Field label="Perímetro abd. (cm)" type="number" value={vitales.periAbdo}  onChange={(v) => updVital('periAbdo', v)} />
                 <Field label="Grasa corporal (%)"  type="number" value={vitales.grasaPct}  onChange={(v) => updVital('grasaPct', v)} />
+              </div>
+            </RailCard>
+          )}
+
+          {/* Examen oral — solo dentistas; se guarda cifrado dentro de la consulta. */}
+          {esDental && (
+            <RailCard icon="dentistry" title="Examen oral" defaultOpen>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {EXAMEN_ORAL_CAMPOS.map(({ key, label, opciones, placeholder }) => (
+                  <MseField
+                    key={key}
+                    label={label}
+                    opciones={opciones}
+                    placeholder={placeholder}
+                    value={examenOral[key] ?? ''}
+                    onChange={(v) => { setExamenOral((p) => ({ ...p, [key]: v })); setDirty(true); }}
+                  />
+                ))}
               </div>
             </RailCard>
           )}

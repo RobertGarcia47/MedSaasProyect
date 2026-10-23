@@ -8,6 +8,7 @@ import { PdfRecetaModal } from '../components/PdfRecetaModal';
 import { PdfInformeModal } from '../components/PdfInformeModal';
 import { VitalsTrends } from '../components/VitalsTrends';
 import { EscalasTrends } from '../components/EscalasTrends';
+import { ExamenOralResumen } from '../components/ExamenOralResumen';
 import { esPracticaSaludMental } from '../lib/db';
 import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, TIPO_INFORME_ICON, TIPO_INFORME_COLOR, VISIBILIDAD_ICON, VISIBILIDAD_LABEL, type InformeUI } from '../lib/informes';
 import { obtenerEstudios, urlDescarga, type EstudioUI } from '../lib/laboratorio';
@@ -723,7 +724,8 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
                               dangerouslySetInnerHTML={{ __html: c.notas }}
                             />
                           )}
-                          {!vit && !c.notas && (
+                          <ExamenOralResumen examen={c.examen_oral} />
+                          {!vit && !c.notas && !c.examen_oral && (
                             <div style={{ fontSize: 13, color: 'var(--on-surface-variant)' }}>Sin detalles adicionales registrados.</div>
                           )}
                         </div>
