@@ -69,7 +69,7 @@ export interface AccountContext {
   usaSignosVitales: boolean;
   /** Mismo patrón que puedePrescribir: no todo profesional solicita laboratorio. */
   usaLaboratorio: boolean;
-  /** 'medico_general' | 'psicologo' | 'nutriologo' | 'psiquiatra' | 'otro' | null —
+  /** 'medico_general' | 'psicologo' | 'nutriologo' | 'psiquiatra' | 'dentista' | 'otro' | null —
    *  mismo campo que edita Profile.tsx; se usa para adaptar Consulta (antecedentes,
    *  plantillas de nota) a salud mental sin depender de los 3 toggles de arriba. */
   tipoProfesional: string | null;
@@ -81,6 +81,13 @@ export interface AccountContext {
 export const TIPOS_SALUD_MENTAL = ['psicologo', 'psiquiatra'];
 export function esPracticaSaludMental(tipoProfesional: string | null | undefined): boolean {
   return TIPOS_SALUD_MENTAL.includes(tipoProfesional ?? '');
+}
+
+/** Práctica odontológica: activa lo específico de dentista (examen oral, odontograma,
+ *  presupuesto de tratamiento…) — ver [[plan-especialidad-dentista]] en memoria. */
+export const TIPO_DENTISTA = 'dentista';
+export function esPracticaDental(tipoProfesional: string | null | undefined): boolean {
+  return tipoProfesional === TIPO_DENTISTA;
 }
 
 /** Resultado del arranque de sesión: distingue "sin onboarding" de "listo". */

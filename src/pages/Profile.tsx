@@ -56,12 +56,16 @@ const PRESETS_PROFESION: Record<string, { prescribir: boolean; vitales: boolean;
   psiquiatra:     { prescribir: true,  vitales: true,  laboratorio: true  },
   psicologo:      { prescribir: false, vitales: false, laboratorio: false },
   nutriologo:     { prescribir: false, vitales: true,  laboratorio: true  },
+  // Prescribe (analgésicos, antibióticos); no toma signos vitales de rutina; el
+  // módulo de estudios sirve para radiografías y estudios que pide o recibe.
+  dentista:       { prescribir: true,  vitales: false, laboratorio: true  },
 };
 const TIPO_PROFESIONAL_OPTIONS = [
   { value: 'medico_general', label: 'Médico general' },
   { value: 'psiquiatra',     label: 'Psiquiatra' },
   { value: 'psicologo',      label: 'Psicólogo(a) / psicoterapeuta / psicoanalista' },
   { value: 'nutriologo',     label: 'Nutriólogo(a)' },
+  { value: 'dentista',       label: 'Dentista / odontólogo(a)' },
   { value: 'otro',           label: 'Otro (personalizado)' },
 ];
 
