@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Component } from 'react';
 import { supabase } from './lib/supabase';
-import { loadAccountContext, type AccountContext, type AccentColor, type ThemeMode } from './lib/db';
+import { loadAccountContext, esPracticaDental, type AccountContext, type AccentColor, type ThemeMode } from './lib/db';
 import { AccountCtx } from './context/AccountContext';
 import { Icon, Button, IconButton, FAB, Avatar, Divider, Snackbar } from './components';
 import { Login, BrandMark } from './pages/Login';
@@ -15,6 +15,7 @@ import { Informe } from './pages/Informe';
 import { Laboratorio } from './pages/Laboratorio';
 import { Profile, Settings } from './pages/Profile';
 import { SearchPalette } from './components/SearchPalette';
+import { Procedimientos } from './pages/Procedimientos';
 
 // URL del onboarding (donde el usuario completa alta + tenant).
 const ONBOARDING_URL = 'https://medsaas-onboarding.vercel.app/';
@@ -172,10 +173,11 @@ function AppBar({ theme, setTheme, onMenu, openProfileMenu, doctor, onSearch }) 
 }
 
 /* ---------- Profile menu ---------- */
-function ProfileMenu({ open, onClose, go, theme, setTheme, onLogout, doctor }) {
+function ProfileMenu({ open, onClose, go, theme, setTheme, onLogout, doctor, esDentista }) {
   if (!open) return null;
   const items = [
     ['account_circle', 'Mi perfil',       () => { go('profile');  onClose(); }],
+    ...(esDentista ? [['medical_services', 'Procedimientos y precios', () => { go('procedimientos'); onClose(); }]] : []),
     ['settings',       'Configuración',   () => { go('settings'); onClose(); }],
     [theme === 'dark' ? 'light_mode' : 'dark_mode', theme === 'dark' ? 'Modo día' : 'Modo noche', () => setTheme(theme === 'dark' ? 'light' : 'dark')],
     ['help',           'Ayuda y soporte', onClose],
@@ -524,6 +526,7 @@ export default function App() {
     case 'prescriptions':page = <Prescriptions {...pageProps} />; break;
     case 'reports':      page = <Reports      {...pageProps} />; break;
     case 'profile':      page = <Profile      {...pageProps} />; break;
+    case 'procedimientos': page = <Procedimientos toast={toast} />; break;
     case 'settings':     page = <Settings theme={theme} setTheme={setTheme} accent={accent} setAccent={setAccent} onLogout={onLogout} navStyle={navStyle} setNavStyle={setNavStyle} toast={toast} />; break;
     default:             page = <Dashboard    {...pageProps} />;
   }
@@ -567,14 +570,14 @@ export default function App() {
         <FAB icon="add" onClick={() => openModal('appointment')} />
       </div>
 
-      <ProfileMenu open={pmenu} onClose={() => setPmenu(false)} go={go} theme={theme} setTheme={setTheme} onLogout={onLogout} doctor={doctor} />
+      <ProfileMenu open={pmenu} onClose={() => setPmenu(false)} go={go} theme={theme} setTheme={setTheme} onLogout={onLogout} doctor={doctor} esDentista={esPracticaDental(account?.tipoProfesional)} />
 
       <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} clinicaId={account?.clinicaId ?? ''} dataVersion={dataVersion} go={go} openModal={openModal} />
       <AppointmentModal  open={modal?.type === 'appointment'}  onClose={closeModal} prefill={modal?.prefill} toast={toast} onCreated={bumpData} />
       <ReportModal       open={modal?.type === 'report'}       onClose={closeModal} prefill={modal?.prefill} toast={toast} onCreated={bumpData} />
       <PatientModal      open={modal?.type === 'patient'}      onClose={closeModal} toast={toast} onCreated={bumpData} />
 
-      <Snackbar open={!!snack} message={snack} action="Deshacer" />
+      <Snackbar open={!!snack} message={snack} />
     </div>
     </AccountCtx.Provider>
   );
