@@ -122,6 +122,15 @@ export async function fetchCitasDia(clinicaId: string, dia: Date, medicoId?: str
   return queryCitas(clinicaId, base.toISOString(), fin.toISOString(), medicoId);
 }
 
+/** Próximas citas vigentes de la clínica a partir de mañana (para el Inicio cuando
+ *  hoy no hay ninguna): sin canceladas ni completadas, las `limite` más cercanas. */
+export async function fetchProximasCitasClinica(clinicaId: string, medicoId?: string, dias = 14, limite = 5): Promise<ApptUI[]> {
+  const desde = new Date(); desde.setDate(desde.getDate() + 1); desde.setHours(0, 0, 0, 0);
+  const hasta = new Date(desde); hasta.setDate(hasta.getDate() + dias); hasta.setHours(23, 59, 59, 999);
+  const citas = await queryCitas(clinicaId, desde.toISOString(), hasta.toISOString(), medicoId);
+  return citas.filter((a) => a.status !== 'cancelada' && a.status !== 'completada').slice(0, limite);
+}
+
 /** Citas de la semana (lunes–domingo) de un día dado. */
 export async function fetchCitasSemana(clinicaId: string, diaDeLaSemana: Date): Promise<ApptUI[]> {
   const d = new Date(diaDeLaSemana);
@@ -142,6 +151,37 @@ export async function fetchCitasMes(clinicaId: string, year: number, month: numb
 
 /** Conteo de citas no canceladas por día en un rango [desde, hasta] inclusive —
  *  usado para la tendencia y el mini-gráfico de "Citas hoy" en el Dashboard. */
+export interface CitaProximaUI {
+  id: string;
+  fecha: string;        // ISO
+  duracionMin: number;
+  tipo: string;         // Consulta | Seguimiento | Urgencia | Revision
+  motivo: string;
+  estado: EstadoCita;
+}
+
+/** Próximas citas vigentes (desde hoy 00:00, sin canceladas/completadas) de un paciente. */
+export async function fetchProximasCitasPaciente(pacienteId: string, limite = 3): Promise<CitaProximaUI[]> {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+  const { data, error } = await supabase
+    .from('citas')
+    .select('id, fecha, duracion_min, estado, motivo')
+    .eq('paciente_id', pacienteId)
+    .gte('fecha', hoy.toISOString())
+    .not('estado', 'in', '(cancelada,no_asistio,completada)')
+    .order('fecha', { ascending: true })
+    .limit(limite);
+  if (error) throw error;
+  return (data ?? []).map((c) => ({
+    id: c.id as string,
+    fecha: c.fecha as string,
+    duracionMin: (c.duracion_min as number) || 30,
+    tipo: decodeTipoCita(c.motivo as string | null),
+    motivo: decodeMotivoCita(c.motivo as string | null),
+    estado: c.estado as EstadoCita,
+  }));
+}
+
 export async function fetchConteoCitasPorDia(clinicaId: string, desde: Date, hasta: Date): Promise<{ date: string; count: number }[]> {
   const base = new Date(desde); base.setHours(0, 0, 0, 0);
   const fin = new Date(hasta); fin.setHours(23, 59, 59, 999);
@@ -162,7 +202,7 @@ export async function fetchConteoCitasPorDia(clinicaId: string, desde: Date, has
   const dias: { date: string; count: number }[] = [];
   const cursor = new Date(base);
   while (cursor <= fin) {
-    const key = cursor.toISOString().slice(0, 10);
+    const key = localDateStr(cursor.toISOString());
     dias.push({ date: key, count: counts.get(key) ?? 0 });
     cursor.setDate(cursor.getDate() + 1);
   }

@@ -14,6 +14,7 @@ import { Receta } from './pages/Receta';
 import { Informe } from './pages/Informe';
 import { Laboratorio } from './pages/Laboratorio';
 import { Profile, Settings } from './pages/Profile';
+import { SearchPalette } from './components/SearchPalette';
 
 // URL del onboarding (donde el usuario completa alta + tenant).
 const ONBOARDING_URL = 'https://medsaas-onboarding.vercel.app/';
@@ -105,8 +106,11 @@ function Sidebar({ route, go, collapsed, setCollapsed, onLogout, doctor }) {
   );
 }
 
+// ⌘ en Mac, Ctrl en el resto — solo para mostrar el atajo de la búsqueda global.
+const TECLA_ATAJO = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
+
 /* ---------- Top nav ---------- */
-function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor }) {
+function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor, onSearch }) {
   return (
     <header style={{ height: 68, flexShrink: 0, background: 'var(--surface-container-low)', borderBottom: '1px solid var(--outline-variant)', display: 'flex', alignItems: 'center', gap: 8, padding: '0 24px' }}>
       <BrandMark size={36} />
@@ -127,7 +131,7 @@ function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor }) {
         })}
       </nav>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <IconButton name="search" tooltip="Buscar" />
+        <IconButton name="search" tooltip={`Buscar (${TECLA_ATAJO}+K)`} onClick={onSearch} />
         <IconButton name={theme === 'dark' ? 'light_mode' : 'dark_mode'} tooltip="Tema" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
         <IconButton name="notifications" tooltip="Notificaciones" />
         <div onClick={openProfileMenu} style={{ cursor: 'pointer', marginLeft: 4 }}>
@@ -139,17 +143,15 @@ function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor }) {
 }
 
 /* ---------- App bar (sidebar layout) ---------- */
-function AppBar({ theme, setTheme, onMenu, openProfileMenu, doctor }) {
-  const [q, setQ] = useState('');
+function AppBar({ theme, setTheme, onMenu, openProfileMenu, doctor, onSearch }) {
   return (
     <header style={{ height: 72, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 14, padding: '0 24px', background: 'var(--surface)', borderBottom: '1px solid var(--outline-variant)' }}>
       <IconButton name="menu" onClick={onMenu} className="mobile-menu-btn" />
-      <div className="appbar-search" style={{ flex: 1, maxWidth: 460, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-container-high)', borderRadius: 'var(--r-full)', padding: '0 18px', height: 46 }}>
+      <button type="button" onClick={onSearch} className="appbar-search" style={{ flex: 1, maxWidth: 460, display: 'flex', alignItems: 'center', gap: 10, background: 'var(--surface-container-high)', borderRadius: 'var(--r-full)', padding: '0 18px', height: 46, border: 'none', cursor: 'text', textAlign: 'left' }}>
         <Icon name="search" size={22} style={{ color: 'var(--on-surface-variant)' }} />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar pacientes, citas, recetas…"
-          style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--on-surface)', fontSize: 14.5, fontFamily: 'var(--font-body)' }} />
-        <kbd style={{ fontSize: 11, fontWeight: 700, color: 'var(--on-surface-variant)', background: 'var(--surface-container-highest)', padding: '2px 7px', borderRadius: 6 }}>⌘K</kbd>
-      </div>
+        <span style={{ flex: 1, color: 'var(--on-surface-variant)', fontSize: 14.5, fontFamily: 'var(--font-body)' }}>Buscar pacientes o acciones…</span>
+        <kbd style={{ fontSize: 11, fontWeight: 700, color: 'var(--on-surface-variant)', background: 'var(--surface-container-highest)', padding: '2px 7px', borderRadius: 6 }}>{TECLA_ATAJO} K</kbd>
+      </button>
       <div style={{ flex: 1 }} />
       <IconButton name={theme === 'dark' ? 'light_mode' : 'dark_mode'} tooltip="Tema día/noche" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
       <div style={{ position: 'relative' }}>
@@ -350,6 +352,7 @@ export default function App() {
   const [modal,     setModal]     = useState<{ type: string; prefill?: any } | null>(null);
   const [snack,     setSnack]     = useState<string | null>(null);
   const [pmenu,     setPmenu]     = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [dataVersion, setDataVersion] = useState(0); // se incrementa tras un write para refrescar listas
   const bumpData = () => setDataVersion((v) => v + 1);
 
@@ -428,6 +431,19 @@ export default function App() {
     });
     return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
+
+  // Ctrl/⌘ + K abre (o cierra) la búsqueda global; solo con sesión iniciada.
+  useEffect(() => {
+    if (!authed) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [authed]);
 
   useEffect(() => { document.documentElement.setAttribute('data-theme', theme); }, [theme]);
   useEffect(() => { document.documentElement.setAttribute('data-accent', accent); }, [accent]);
@@ -517,7 +533,7 @@ export default function App() {
     <div className="density-regular" style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
       {account && <AccesoBanner account={account} go={go} />}
       {navStyle === 'topnav' && (
-        <TopNav route={route} go={go} theme={theme} setTheme={setTheme} openProfileMenu={() => setPmenu(true)} doctor={doctor} />
+        <TopNav route={route} go={go} theme={theme} setTheme={setTheme} openProfileMenu={() => setPmenu(true)} doctor={doctor} onSearch={() => setSearchOpen(true)} />
       )}
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
@@ -537,7 +553,7 @@ export default function App() {
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           {navStyle === 'sidebar' && (
-            <AppBar theme={theme} setTheme={setTheme} onMenu={() => setDrawer(true)} openProfileMenu={() => setPmenu(true)} doctor={doctor} />
+            <AppBar theme={theme} setTheme={setTheme} onMenu={() => setDrawer(true)} openProfileMenu={() => setPmenu(true)} doctor={doctor} onSearch={() => setSearchOpen(true)} />
           )}
           <main className="main-scroll" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
             <ErrorBoundary routeKey={route.name + (route.params.id || '')}>{page}</ErrorBoundary>
@@ -553,6 +569,7 @@ export default function App() {
 
       <ProfileMenu open={pmenu} onClose={() => setPmenu(false)} go={go} theme={theme} setTheme={setTheme} onLogout={onLogout} doctor={doctor} />
 
+      <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} clinicaId={account?.clinicaId ?? ''} dataVersion={dataVersion} go={go} openModal={openModal} />
       <AppointmentModal  open={modal?.type === 'appointment'}  onClose={closeModal} prefill={modal?.prefill} toast={toast} onCreated={bumpData} />
       <ReportModal       open={modal?.type === 'report'}       onClose={closeModal} prefill={modal?.prefill} toast={toast} onCreated={bumpData} />
       <PatientModal      open={modal?.type === 'patient'}      onClose={closeModal} toast={toast} onCreated={bumpData} />

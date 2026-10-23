@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount } from '../context/AccountContext';
 import { countConsultas, type ApptUI } from '../lib/consultas';
-import { fetchCitasDia, fetchCitasMes, fetchPrimeraCitaIdPorPaciente, fetchConteoCitasPorDia } from '../lib/citas';
+import { fetchCitasDia, fetchCitasMes, fetchPrimeraCitaIdPorPaciente, fetchConteoCitasPorDia, fetchProximasCitasClinica } from '../lib/citas';
 import { countPacientes } from '../lib/patients';
 import { countOportunidadesAbiertas } from '../lib/oportunidades';
 import { Icon, Button, Card, Avatar, StatusPill, IconButton } from '../components';
@@ -36,11 +36,17 @@ function tipoGradient(color: string): string {
   return `linear-gradient(90deg, ${color} 0%, color-mix(in srgb, ${color} 35%, var(--surface)) 100%)`;
 }
 
+// Vigilante del widget de chat tras salir del Dashboard (ver el useEffect del widget).
+let observadorChat: MutationObserver | null = null;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const DIAS_S = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
 
+// Solo la primera letra en mayúscula ("Jueves, 22 de octubre de 2026"); con
+// text-transform: capitalize quedaba "22 De Octubre De 2026".
+function cap(s: string): string { return s.charAt(0).toUpperCase() + s.slice(1); }
 function fechaActual(): string {
-  return new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return cap(new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
 }
 function saludo(): string {
   const h = new Date().getHours();
@@ -121,7 +127,7 @@ function Sparkline({ values, tone }: { values: number[]; tone: string }) {
 function StatChip({ icon, label, value, tone = 'primary', onClick, pulse, delta, spark }: {
   icon: string; label: string; value: string | number; tone?: 'primary' | 'tertiary' | 'secondary' | 'warning'; onClick?: () => void; pulse?: boolean;
   /** ej. "+2" — comparación breve contra el periodo anterior (ayer/mes pasado). */
-  delta?: { text: string; positive: boolean };
+  delta?: { text: string; positive: boolean; vs?: string };
   /** últimos N días para el mini-gráfico; se omite si hay menos de 2 puntos. */
   spark?: number[];
 }) {
@@ -145,7 +151,9 @@ function StatChip({ icon, label, value, tone = 'primary', onClick, pulse, delta,
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, lineHeight: 1, letterSpacing: '-1px', color: 'var(--on-surface)' }}>{value}</div>
           {delta && (
-            <span style={{ fontSize: 10.5, fontWeight: 700, color: delta.positive ? 'var(--success)' : 'var(--on-surface-variant)' }}>{delta.text}</span>
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: delta.positive ? 'var(--success)' : 'var(--on-surface-variant)', whiteSpace: 'nowrap' }}>
+              {delta.text}{delta.vs && <span style={{ fontWeight: 400, color: 'var(--on-surface-variant)' }}> {delta.vs}</span>}
+            </span>
           )}
         </div>
         <div style={{ fontFamily: 'var(--font-body)', fontSize: 11, color: 'var(--on-surface-variant)', marginTop: 3 }}>{label}</div>
@@ -187,7 +195,7 @@ function AmbientStrip({ appts, consultasHoy }: { appts: ApptUI[]; consultasHoy: 
 }
 
 // ── Timeline de agenda de hoy ──────────────────────────────────────────────────
-function TimelineAgenda({ appts, onView, primerasCitasIds }: { appts: ApptUI[]; onView: (id: string) => void; primerasCitasIds: Set<string> }) {
+function TimelineAgenda({ appts, proximas, onView, onAgendar, primerasCitasIds }: { appts: ApptUI[]; proximas: ApptUI[]; onView: (id: string) => void; onAgendar: () => void; primerasCitasIds: Set<string> }) {
   const [, setTick] = useState(0);
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 60_000);
@@ -242,9 +250,37 @@ function TimelineAgenda({ appts, onView, primerasCitasIds }: { appts: ApptUI[]; 
       </div>
 
       {visibles.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '32px 20px 40px', color: 'var(--on-surface-variant)' }}>
-          <Icon name="event_available" size={40} style={{ opacity: .4 }} />
-          <div className="body-m" style={{ marginTop: 10 }}>Sin citas para hoy</div>
+        <div style={{ padding: '8px 20px 20px' }}>
+          <div style={{ textAlign: 'center', padding: '20px 0 14px', color: 'var(--on-surface-variant)' }}>
+            <Icon name="event_available" size={36} style={{ opacity: .4 }} />
+            <div className="body-m" style={{ marginTop: 8 }}>Sin citas para hoy</div>
+          </div>
+          {proximas.length > 0 ? (
+            <>
+              <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.4px', color: 'var(--on-surface-variant)', textTransform: 'uppercase', marginBottom: 4 }}>Próximas citas</div>
+              {proximas.map((a, i) => {
+                const meta = typeMeta(a.type);
+                const f = new Date(`${a.date}T12:00:00`);
+                return (
+                  <div key={a.id} onClick={() => onView(a.pacienteId)} className="state-layer" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 4px', cursor: 'pointer', borderTop: i ? '1px solid var(--outline-variant)' : 'none' }}>
+                    <span style={{ width: 4, alignSelf: 'stretch', borderRadius: 2, background: meta.dot, flexShrink: 0 }} />
+                    <div style={{ minWidth: 86 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{f.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/[.,]/g, '').replace(' de ', ' ')}</div>
+                      <div style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>{a.start}</div>
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div className="title-s" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.pacienteName}</div>
+                      <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{typeMeta(a.type).label}{a.reason && a.reason !== 'Cita' ? ` · ${a.reason}` : ''}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          ) : (
+            <div style={{ textAlign: 'center' }}>
+              <Button variant="outlined" icon="add" onClick={onAgendar}>Agendar una cita</Button>
+            </div>
+          )}
         </div>
       ) : (
         <div style={{ display: 'flex', padding: '12px 16px 20px 0' }}>
@@ -354,7 +390,7 @@ function CalendarBig({ year, month, appts, onPrev, onNext, onPickDay }: {
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([t]) => t);
   }
 
-  const monthLabel = new Date(year, month, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' });
+  const monthLabel = cap(new Date(year, month, 1).toLocaleDateString('es-MX', { month: 'long', year: 'numeric' }));
   const totalCitas = appts.filter((a) => a.status !== 'cancelada').length;
   const proximaDia = [...porDia.keys()].filter((d) => !isCurrentMonth || d >= todayN).sort((a, b) => a - b)[0];
 
@@ -362,7 +398,7 @@ function CalendarBig({ year, month, appts, onPrev, onNext, onPickDay }: {
     <Card variant="outlined" style={{ padding: '22px 24px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, gap: 12 }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, lineHeight: 1, letterSpacing: '-.4px', color: 'var(--on-surface)', textTransform: 'capitalize' }}>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, lineHeight: 1, letterSpacing: '-.4px', color: 'var(--on-surface)' }}>
             {monthLabel}
           </div>
           <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 4 }}>
@@ -564,6 +600,7 @@ export function Dashboard({ go, openModal, toast, dataVersion = 0 }: { go: (name
   const [loading,        setLoading]        = useState(true);
   const [appts,          setAppts]          = useState<ApptUI[]>([]);
   const [primerasCitasIds, setPrimerasCitasIds] = useState<Set<string>>(new Set());
+  const [proximas,       setProximas]       = useState<ApptUI[]>([]);
   const [totalPacientes, setTotalPacientes] = useState<number>(0);
   const [consultasHoy,   setConsultasHoy]   = useState<number>(0);
   const [consultasMes,   setConsultasMes]   = useState<number>(0);
@@ -595,9 +632,11 @@ export function Dashboard({ go, openModal, toast, dataVersion = 0 }: { go: (name
       countConsultas(clinicaId, inicioMesAnt, finMesAnt),
       countOportunidadesAbiertas(clinicaId),
       fetchConteoCitasPorDia(clinicaId, hace7dias, hoy),
+      fetchProximasCitasClinica(clinicaId, medicoFiltro || undefined).catch(() => [] as ApptUI[]),
     ])
-      .then(([apptsDia, totalP, totalMes, totalMesAnt, totalOport, serie]) => {
+      .then(([apptsDia, totalP, totalMes, totalMesAnt, totalOport, serie, prox]) => {
         setAppts(apptsDia);
+        setProximas(prox);
         setConsultasHoy(apptsDia.length);
         setTotalPacientes(totalP);
         setConsultasMes(totalMes);
@@ -626,16 +665,30 @@ export function Dashboard({ go, openModal, toast, dataVersion = 0 }: { go: (name
 
   // Widget de chat GoHighLevel — solo mientras el Dashboard está montado.
   useEffect(() => {
+    // Al volver al Dashboard (o en el doble montaje de StrictMode) se apaga el
+    // vigilante del cleanup anterior; si no, borraría el widget recién montado.
+    observadorChat?.disconnect();
     const script = document.createElement('script');
     script.src = 'https://widgets.leadconnectorhq.com/loader.js';
     script.setAttribute('data-resources-url', 'https://widgets.leadconnectorhq.com/chat-widget/loader.js');
     script.setAttribute('data-widget-id', '6a58fdbac40835bdcd770ad3');
     document.body.appendChild(script);
 
-    return () => {
+    const limpiar = () => {
       script.remove();
-      document.querySelectorAll('[src*="leadconnectorhq.com"], iframe[src*="leadconnectorhq"]')
+      // El loader también deja elementos <chat-widget> en <body> (la burbuja y su
+      // globo); sin quitarlos seguían apareciendo en todas las páginas.
+      document.querySelectorAll('[src*="leadconnectorhq.com"], iframe[src*="leadconnectorhq"], chat-widget')
         .forEach((el) => el.remove());
+    };
+    return () => {
+      limpiar();
+      // Si el usuario salió antes de que el loader terminara, el widget se monta
+      // después del cleanup: se vigila el <body> un rato y se quita lo que aparezca.
+      const obs = new MutationObserver(limpiar);
+      observadorChat = obs;
+      obs.observe(document.body, { childList: true });
+      setTimeout(() => obs.disconnect(), 15000);
     };
   }, []);
 
@@ -647,16 +700,16 @@ export function Dashboard({ go, openModal, toast, dataVersion = 0 }: { go: (name
   const deltaCitasHoy = serieCitas.length >= 2
     ? sparkCitas[sparkCitas.length - 1] - sparkCitas[sparkCitas.length - 2]
     : null;
-  const deltaCitas = deltaCitasHoy === null ? undefined : { text: `${deltaCitasHoy >= 0 ? '+' : ''}${deltaCitasHoy}`, positive: deltaCitasHoy >= 0 };
+  const deltaCitas = deltaCitasHoy === null ? undefined : { text: `${deltaCitasHoy >= 0 ? '+' : ''}${deltaCitasHoy}`, positive: deltaCitasHoy >= 0, vs: 'vs ayer' };
 
   const deltaMesVal = consultasMesAnt === null ? null : consultasMes - consultasMesAnt;
-  const deltaMes = deltaMesVal === null ? undefined : { text: `${deltaMesVal >= 0 ? '+' : ''}${deltaMesVal}`, positive: deltaMesVal >= 0 };
+  const deltaMes = deltaMesVal === null ? undefined : { text: `${deltaMesVal >= 0 ? '+' : ''}${deltaMesVal}`, positive: deltaMesVal >= 0, vs: 'vs mes pasado' };
 
   return (
     <div className="page-pad fade-up">
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
         <div>
-          <div className="body-m" style={{ color: 'var(--on-surface-variant)', textTransform: 'capitalize' }}>{fechaActual()}</div>
+          <div className="body-m" style={{ color: 'var(--on-surface-variant)' }}>{fechaActual()}</div>
           <h1 className="headline-l" style={{ letterSpacing: '-.5px', marginTop: 2 }}>
             {saludo()}, {primerNombre(nombre)}
           </h1>
@@ -681,8 +734,8 @@ export function Dashboard({ go, openModal, toast, dataVersion = 0 }: { go: (name
             <StatChip icon="bolt" label="Oportunidades" value={oportunidades} tone="warning" pulse={oportunidades > 0} onClick={() => setOportModalOpen(true)} />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 18 }} className="dash-grid">
-            <TimelineAgenda appts={appts} onView={(pid) => go('patient', { id: pid })} primerasCitasIds={primerasCitasIds} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 18, alignItems: 'start' }} className="dash-grid">
+            <TimelineAgenda appts={appts} proximas={proximas} onView={(pid) => go('patient', { id: pid })} onAgendar={() => openModal('appointment')} primerasCitasIds={primerasCitasIds} />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minWidth: 0 }}>
               <CalendarBig year={calYear} month={calMonth} appts={apptsMes} onPrev={prevMonth} onNext={nextMonth} onPickDay={(day) => {

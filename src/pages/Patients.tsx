@@ -12,7 +12,64 @@ import { esPracticaSaludMental } from '../lib/db';
 import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, TIPO_INFORME_ICON, TIPO_INFORME_COLOR, VISIBILIDAD_ICON, VISIBILIDAD_LABEL, type InformeUI } from '../lib/informes';
 import { obtenerEstudios, urlDescarga, type EstudioUI } from '../lib/laboratorio';
 import { obtenerConsultas, type ConsultaDetalleUI } from '../lib/consultas';
+import { fetchProximasCitasPaciente, type CitaProximaUI } from '../lib/citas';
 import { Icon, Button, Card, Chip, Avatar, IconButton, Segmented, Divider, SectionHeader } from '../components';
+
+// "39 a · F"; solo lo que exista, y "—" si no hay ninguno (antes salía "— · —").
+function edadSexo(age: number | null | undefined, sex: string | null | undefined, unidad: 'a' | 'años'): string {
+  const partes = [age != null ? `${age} ${unidad}` : null, sex || null].filter(Boolean);
+  return partes.length ? partes.join(' · ') : '—';
+}
+
+const DIA_MS = 86_400_000;
+const inicioDia = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+/** Días enteros desde hoy hasta `iso` (negativo = pasado). */
+function diasDesdeHoy(iso: string): number {
+  return Math.round((inicioDia(new Date(iso)) - inicioDia(new Date())) / DIA_MS);
+}
+function haceCuanto(iso: string): string {
+  const d = -diasDesdeHoy(iso);
+  if (d <= 0) return 'hoy';
+  if (d === 1) return 'ayer';
+  if (d < 30) return `hace ${d} días`;
+  if (d < 365) { const m = Math.floor(d / 30); return `hace ${m} ${m === 1 ? 'mes' : 'meses'}`; }
+  const a = Math.floor(d / 365);
+  return `hace ${a} ${a === 1 ? 'año' : 'años'}`;
+}
+function fechaCorta(iso: string): string {
+  return new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }).replace('.', '');
+}
+function horaCita(iso: string): string {
+  return new Date(iso).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+/** "Hoy · 10:30", "Mañana · 10:30" o "vie 23 oct · 10:30". */
+function proximaCitaTexto(iso: string): string {
+  const d = diasDesdeHoy(iso);
+  const dia = d === 0 ? 'Hoy' : d === 1 ? 'Mañana'
+    : new Date(iso).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }).replace(/[.,]/g, '').replace(' de ', ' ');
+  return `${dia} · ${horaCita(iso)}`;
+}
+
+type FiltroPacientes = 'todos' | 'semana' | 'sin-visita' | 'alergias';
+const SEIS_MESES_DIAS = 180;
+const FILTROS: { key: FiltroPacientes; label: string; icon?: string; aplica: (p: PacienteUI) => boolean }[] = [
+  { key: 'todos',      label: 'Todos',               aplica: () => true },
+  { key: 'semana',     label: 'Cita esta semana',    icon: 'event',   aplica: (p) => !!p.proximaCita && diasDesdeHoy(p.proximaCita) <= 7 },
+  { key: 'sin-visita', label: 'Sin visita reciente', icon: 'history', aplica: (p) => !p.ultimaVisita || -diasDesdeHoy(p.ultimaVisita) > SEIS_MESES_DIAS },
+  { key: 'alergias',   label: 'Con alergias',        icon: 'warning', aplica: (p) => p.alergias.length > 0 },
+];
+
+function InsigniaAlergias({ alergias }: { alergias: string[] }) {
+  if (!alergias.length) return null;
+  return (
+    <span title={`Alergias: ${alergias.join(', ')}`} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 3, flexShrink: 0, fontSize: 11, fontWeight: 700,
+      padding: '2px 8px', borderRadius: 999, background: 'var(--error-container)', color: 'var(--on-error-container)',
+    }}>
+      <Icon name="warning" size={13} />Alergias
+    </span>
+  );
+}
 
 // ── Spinner ───────────────────────────────────────────────────────────────────
 function Spinner({ size = 32 }: { size?: number }) {
@@ -53,6 +110,7 @@ export function PatientList({ go, openModal, dataVersion = 0 }: { go: (n: string
   const [view,    setView]    = useState<'table' | 'grid'>('table');
   const [loading, setLoading] = useState(true);
   const [all,     setAll]     = useState<PacienteUI[]>([]);
+  const [filtro,  setFiltro]  = useState<FiltroPacientes>('todos');
 
   useEffect(() => {
     if (!clinicaId) { setLoading(false); return; }
@@ -63,9 +121,11 @@ export function PatientList({ go, openModal, dataVersion = 0 }: { go: (n: string
       .finally(() => setLoading(false));
   }, [clinicaId, dataVersion]);
 
+  const filtroActivo = FILTROS.find((f) => f.key === filtro) ?? FILTROS[0];
+  const porFiltro = filtroActivo.key === 'todos' ? all : all.filter(filtroActivo.aplica);
   const list = q
-    ? all.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()) || (p.curp ?? '').toLowerCase().includes(q.toLowerCase()))
-    : all;
+    ? porFiltro.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()) || (p.curp ?? '').toLowerCase().includes(q.toLowerCase()))
+    : porFiltro;
 
   return (
     <div className="page-pad fade-up">
@@ -86,8 +146,12 @@ export function PatientList({ go, openModal, dataVersion = 0 }: { go: (n: string
             style={{ flex: 1, border: 'none', outline: 'none', background: 'transparent', color: 'var(--on-surface)', fontSize: 15, fontFamily: 'var(--font-body)' }} />
           {q && <Icon name="close" size={20} onClick={() => setQ('')} title="Limpiar búsqueda" style={{ color: 'var(--on-surface-variant)' }} />}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <Chip label="Todos" selected />
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {FILTROS.map((f) => {
+            const n = f.key === 'todos' ? all.length : all.filter(f.aplica).length;
+            return <Chip key={f.key} icon={f.icon} label={f.key === 'todos' ? f.label : `${f.label} · ${n}`}
+              selected={filtro === f.key} onClick={() => setFiltro(f.key)} />;
+          })}
         </div>
         <div style={{ flex: 1 }} />
         <Segmented value={view} onChange={(v) => setView(v as 'table' | 'grid')} options={[{ value: 'table', icon: 'table_rows' }, { value: 'grid', icon: 'grid_view' }]} />
@@ -96,32 +160,40 @@ export function PatientList({ go, openModal, dataVersion = 0 }: { go: (n: string
       {loading ? (
         <Spinner />
       ) : list.length === 0 ? (
-        <EmptyState icon="group" text={q ? 'Sin resultados para la búsqueda' : 'Sin pacientes registrados aún'} />
+        <EmptyState icon="group" text={q || filtro !== 'todos' ? 'Sin resultados para la búsqueda' : 'Sin pacientes registrados aún'} />
       ) : view === 'table' ? (
         <>
           {/* Tabla — oculta en móvil (<560px), reemplazada por la lista de tarjetas de abajo */}
           <Card variant="elevated" className="patients-table-view" style={{ overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2.4fr 1fr 1.6fr 1.6fr 48px', padding: '14px 20px', borderBottom: '1px solid var(--outline-variant)', fontSize: 12, fontWeight: 700, color: 'var(--on-surface-variant)', letterSpacing: '.4px' }}>
-              <div>PACIENTE</div><div>EDAD / SEXO</div><div>CONTACTO</div><div>DIAGNÓSTICOS</div><div />
+            <div style={{ display: 'grid', gridTemplateColumns: '2.4fr 1fr 1.4fr 1.3fr 1.4fr 48px', padding: '14px 20px', borderBottom: '1px solid var(--outline-variant)', fontSize: 12, fontWeight: 700, color: 'var(--on-surface-variant)', letterSpacing: '.4px' }}>
+              <div>PACIENTE</div><div>EDAD / SEXO</div><div>CONTACTO</div><div>ÚLTIMA VISITA</div><div>PRÓXIMA CITA</div><div />
             </div>
             {list.map((p) => (
               <div key={p.id} className="state-layer patients-row" onClick={() => go('patient', { id: p.id })} style={{
-                display: 'grid', gridTemplateColumns: '2.4fr 1fr 1.6fr 1.6fr 48px', alignItems: 'center', padding: '12px 20px',
+                display: 'grid', gridTemplateColumns: '2.4fr 1fr 1.4fr 1.3fr 1.4fr 48px', alignItems: 'center', padding: '12px 20px',
                 borderBottom: '1px solid var(--outline-variant)', cursor: 'pointer', position: 'relative',
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
                   <Avatar initials={p.initials} color={p.color} size={42} />
                   <div style={{ minWidth: 0 }}>
-                    <div className="title-s" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
-                    <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>{p.email ?? '—'}</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <span className="title-s" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
+                      <InsigniaAlergias alergias={p.alergias} />
+                    </div>
+                    {p.email && <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>{p.email}</div>}
                   </div>
                 </div>
-                <div className="body-m">{p.age != null ? `${p.age} a` : '—'} · {p.sex ?? '—'}</div>
+                <div className="body-m">{edadSexo(p.age, p.sex, 'a')}</div>
                 <div className="body-m" style={{ color: 'var(--on-surface-variant)' }}>{p.telefono ?? '—'}</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {p.conditions.slice(0, 2).map((c) => (
-                    <span key={c} style={{ fontSize: 11.5, fontWeight: 600, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-container-highest)', color: 'var(--on-surface-variant)' }}>{c}</span>
-                  ))}
+                <div className="body-m">
+                  {p.ultimaVisita
+                    ? <>{fechaCorta(p.ultimaVisita)}<div style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>{haceCuanto(p.ultimaVisita)}</div></>
+                    : <span style={{ color: 'var(--on-surface-variant)' }}>Sin visitas</span>}
+                </div>
+                <div className="body-m">
+                  {p.proximaCita
+                    ? <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{proximaCitaTexto(p.proximaCita)}</span>
+                    : <span style={{ color: 'var(--on-surface-variant)' }}>—</span>}
                 </div>
                 <IconButton name="chevron_right" size={36} iconSize={22} />
               </div>
@@ -137,16 +209,15 @@ export function PatientList({ go, openModal, dataVersion = 0 }: { go: (n: string
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div className="title-s" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
                     <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', marginTop: 2 }}>
-                      {p.age != null ? `${p.age} a` : '—'} · {p.sex ?? '—'}{p.telefono ? ` · ${p.telefono}` : ''}
+                      {[edadSexo(p.age, p.sex, 'a'), p.telefono].filter((x) => x && x !== '—').join(' · ') || '—'}
                     </div>
                   </div>
                   <Icon name="chevron_right" size={22} style={{ color: 'var(--on-surface-variant)', flexShrink: 0 }} />
                 </div>
-                {p.conditions.length > 0 && (
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10 }}>
-                    {p.conditions.slice(0, 2).map((c) => (
-                      <span key={c} style={{ fontSize: 11, fontWeight: 600, padding: '3px 9px', borderRadius: 999, background: 'var(--surface-container-highest)', color: 'var(--on-surface-variant)' }}>{c}</span>
-                    ))}
+                {(p.alergias.length > 0 || p.proximaCita) && (
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
+                    <InsigniaAlergias alergias={p.alergias} />
+                    {p.proximaCita && <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>Próxima: {proximaCitaTexto(p.proximaCita)}</span>}
                   </div>
                 )}
               </Card>
@@ -162,7 +233,7 @@ export function PatientList({ go, openModal, dataVersion = 0 }: { go: (n: string
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div className="title-m" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</div>
                   <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>
-                    {p.age != null ? `${p.age} años` : '—'} · {p.sex ?? '—'}
+                    {edadSexo(p.age, p.sex, 'años')}
                   </div>
                 </div>
               </div>
@@ -271,11 +342,20 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
       .finally(() => setLoading(false));
   }, [id, clinicaId, dataVersion, pacVersion]);
 
+  // Próximas citas del paciente para el resumen del expediente.
+  const [proximasCitas, setProximasCitas] = useState<CitaProximaUI[] | null>(null);
+  useEffect(() => {
+    setProximasCitas(null);
+    fetchProximasCitasPaciente(id)
+      .then(setProximasCitas)
+      .catch((e) => { console.error('Próximas citas error:', e); setProximasCitas([]); });
+  }, [id, dataVersion]);
+
   // Carga perezosa de recetas/informes según la pestaña activa.
   const expedienteId = pac?.expedienteId ?? null;
   useEffect(() => {
     if (!expedienteId) return;
-    if ((tab === 'timeline' || tab === 'tendencias') && consultasFull === null) {
+    if ((tab === 'resumen' || tab === 'timeline' || tab === 'tendencias') && consultasFull === null) {
       setLoadingDoc(true);
       obtenerConsultas(expedienteId).then(setConsultasFull).catch((e) => { console.error(e); setConsultasFull([]); }).finally(() => setLoadingDoc(false));
     }
@@ -455,6 +535,56 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
       {tab === 'resumen' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr)', gap: 18 }} className="dash-grid">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minWidth: 0 }}>
+            <Card variant="elevated" style={{ padding: 20 }}>
+              <SectionHeader title="Próximas citas" icon="event" />
+              {proximasCitas === null ? <Spinner size={24} /> : proximasCitas.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', padding: '6px 0' }}>
+                  <span className="body-m" style={{ color: 'var(--on-surface-variant)' }}>Sin citas programadas.</span>
+                  <Button variant="outlined" icon="event" onClick={() => openModal('appointment', { patientId: pac.id })}>Agendar</Button>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {proximasCitas.map((c, i) => (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 0', borderTop: i ? '1px solid var(--outline-variant)' : 'none' }}>
+                      <div style={{ minWidth: 64, textAlign: 'center', padding: '6px 8px', borderRadius: 10, background: 'var(--primary-container)', color: 'var(--on-primary-container)' }}>
+                        <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>
+                          {new Date(c.fecha).toLocaleDateString('es-MX', { month: 'short' }).replace('.', '')}
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.1 }}>{new Date(c.fecha).getDate()}</div>
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div className="title-s">{proximaCitaTexto(c.fecha)} · {c.duracionMin} min</div>
+                        <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {c.tipo}{c.motivo && c.motivo !== 'Cita' ? ` · ${c.motivo}` : ''}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
+            <Card variant="elevated" style={{ padding: 20 }}>
+              <SectionHeader title="Últimas consultas" icon="history" action={(consultasFull?.length ?? 0) > 0 ? { label: 'Ver todas' } : undefined} onAction={() => setTab('timeline')} />
+              {consultasFull === null ? <Spinner size={24} /> : consultasFull.length === 0 ? (
+                <span className="body-m" style={{ color: 'var(--on-surface-variant)' }}>Aún no hay consultas registradas.</span>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {consultasFull.slice(0, 3).map((c, i) => (
+                    <div key={c.id} style={{ display: 'flex', gap: 14, padding: '10px 0', borderTop: i ? '1px solid var(--outline-variant)' : 'none' }}>
+                      <div style={{ minWidth: 92 }}>
+                        <div className="title-s">{fechaCorta(c.fecha)}</div>
+                        <div style={{ fontSize: 12, color: 'var(--on-surface-variant)' }}>{haceCuanto(c.fecha)}</div>
+                      </div>
+                      <div className="body-m" style={{ flex: 1, minWidth: 0, color: c.motivo ? 'var(--on-surface)' : 'var(--on-surface-variant)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {c.motivo || c.notas || 'Sin motivo registrado'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+
             {account.usaSignosVitales && (
             <Card variant="elevated" style={{ padding: 20 }}>
               <h3 className="title-l" style={{ marginBottom: 16 }}>Signos vitales</h3>
@@ -519,8 +649,7 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
                 )}
               </div>
               <Divider style={{ margin: '18px 0' }} />
-              <InfoStat label="Última consulta" value={v ? new Date(v.fecha).toLocaleDateString('es-MX') : undefined} />
-              <div style={{ marginTop: 14 }}><InfoStat label="Aseguradora" value="—" /></div>
+              <InfoStat label="Última consulta" value={pac.consultas[0] ? fechaCorta(pac.consultas[0].fecha) : undefined} sub={pac.consultas[0] ? haceCuanto(pac.consultas[0].fecha) : undefined} />
             </Card>
             <Card variant="filled" style={{ padding: 20 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>

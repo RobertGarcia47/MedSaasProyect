@@ -49,6 +49,9 @@ export interface PacienteUI {
   curp: string | null;
   conditions: string[];  // diagnósticos; vacío en la lista, poblado en detalle
   alergias: string[];
+  /** Solo en la lista (fetchPacientes): ISO de la última consulta/cita completada y de la próxima cita. */
+  ultimaVisita?: string | null;
+  proximaCita?: string | null;
 }
 
 export interface VitalesUI {
@@ -160,14 +163,80 @@ export async function actualizarPaciente(
 
 // ── Queries ───────────────────────────────────────────────────────────────────
 
+/** PostgREST corta cada respuesta en 1000 filas: se pagina hasta `maxPaginas`. */
+async function leerPaginado<T>(
+  consulta: (desde: number, hasta: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  maxPaginas = 5,
+): Promise<T[]> {
+  const TAM = 1000;
+  const filas: T[] = [];
+  for (let i = 0; i < maxPaginas; i++) {
+    const { data, error } = await consulta(i * TAM, i * TAM + TAM - 1);
+    if (error) throw error;
+    filas.push(...(data ?? []));
+    if (!data || data.length < TAM) break;
+  }
+  return filas;
+}
+
+/** Datos que la lista muestra por paciente además de la ficha: alergias, última
+ *  visita (consulta o cita completada más reciente) y próxima cita. Son tablas
+ *  distintas a `pacientes` (ver GOTCHA de embeds en schema-reference), así que se
+ *  piden aparte y se cruzan aquí; si algo falla la lista sigue mostrándose. */
+async function fetchResumenPacientes(clinicaId: string): Promise<{
+  alergias: Map<string, string[]>; ultima: Map<string, string>; proxima: Map<string, string>;
+}> {
+  const ahora = new Date().toISOString();
+  const [exps, alergs, cons, hechas, futuras] = await Promise.all([
+    leerPaginado<{ id: string; paciente_id: string }>((d, h) =>
+      supabase.from('expedientes').select('id, paciente_id').eq('clinica_id', clinicaId).range(d, h)),
+    leerPaginado<{ expediente_id: string; alergia: string }>((d, h) =>
+      supabase.from('expediente_alergias').select('expediente_id, alergia').eq('clinica_id', clinicaId).range(d, h)),
+    leerPaginado<{ expediente_id: string; fecha: string }>((d, h) =>
+      supabase.from('consultas').select('expediente_id, fecha').eq('clinica_id', clinicaId)
+        .order('fecha', { ascending: false }).range(d, h)),
+    leerPaginado<{ paciente_id: string; fecha: string }>((d, h) =>
+      supabase.from('citas').select('paciente_id, fecha').eq('clinica_id', clinicaId)
+        .eq('estado', 'completada').order('fecha', { ascending: false }).range(d, h)),
+    leerPaginado<{ paciente_id: string; fecha: string }>((d, h) =>
+      supabase.from('citas').select('paciente_id, fecha').eq('clinica_id', clinicaId)
+        .gte('fecha', ahora).not('estado', 'in', '(cancelada,no_asistio,completada)')
+        .order('fecha', { ascending: true }).range(d, h)),
+  ]);
+
+  const pacientePorExp = new Map(exps.map((e) => [e.id, e.paciente_id]));
+  const alergias = new Map<string, string[]>();
+  for (const a of alergs) {
+    const pid = pacientePorExp.get(a.expediente_id);
+    if (pid) alergias.set(pid, [...(alergias.get(pid) ?? []), a.alergia]);
+  }
+  // Las listas vienen ordenadas, así que la primera fila de cada paciente gana.
+  const ultima = new Map<string, string>();
+  const mayor = (pid: string, fecha: string) => {
+    const actual = ultima.get(pid);
+    if (!actual || fecha > actual) ultima.set(pid, fecha);
+  };
+  for (const c of cons) { const pid = pacientePorExp.get(c.expediente_id); if (pid) mayor(pid, c.fecha); }
+  for (const c of hechas) mayor(c.paciente_id, c.fecha);
+  const proxima = new Map<string, string>();
+  for (const c of futuras) if (!proxima.has(c.paciente_id)) proxima.set(c.paciente_id, c.fecha);
+  return { alergias, ultima, proxima };
+}
+
 /** Lista todos los pacientes de la clínica. */
 export async function fetchPacientes(clinicaId: string): Promise<PacienteUI[]> {
-  const { data, error } = await supabase
-    .from('pacientes')
-    .select('id, nombre, apellido_paterno, apellido_materno, fecha_nacimiento, sexo, grupo_sanguineo, telefono, email, curp')
-    .eq('clinica_id', clinicaId)
-    .order('apellido_paterno')
-    .order('nombre');
+  const [{ data, error }, resumen] = await Promise.all([
+    supabase
+      .from('pacientes')
+      .select('id, nombre, apellido_paterno, apellido_materno, fecha_nacimiento, sexo, grupo_sanguineo, telefono, email, curp')
+      .eq('clinica_id', clinicaId)
+      .order('apellido_paterno')
+      .order('nombre'),
+    fetchResumenPacientes(clinicaId).catch((e) => {
+      console.warn('Resumen de pacientes no disponible:', e);
+      return { alergias: new Map<string, string[]>(), ultima: new Map<string, string>(), proxima: new Map<string, string>() };
+    }),
+  ]);
   if (error) throw error;
   if (!data) return [];
   return data.map((p) => ({
@@ -182,7 +251,9 @@ export async function fetchPacientes(clinicaId: string): Promise<PacienteUI[]> {
     telefono: p.telefono,
     curp: p.curp,
     conditions: [],
-    alergias: [],
+    alergias: resumen.alergias.get(p.id) ?? [],
+    ultimaVisita: resumen.ultima.get(p.id) ?? null,
+    proximaCita: resumen.proxima.get(p.id) ?? null,
   }));
 }
 

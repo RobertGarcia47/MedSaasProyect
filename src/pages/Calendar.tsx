@@ -95,7 +95,11 @@ const MONTHS_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Ago
 const DAYS_S    = ['Lu','Ma','Mi','Ju','Vi','Sá','Do'];
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
-function isoDate(d: Date): string { return d.toISOString().slice(0, 10); }
+// Día calendario LOCAL. Con toISOString() (UTC) pasadas las 18:00 en México el día
+// se corría al siguiente: "hoy" y las citas caían en la columna/celda equivocada.
+function isoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 function addDays(d: Date, n: number): Date { const r = new Date(d); r.setDate(r.getDate() + n); return r; }
 function getMonday(d: Date): Date {
   const r = new Date(d);
@@ -978,6 +982,17 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
 // ══════════════════════════════════════════════════════════════════════════════
 type CalView = 'mes' | 'semana' | 'dia';
 
+// La vista elegida se recuerda en este navegador; la primera vez abre en Semana
+// (el médico trabaja el día a día, el mes casi siempre aparece vacío).
+const VISTA_KEY = 'medsaas.agenda.vista';
+function vistaGuardada(): CalView {
+  try {
+    const v = localStorage.getItem(VISTA_KEY);
+    if (v === 'mes' || v === 'semana' || v === 'dia') return v;
+  } catch { /* storage bloqueado: se usa el valor por defecto */ }
+  return 'semana';
+}
+
 export function Calendar({ go, toast, dataVersion = 0, initialDate }: {
   go: (name: string, params?: any) => void;
   toast?: (m: string) => void;
@@ -991,7 +1006,7 @@ export function Calendar({ go, toast, dataVersion = 0, initialDate }: {
   const clinicaId = account.clinicaId ?? '';
   const medicoId  = account.userId    ?? '';
 
-  const [view,    setView]    = useState<CalView>(initialDate ? 'dia' : 'mes');
+  const [view,    setView]    = useState<CalView>(initialDate ? 'dia' : vistaGuardada);
   const [current, setCurrent] = useState(() => initialDate ? new Date(`${initialDate}T00:00:00`) : new Date());
   const [appts,   setAppts]   = useState<ApptUI[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1083,8 +1098,8 @@ export function Calendar({ go, toast, dataVersion = 0, initialDate }: {
 
         {/* Izquierda: fecha + (Agenda · navegador) */}
         <div>
-          <div className="body-m" style={{ color: 'var(--on-surface-variant)', textTransform: 'capitalize' }}>
-            {new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          <div className="body-m" style={{ color: 'var(--on-surface-variant)' }}>
+            {cap(new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap', marginTop: 2 }}>
             <h1 className="headline-l" style={{ letterSpacing: '-.5px' }}>Agenda</h1>
@@ -1111,7 +1126,10 @@ export function Calendar({ go, toast, dataVersion = 0, initialDate }: {
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Segmented
             value={view}
-            onChange={(v: string) => setView(v as CalView)}
+            onChange={(v: string) => {
+              setView(v as CalView);
+              try { localStorage.setItem(VISTA_KEY, v); } catch { /* sin storage */ }
+            }}
             options={isMobile ? [
               { value: 'mes', label: 'Mes' },
               { value: 'dia', label: 'Día' },

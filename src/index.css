@@ -64,6 +64,9 @@
   --surface-bright: #F4FBF8;
   --surface-container-lowest: #FFFFFF;
   --surface-container-low: #F1F3F1;
+  /* Fondo de las tarjetas (Card elevated): blanco puro en claro para que destaquen
+     sobre el fondo decorativo; en oscuro sigue siendo el contenedor elevado. */
+  --card-bg: #FFFFFF;
   --surface-container: #ECEFEC;
   --surface-container-high: #E6E9E6;
   --surface-container-highest: #E0E4E0;
@@ -132,6 +135,7 @@
   --surface-bright: #343B39;
   --surface-container-lowest: #090F0E;
   --surface-container-low: #161D1B;
+  --card-bg: var(--surface-container-low);
   --surface-container: #1A211F;
   --surface-container-high: #252B2A;
   --surface-container-highest: #2F3634;

@@ -56,9 +56,7 @@ function StatCardShell({ icon, title, sub, extra, children }: {
   icon: string; title: string; sub?: string; extra?: React.ReactNode; children: React.ReactNode;
 }) {
   return (
-    // fondo blanco intenso (no el gris de "elevated" por defecto): estas 4
-    // tarjetas necesitan destacar sobre el fondo decorativo de la página.
-    <Card variant="elevated" style={{ padding: 20, background: 'var(--surface)' }}>
+    <Card variant="elevated" style={{ padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
         <span style={{ width: 4, height: 18, borderRadius: 2, background: '#0E6B5E', flexShrink: 0 }} />
         <Icon name={icon} size={20} style={{ color: 'var(--primary)' }} />
@@ -259,7 +257,7 @@ function ConsultasPorDiaCard({ data }: { data: DiaSemanaCount[] }) {
             <XAxis
               dataKey="dia"
               tick={({ x, y, payload, index }) => (
-                <text x={x} y={y + 14} textAnchor="middle" fontSize={11} fontWeight={index === maxIdx ? 700 : 400} fill={index === maxIdx ? '#0E6B5E' : c['on-surface-variant']}>
+                <text x={x} y={Number(y) + 14} textAnchor="middle" fontSize={11} fontWeight={index === maxIdx ? 700 : 400} fill={index === maxIdx ? '#0E6B5E' : c['on-surface-variant']}>
                   {payload.value}
                 </text>
               )}

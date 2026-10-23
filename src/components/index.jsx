@@ -121,7 +121,7 @@ export function FAB({ icon, label, onClick, extended, style = {} }) {
 /* ---------- Card ---------- */
 export function Card({ variant = 'elevated', children, onClick, style = {}, className = '', hover }) {
   const variants = {
-    elevated: { background: 'var(--surface-container-low)', boxShadow: 'var(--elev-1)', border: 'none' },
+    elevated: { background: 'var(--card-bg)', boxShadow: 'var(--elev-1)', border: 'none' },
     filled:   { background: 'var(--surface-container-highest)', border: 'none' },
     outlined: { background: 'var(--surface)', border: '1px solid var(--outline-variant)' },
   };
