@@ -18,21 +18,25 @@ function authErrorMsg(message?: string): string {
 }
 
 /* ---------- BrandMark ---------- */
-export function BrandMark({ size = 44, light = false }) {
+/** `light`: texto blanco fijo, para el panel verde del Login. `onPrimary`: sigue el color del
+ *  tema (--on-primary), para la barra superior, que es verde en claro y menta en oscuro. */
+export function BrandMark({ size = 44, light = false, onPrimary = false }) {
+  const fg = onPrimary ? 'var(--on-primary)' : light ? '#fff' : null;
+  const fgSub = onPrimary ? 'color-mix(in srgb, var(--on-primary) 82%, transparent)' : light ? 'rgba(255,255,255,0.8)' : null;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{
         width: size, height: size, borderRadius: 14, flexShrink: 0,
-        background: light ? 'rgba(255,255,255,0.16)' : 'var(--primary)',
+        background: onPrimary ? 'color-mix(in srgb, var(--on-primary) 18%, transparent)' : light ? 'rgba(255,255,255,0.16)' : 'var(--primary)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: light ? 'none' : '0 6px 18px -6px var(--primary)',
-        border: light ? '1px solid rgba(255,255,255,0.25)' : 'none',
+        boxShadow: fg ? 'none' : '0 6px 18px -6px var(--primary)',
+        border: onPrimary ? '1px solid color-mix(in srgb, var(--on-primary) 30%, transparent)' : light ? '1px solid rgba(255,255,255,0.25)' : 'none',
       }}>
-        <Icon name="clinical_notes" size={size * 0.56} fill style={{ color: light ? '#fff' : 'var(--on-primary)' }} />
+        <Icon name="clinical_notes" size={size * 0.56} fill style={{ color: fg ?? 'var(--on-primary)' }} />
       </div>
       <div style={{ lineHeight: 1.05 }}>
-        <div className="title-l" style={{ fontWeight: 800, color: light ? '#fff' : 'var(--on-surface)', letterSpacing: '-.3px' }}>MedSaaS</div>
-        <div style={{ fontSize: 12, fontWeight: 600, color: light ? 'rgba(255,255,255,0.8)' : 'var(--on-surface-variant)', letterSpacing: '.5px' }}>EXPEDIENTE CLÍNICO</div>
+        <div className="title-l" style={{ fontWeight: 800, color: fg ?? 'var(--on-surface)', letterSpacing: '-.3px' }}>MedSaaS</div>
+        <div style={{ fontSize: 12, fontWeight: 600, color: fgSub ?? 'var(--on-surface-variant)', letterSpacing: '.5px' }}>EXPEDIENTE CLÍNICO</div>
       </div>
     </div>
   );

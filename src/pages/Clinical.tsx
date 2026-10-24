@@ -667,9 +667,10 @@ export function PrimaryBtn({ onClick, disabled, children }: { onClick: () => voi
       disabled={disabled}
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 8,
-        background: disabled ? 'var(--outline-variant)' : 'linear-gradient(145deg, color-mix(in srgb, var(--primary) 85%, white), var(--primary))',
-        color: disabled ? 'var(--on-surface-variant)' : 'var(--on-primary)', fontSize: 14.5, fontWeight: 600,
-        padding: '12px 22px', borderRadius: 12, border: 'none',
+        background: disabled ? 'var(--card-bg)' : 'linear-gradient(145deg, color-mix(in srgb, var(--primary) 85%, white), var(--primary))',
+        color: disabled ? 'var(--primary)' : 'var(--on-primary)', fontSize: 14.5, fontWeight: 600,
+        padding: '12px 22px', borderRadius: 12, border: disabled ? '1.5px solid var(--primary)' : '1.5px solid transparent',
+        opacity: disabled ? .55 : 1,
         boxShadow: disabled ? 'none' : '0 10px 22px color-mix(in srgb, var(--primary) 32%, transparent)',
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'transform .15s, box-shadow .15s', fontFamily: 'inherit',
@@ -1232,7 +1233,7 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
           <button
             type="button"
             onClick={() => setAdelanto((v) => !v)}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1px solid var(--outline-variant)', borderRadius: 10, background: 'var(--surface-container-highest)', color: 'var(--on-surface)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1.5px solid var(--primary)', borderRadius: 10, background: 'var(--card-bg)', color: 'var(--on-surface)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
           >
             <span style={{
               width: 34, height: 19, borderRadius: 999, flexShrink: 0, position: 'relative',

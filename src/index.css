@@ -89,11 +89,9 @@
 
   --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 28px; --r-full: 999px;
 
-  /* Figtree para toda la interfaz; Fraunces (serif) solo para saludos, títulos
-     de página y cifras grandes (ver .display-* / .headline-* más abajo). */
+  /* Figtree (sans) para toda la interfaz, títulos incluidos. */
   --font-display: 'Figtree', system-ui, sans-serif;
   --font-body: 'Figtree', system-ui, sans-serif;
-  --font-serif: 'Fraunces', Georgia, serif;
 }
 
 /* ---------- DARK THEME ---------- */
@@ -277,14 +275,14 @@ body { transition: background-color .35s ease, color .35s ease; }
 .ms.fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
 
 /* ---------- type scale ---------- */
-/* Display y headline van en Fraunces (serif) a peso 500: dan calidez a saludos,
-   títulos de página y cifras grandes. El resto de la interfaz es Figtree. */
-.display-l { font-family: var(--font-serif); font-weight: 500; font-size: 57px; line-height: 64px; letter-spacing: -.02em; }
-.display-m { font-family: var(--font-serif); font-weight: 500; font-size: 45px; line-height: 52px; letter-spacing: -.015em; }
-.display-s { font-family: var(--font-serif); font-weight: 500; font-size: 36px; line-height: 44px; letter-spacing: -.01em; }
-.headline-l { font-family: var(--font-serif); font-weight: 500; font-size: 36px; line-height: 44px; letter-spacing: -.02em; }
-.headline-m { font-family: var(--font-serif); font-weight: 500; font-size: 30px; line-height: 38px; letter-spacing: -.01em; }
-.headline-s { font-family: var(--font-serif); font-weight: 500; font-size: 24px; line-height: 32px; letter-spacing: -.005em; }
+/* Display y headline van en Figtree a peso 700 (antes serif): saludos, títulos de
+   página y cifras grandes con el mismo tipo que el resto de la interfaz. */
+.display-l { font-family: var(--font-display); font-weight: 700; font-size: 57px; line-height: 64px; letter-spacing: -.02em; }
+.display-m { font-family: var(--font-display); font-weight: 700; font-size: 45px; line-height: 52px; letter-spacing: -.015em; }
+.display-s { font-family: var(--font-display); font-weight: 700; font-size: 36px; line-height: 44px; letter-spacing: -.01em; }
+.headline-l { font-family: var(--font-display); font-weight: 700; font-size: 36px; line-height: 44px; letter-spacing: -.02em; }
+.headline-m { font-family: var(--font-display); font-weight: 700; font-size: 30px; line-height: 38px; letter-spacing: -.01em; }
+.headline-s { font-family: var(--font-display); font-weight: 700; font-size: 24px; line-height: 32px; letter-spacing: -.005em; }
 .title-l { font-family: var(--font-display); font-weight: 600; font-size: 22px; line-height: 28px; }
 .title-m { font-family: var(--font-body); font-weight: 600; font-size: 16px; line-height: 24px; letter-spacing: .15px; }
 .title-s { font-family: var(--font-body); font-weight: 600; font-size: 14px; line-height: 20px; letter-spacing: .1px; }

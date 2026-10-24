@@ -914,7 +914,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
         <button
           type="button"
           onClick={() => setAdelanto(v => !v)}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1px solid var(--outline-variant)', borderRadius: 10, background: 'var(--surface-container-highest)', color: 'var(--on-surface)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '11px 14px', border: '1.5px solid var(--primary)', borderRadius: 10, background: 'var(--card-bg)', color: 'var(--on-surface)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit' }}
         >
           <span style={{
             width: 34, height: 19, borderRadius: 999, flexShrink: 0, position: 'relative',

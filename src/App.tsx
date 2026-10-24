@@ -121,8 +121,8 @@ const TECLA_ATAJO = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(n
 /* ---------- Top nav ---------- */
 function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor, onSearch }) {
   return (
-    <header style={{ height: 68, flexShrink: 0, background: 'var(--surface-container-low)', borderBottom: '1px solid var(--outline-variant)', display: 'flex', alignItems: 'center', gap: 8, padding: '0 max(24px, var(--page-edge))' }}>
-      <BrandMark size={36} />
+    <header style={{ height: 68, flexShrink: 0, background: 'var(--primary-gradient)', color: 'var(--on-primary)', boxShadow: '0 2px 14px color-mix(in srgb, var(--primary) 28%, transparent)', position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', gap: 8, padding: '0 max(24px, var(--page-edge))' }}>
+      <BrandMark size={36} onPrimary />
       <nav className="topnav-items" style={{ display: 'flex', gap: 2, marginLeft: 28, flex: 1 }}>
         {NAV.map((i) => {
           const active = route.name === i.key || (i.key === 'patients' && route.name === 'patient');
@@ -130,8 +130,8 @@ function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor, onSearch 
             <button key={i.key} onClick={() => go(i.key)} className="state-layer" style={{
               display: 'flex', alignItems: 'center', gap: 8, height: 44, padding: '0 18px',
               borderRadius: 'var(--r-full)', border: 'none', cursor: 'pointer', position: 'relative',
-              background: active ? 'var(--secondary-container)' : 'transparent',
-              color: active ? 'var(--on-secondary-container)' : 'var(--on-surface-variant)',
+              background: active ? 'color-mix(in srgb, var(--on-primary) 22%, transparent)' : 'transparent',
+              color: active ? 'var(--on-primary)' : 'color-mix(in srgb, var(--on-primary) 86%, transparent)',
               fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14,
             }}>
               <Icon name={i.icon} size={20} fill={active} />{i.label}
@@ -140,11 +140,12 @@ function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor, onSearch 
         })}
       </nav>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <IconButton name="search" tooltip={`Buscar (${TECLA_ATAJO}+K)`} onClick={onSearch} />
-        <IconButton name={theme === 'dark' ? 'light_mode' : 'dark_mode'} tooltip="Tema" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
-        <IconButton name="notifications" tooltip="Notificaciones" />
+        <IconButton name="search" color="var(--on-primary)" tooltip={`Buscar (${TECLA_ATAJO}+K)`} onClick={onSearch} />
+        <IconButton name={theme === 'dark' ? 'light_mode' : 'dark_mode'} color="var(--on-primary)" tooltip="Tema" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
+        <IconButton name="notifications" color="var(--on-primary)" tooltip="Notificaciones" />
         <div onClick={openProfileMenu} style={{ cursor: 'pointer', marginLeft: 4 }}>
-          <Avatar initials={doctor.initials} size={40} />
+          <Avatar initials={doctor.initials} size={40}
+            style={{ background: 'color-mix(in srgb, var(--on-primary) 20%, transparent)', color: 'var(--on-primary)', boxShadow: 'inset 0 0 0 1.5px color-mix(in srgb, var(--on-primary) 55%, transparent)' }} />
         </div>
       </div>
     </header>

@@ -152,7 +152,7 @@ function StatChip({ icon, label, value, tone = 'primary', onClick, pulse, delta,
       </div>
       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <div style={{ fontFamily: 'var(--font-serif)', fontWeight: 500, fontSize: 30, lineHeight: 1, letterSpacing: '-.02em', color: 'var(--on-surface)' }}>{value}</div>
+          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, lineHeight: 1, letterSpacing: '-.02em', color: 'var(--on-surface)' }}>{value}</div>
           {delta && (
             <span style={{ fontSize: 10.5, fontWeight: 700, color: delta.positive ? 'var(--success)' : 'var(--on-surface-variant)', whiteSpace: 'nowrap' }}>
               {delta.text}{delta.vs && <span style={{ fontWeight: 400, color: 'var(--on-surface-variant)' }}> {delta.vs}</span>}
