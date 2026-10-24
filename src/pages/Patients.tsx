@@ -11,6 +11,7 @@ import { EscalasTrends } from '../components/EscalasTrends';
 import { ExamenOralResumen } from '../components/ExamenOralResumen';
 import { esPracticaSaludMental, esPracticaDental } from '../lib/db';
 import { PlanTratamientoTab } from '../components/PlanTratamientoTab';
+import { ArchivosPacienteTab } from '../components/ArchivosPacienteTab';
 import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, TIPO_INFORME_ICON, TIPO_INFORME_COLOR, VISIBILIDAD_ICON, VISIBILIDAD_LABEL, type InformeUI } from '../lib/informes';
 import { obtenerEstudios, urlDescarga, type EstudioUI } from '../lib/laboratorio';
 import { obtenerConsultas, type ConsultaDetalleUI } from '../lib/consultas';
@@ -400,7 +401,7 @@ export function PatientRecord({ id, go, openModal, toast, dataVersion = 0 }: { i
     ['resumen',    'Expediente',   'summarize'],
     ['timeline',   'Consultas',    'history'],
     // Plan de tratamiento y presupuesto: solo dentistas (ver esPracticaDental).
-    ...(esPracticaDental(account.tipoProfesional) ? [['plan', 'Plan de tratamiento', 'checklist']] : []),
+    ...(esPracticaDental(account.tipoProfesional) ? [['plan', 'Plan de tratamiento', 'checklist'], ['archivos', 'Archivos', 'photo_library']] : []),
     ...((account.usaSignosVitales || esSaludMentalPatients) ? [['tendencias', 'Tendencias', 'monitoring']] : []),
     // Sin toggle "puede prescribir" (psicólogos, nutriólogos…), la pestaña de
     // recetas ni se muestra — no solo el botón de crear.
@@ -697,6 +698,13 @@ export function PatientRecord({ id, go, openModal, toast, dataVersion = 0 }: { i
       {tab === 'plan' && (
         expedienteId
           ? <PlanTratamientoTab expedienteId={expedienteId} clinicaId={clinicaId} pacienteId={pac.id} pacienteNombre={pac.name} puedeEditar={account.accesoNivel !== 'limitado'} toast={toast} />
+          : <EmptyState icon="folder_off" text="Este paciente aún no tiene expediente" />
+      )}
+
+      {/* Radiografías, fotografías y documentos (dentistas) */}
+      {tab === 'archivos' && (
+        expedienteId
+          ? <ArchivosPacienteTab expedienteId={expedienteId} clinicaId={clinicaId} puedeEditar={account.accesoNivel !== 'limitado'} toast={toast} />
           : <EmptyState icon="folder_off" text="Este paciente aún no tiene expediente" />
       )}
 
