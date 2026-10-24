@@ -132,7 +132,7 @@ function DialogoItem({ item, catalogo, siguienteOrden, onClose, onGuardar, onEli
     const q = sinAcentos(nombre.trim());
     return catalogo
       .filter((p) => !q || sinAcentos(`${p.codigo ?? ''} ${p.nombre} ${p.categoria ?? ''}`).includes(q))
-      .slice(0, 7);
+      .slice(0, 5);
   }, [catalogo, nombre]);
 
   const elegir = (p: Procedimiento) => {
