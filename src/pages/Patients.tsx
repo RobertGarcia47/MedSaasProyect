@@ -9,7 +9,8 @@ import { PdfInformeModal } from '../components/PdfInformeModal';
 import { VitalsTrends } from '../components/VitalsTrends';
 import { EscalasTrends } from '../components/EscalasTrends';
 import { ExamenOralResumen } from '../components/ExamenOralResumen';
-import { esPracticaSaludMental } from '../lib/db';
+import { esPracticaSaludMental, esPracticaDental } from '../lib/db';
+import { PlanTratamientoTab } from '../components/PlanTratamientoTab';
 import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, TIPO_INFORME_ICON, TIPO_INFORME_COLOR, VISIBILIDAD_ICON, VISIBILIDAD_LABEL, type InformeUI } from '../lib/informes';
 import { obtenerEstudios, urlDescarga, type EstudioUI } from '../lib/laboratorio';
 import { obtenerConsultas, type ConsultaDetalleUI } from '../lib/consultas';
@@ -251,7 +252,7 @@ export function PatientList({ go, openModal, dataVersion = 0 }: { go: (n: string
 }
 
 // ── Expediente del paciente ───────────────────────────────────────────────────
-export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: string; go: (n: string, p?: any) => void; openModal: (t: string, p?: any) => void; dataVersion?: number }) {
+export function PatientRecord({ id, go, openModal, toast, dataVersion = 0 }: { id: string; go: (n: string, p?: any) => void; openModal: (t: string, p?: any) => void; toast?: (m: string) => void; dataVersion?: number }) {
   const account   = useAccount();
   const clinicaId = account.clinicaId ?? '';
 
@@ -398,6 +399,8 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
   const tabs = [
     ['resumen',    'Expediente',   'summarize'],
     ['timeline',   'Consultas',    'history'],
+    // Plan de tratamiento y presupuesto: solo dentistas (ver esPracticaDental).
+    ...(esPracticaDental(account.tipoProfesional) ? [['plan', 'Plan de tratamiento', 'checklist']] : []),
     ...((account.usaSignosVitales || esSaludMentalPatients) ? [['tendencias', 'Tendencias', 'monitoring']] : []),
     // Sin toggle "puede prescribir" (psicólogos, nutriólogos…), la pestaña de
     // recetas ni se muestra — no solo el botón de crear.
@@ -688,6 +691,13 @@ export function PatientRecord({ id, go, openModal, dataVersion = 0 }: { id: stri
             </Card>
           </div>
         </div>
+      )}
+
+      {/* Plan de tratamiento y presupuesto (dentistas) */}
+      {tab === 'plan' && (
+        expedienteId
+          ? <PlanTratamientoTab expedienteId={expedienteId} clinicaId={clinicaId} puedeEditar={account.accesoNivel !== 'limitado'} toast={toast} />
+          : <EmptyState icon="folder_off" text="Este paciente aún no tiene expediente" />
       )}
 
       {/* Historial de consultas — RPC obtener_consultas (narrativa descifrada) */}
