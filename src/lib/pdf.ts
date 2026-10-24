@@ -5,6 +5,7 @@
 import { supabase } from './supabase';
 import { obtenerRecetas, formatFolioReceta, type RecetaUI } from './recetas';
 import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, type InformeUI } from './informes';
+import type { PlanDental } from './planesTratamiento';
 
 /** Base del API de reportes. En local: http://localhost:5128 (perfil http). */
 const API_URL = ((import.meta.env.VITE_REPORTES_API_URL as string) || 'http://localhost:5128').replace(/\/+$/, '');
@@ -71,6 +72,31 @@ export interface InformePdfData {
   tipoInforme?: string | null;
   titulo: string;
   bloques: InformePdfBloque[];
+  /** Plantilla de color (misma preferencia de clínica que la receta). */
+  plantilla: Plantilla;
+}
+
+// ── Forma del payload de presupuesto (espeja PresupuestoPdfRequest del API) ───
+export interface PresupuestoPdfLinea {
+  diente?: string | null;
+  codigo?: string | null;
+  nombre: string;
+  cantidad: number;
+  precioUnitario: number;
+}
+
+export interface PresupuestoPdfData {
+  medico: RecetaPdfData['medico'];
+  clinica: RecetaPdfData['clinica'];
+  paciente: RecetaPdfData['paciente'];
+  folio?: string | null;
+  fechaEmision?: string | null;
+  titulo: string;
+  descuentoPct: number;
+  vigenciaDias: number;
+  notas?: string | null;
+  /** Solo líneas vigentes (sin canceladas). El API calcula subtotal, descuento y total. */
+  lineas: PresupuestoPdfLinea[];
   /** Plantilla de color (misma preferencia de clínica que la receta). */
   plantilla: Plantilla;
 }
@@ -340,6 +366,47 @@ export async function construirInformePdfDesdeInforme(
   };
 }
 
+// ── Construcción del payload del presupuesto de un plan ───────────────────────
+/**
+ * Arma el payload del presupuesto a partir de un plan YA cargado (PlanDental, con sus
+ * líneas y notas descifradas). Las líneas canceladas no van; el folio es una referencia
+ * corta derivada del id del plan y la fecha es la de emisión (hoy).
+ */
+export async function construirPresupuestoPdf(
+  plan: PlanDental,
+  ctx: { clinicaId: string; userId: string; medicoNombre: string; pacienteId: string; pacienteNombre: string },
+): Promise<PresupuestoPdfData> {
+  const lineas = plan.items
+    .filter((i) => i.estado !== 'cancelado')
+    .map((i) => ({
+      diente: i.diente, codigo: i.codigo, nombre: i.nombre, cantidad: i.cantidad, precioUnitario: i.precio_unitario,
+    }));
+  if (lineas.length === 0) throw new Error('El plan no tiene procedimientos vigentes para presupuestar.');
+
+  const [membrete, { data: pac }] = await Promise.all([
+    cargarMembrete(ctx.clinicaId, ctx.userId, ctx.medicoNombre),
+    supabase.from('pacientes').select('sexo, fecha_nacimiento').eq('id', ctx.pacienteId)
+      .maybeSingle<{ sexo: string | null; fecha_nacimiento: string | null }>(),
+  ]);
+
+  return {
+    medico: membrete.medico,
+    clinica: membrete.clinica,
+    plantilla: membrete.plantilla,
+    paciente: {
+      nombre: ctx.pacienteNombre,
+      edadSexo: edadSexoTexto(pac?.fecha_nacimiento ?? null, pac?.sexo ?? null),
+    },
+    folio: `P-${plan.id.slice(0, 8).toUpperCase()}`,
+    fechaEmision: fechaCorta(new Date().toISOString()),
+    titulo: plan.titulo,
+    descuentoPct: plan.descuento_pct,
+    vigenciaDias: 30,
+    notas: plan.notas,
+    lineas,
+  };
+}
+
 // ── Llamadas al API ───────────────────────────────────────────────────────────
 /** Genera el PDF de receta (usa data.plantilla, la preferencia de la clínica). Devuelve el Blob. */
 export async function generarRecetaPdf(data: RecetaPdfData): Promise<Blob> {
@@ -358,6 +425,20 @@ export async function generarRecetaPdf(data: RecetaPdfData): Promise<Blob> {
 /** Genera el PDF de informe (usa data.plantilla, la preferencia de la clínica). Devuelve el Blob. */
 export async function generarInformePdf(data: InformePdfData): Promise<Blob> {
   const res = await fetch(`${API_URL}/reportes/informe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const detalle = await res.text().catch(() => '');
+    throw new Error(`El servicio de PDF respondió ${res.status}. ${detalle.slice(0, 200)}`);
+  }
+  return res.blob();
+}
+
+/** Genera el PDF del presupuesto (usa data.plantilla, la preferencia de la clínica). Devuelve el Blob. */
+export async function generarPresupuestoPdf(data: PresupuestoPdfData): Promise<Blob> {
+  const res = await fetch(`${API_URL}/reportes/presupuesto`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data),

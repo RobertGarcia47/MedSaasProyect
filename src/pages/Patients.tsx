@@ -696,7 +696,7 @@ export function PatientRecord({ id, go, openModal, toast, dataVersion = 0 }: { i
       {/* Plan de tratamiento y presupuesto (dentistas) */}
       {tab === 'plan' && (
         expedienteId
-          ? <PlanTratamientoTab expedienteId={expedienteId} clinicaId={clinicaId} puedeEditar={account.accesoNivel !== 'limitado'} toast={toast} />
+          ? <PlanTratamientoTab expedienteId={expedienteId} clinicaId={clinicaId} pacienteId={pac.id} pacienteNombre={pac.name} puedeEditar={account.accesoNivel !== 'limitado'} toast={toast} />
           : <EmptyState icon="folder_off" text="Este paciente aún no tiene expediente" />
       )}
 

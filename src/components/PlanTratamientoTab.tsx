@@ -6,6 +6,9 @@ import {
   ESTADOS_PLAN, ESTADOS_ITEM, type PlanDental, type ItemPlan, type ItemPlanInput, type EstadoItem, type EstadoPlan,
 } from '../lib/planesTratamiento';
 import { fetchProcedimientos, formatoPrecio, type Procedimiento } from '../lib/procedimientos';
+import { useAccount } from '../context/AccountContext';
+import { construirPresupuestoPdf, generarPresupuestoPdf, PLANTILLAS, type PresupuestoPdfData } from '../lib/pdf';
+import { PdfPreviewModal } from './PdfPreviewModal';
 
 // Pestaña "Plan de tratamiento" del expediente (solo dentistas): planes con líneas
 // (diente + procedimiento + precio), estado de cada línea y total. Los diálogos se
@@ -216,9 +219,10 @@ function DialogoItem({ item, catalogo, siguienteOrden, onClose, onGuardar, onEli
 }
 
 // ── Pestaña ───────────────────────────────────────────────────────────────────
-export function PlanTratamientoTab({ expedienteId, clinicaId, puedeEditar, toast }: {
-  expedienteId: string; clinicaId: string; puedeEditar: boolean; toast?: (m: string) => void;
+export function PlanTratamientoTab({ expedienteId, clinicaId, pacienteId, pacienteNombre, puedeEditar, toast }: {
+  expedienteId: string; clinicaId: string; pacienteId: string; pacienteNombre: string; puedeEditar: boolean; toast?: (m: string) => void;
 }) {
+  const account = useAccount();
   const esMovil = useIsMobile(700);
   const [planes, setPlanes] = useState<PlanDental[] | null>(null);
   const [catalogo, setCatalogo] = useState<Procedimiento[]>([]);
@@ -226,6 +230,8 @@ export function PlanTratamientoTab({ expedienteId, clinicaId, puedeEditar, toast
   const [editandoPlan, setEditandoPlan] = useState<PlanDental | null>(null);
   const [dialogoItem, setDialogoItem] = useState<{ plan: PlanDental; item: ItemPlan | null } | null>(null);
   const [creando, setCreando] = useState(false);
+  const [presupuesto, setPresupuesto] = useState<{ plan: PlanDental; data: PresupuestoPdfData } | null>(null);
+  const [generandoPdf, setGenerandoPdf] = useState<string | null>(null);
 
   const recargar = async (abrir?: string) => {
     try {
@@ -254,6 +260,29 @@ export function PlanTratamientoTab({ expedienteId, clinicaId, puedeEditar, toast
       toast?.('Plan creado');
     } catch (e: any) { toast?.(e?.message ?? String(e)); }
     finally { setCreando(false); }
+  };
+
+  const abrirPresupuesto = async (plan: PlanDental) => {
+    setGenerandoPdf(plan.id);
+    try {
+      const data = await construirPresupuestoPdf(plan, {
+        clinicaId, userId: account.userId, medicoNombre: account.nombreCompleto, pacienteId, pacienteNombre,
+      });
+      setPresupuesto({ plan, data });
+    } catch (e: any) { toast?.(e?.message ?? String(e)); }
+    finally { setGenerandoPdf(null); }
+  };
+
+  // Tras entregar el presupuesto, un borrador pasa a "presentado" (a decisión de quien lo emite).
+  const marcarPresentado = async () => {
+    if (!presupuesto) return;
+    const { plan } = presupuesto;
+    try {
+      await actualizarPlan(plan.id, { titulo: plan.titulo, notas: plan.notas, estado: 'presentado', descuento_pct: plan.descuento_pct });
+      setPresupuesto((p) => p && { ...p, plan: { ...p.plan, estado: 'presentado' } });
+      toast?.('Plan marcado como presentado');
+      await recargar();
+    } catch (e: any) { toast?.(e?.message ?? String(e)); }
   };
 
   const cambiarEstadoItem = async (plan: PlanDental, item: ItemPlan, estado: EstadoItem) => {
@@ -380,7 +409,12 @@ export function PlanTratamientoTab({ expedienteId, clinicaId, puedeEditar, toast
 
                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap', padding: '16px 20px 18px', borderTop: '1px solid var(--outline-variant)', background: 'var(--surface-container-low)' }}>
                       <div style={{ flex: 1, minWidth: 220 }}>
-                        {puedeEditar && <Button variant="outlined" icon="add" onClick={() => setDialogoItem({ plan, item: null })}>Agregar procedimiento</Button>}
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                          {puedeEditar && <Button variant="outlined" icon="add" onClick={() => setDialogoItem({ plan, item: null })}>Agregar procedimiento</Button>}
+                          <Button variant="outlined" icon="picture_as_pdf" onClick={() => abrirPresupuesto(plan)} disabled={t.lineas === 0 || generandoPdf === plan.id}>
+                            {generandoPdf === plan.id ? 'Preparando…' : 'Presupuesto PDF'}
+                          </Button>
+                        </div>
                         {plan.notas && (
                           <div style={{ marginTop: 12, fontSize: 13, color: 'var(--on-surface-variant)', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
                             <strong style={{ color: 'var(--on-surface)' }}>Notas:</strong> {plan.notas}
@@ -424,6 +458,22 @@ export function PlanTratamientoTab({ expedienteId, clinicaId, puedeEditar, toast
               onGuardado={async (m) => { toast?.(m); setEditandoPlan(null); await recargar(); }}
             />
           )}
+          <PdfPreviewModal
+            open={!!presupuesto}
+            data={presupuesto?.data ?? null}
+            generar={generarPresupuestoPdf}
+            titulo="Presupuesto de tratamiento"
+            detalle={presupuesto
+              ? `${presupuesto.data.folio ?? 'Vista previa'} · Plantilla ${(PLANTILLAS.find((p) => p.id === presupuesto.data.plantilla) ?? PLANTILLAS[0]).nombre}`
+              : undefined}
+            icono="request_quote"
+            nombreArchivo={`Presupuesto ${presupuesto?.data.folio ?? ''}`.trim() + '.pdf'}
+            acciones={presupuesto && presupuesto.plan.estado === 'borrador' && puedeEditar
+              ? <Button variant="text" icon="send" onClick={marcarPresentado}>Marcar plan como presentado</Button>
+              : undefined}
+            onClose={() => setPresupuesto(null)}
+            toast={toast}
+          />
           {dialogoItem && (
             <DialogoItem
               item={dialogoItem.item}
