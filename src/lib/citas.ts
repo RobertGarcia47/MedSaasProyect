@@ -73,6 +73,8 @@ type CitaRow = {
   paciente_id: string;
   medico_id: string;
   acepta_adelanto: boolean;
+  procedimiento_id: string | null;
+  precio: number | null;
   pacientes: { id: string; nombre: string; apellido_paterno: string | null } | null;
 };
 
@@ -80,7 +82,7 @@ async function queryCitas(clinicaId: string, desde: string, hasta: string, medic
   let q = supabase
     .from('citas')
     .select(`
-      id, fecha, duracion_min, estado, motivo, paciente_id, medico_id, acepta_adelanto,
+      id, fecha, duracion_min, estado, motivo, paciente_id, medico_id, acepta_adelanto, procedimiento_id, precio,
       pacientes(id, nombre, apellido_paterno)
     `)
     .eq('clinica_id', clinicaId)
@@ -110,6 +112,8 @@ async function queryCitas(clinicaId: string, desde: string, hasta: string, medic
       room: 'Consultorio',
       medicoId: c.medico_id,
       aceptaAdelanto: c.acepta_adelanto,
+      procedimientoId: c.procedimiento_id ?? null,
+      precio: c.precio == null ? null : Number(c.precio),
     };
   });
 }
@@ -253,6 +257,9 @@ export interface NuevaCita {
   motivo?: string | null;
   estado?: EstadoCita;
   acepta_adelanto?: boolean;
+  /** Procedimiento del catálogo y su precio estimado (instantánea). Opcionales. */
+  procedimiento_id?: string | null;
+  precio?: number | null;
 }
 
 /**
@@ -279,6 +286,8 @@ export async function createCita(
       estado: input.estado ?? 'programada',
       acepta_adelanto: input.acepta_adelanto ?? false,
       created_by: createdBy,
+      // Solo si hay procedimiento: así una cita normal no toca las columnas nuevas.
+      ...(input.procedimiento_id ? { procedimiento_id: input.procedimiento_id, precio: input.precio ?? null } : {}),
     })
     .select('id')
     .single<{ id: string }>();

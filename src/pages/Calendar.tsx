@@ -7,6 +7,7 @@ import {
   cancelarCita, reagendarCita,
   checkConflicto, type ConflictoInfo,
 } from '../lib/citas';
+import { formatoPrecio, type Procedimiento } from '../lib/procedimientos';
 import { fetchPacientesSelect, type PacienteSelect } from '../lib/patients';
 import { fetchCandidatos, crearOportunidad, actualizarAdelanto } from '../lib/oportunidades';
 import { Button, Segmented, useIsMobile } from '../components';
@@ -19,6 +20,7 @@ import {
   Field, FocusInput, FocusSelect, PickerTrigger, Pills,
   ModalFooter, CancelBtn, PrimaryBtn,
   useMedicos, useCitasDelDia, computeOcupados, TimeSlotGrid, PatientSearchField,
+  ProcedimientoCitaField, useCatalogoProcedimientos, opcionesDuracion,
   OportunidadModal, type OportunidadModalSingle,
 } from './Clinical';
 
@@ -265,7 +267,7 @@ function CitaDetailModal({ appt, open, onClose, onChanged, onCancelled, go, toas
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: '100%', maxWidth: 400, background: 'var(--surface-container-high)', borderRadius: 16, boxShadow: 'var(--elev-3)', overflow: 'hidden', animation: 'scaleIn .18s cubic-bezier(.2,0,0,1)' }}
+        style={{ width: '100%', maxWidth: 400, background: 'var(--card-bg)', borderRadius: 16, boxShadow: 'var(--elev-3)', overflow: 'hidden', animation: 'scaleIn .18s cubic-bezier(.2,0,0,1)' }}
       >
         {/* Cabecera coloreada según el tipo de cita (color pastel en todo el encabezado) */}
         <div style={{ background: meta.header, padding: '18px 22px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
@@ -291,6 +293,7 @@ function CitaDetailModal({ appt, open, onClose, onChanged, onCancelled, go, toas
           {appt.reason && appt.reason !== 'Cita' && appt.reason !== meta.label && (
             <div style={{ marginTop: 12, fontSize: 12.5, color: meta.ink, background: 'rgba(255,255,255,0.55)', borderRadius: 7, padding: '8px 11px', lineHeight: 1.5 }}>
               {appt.reason}
+              {appt.precio != null && <strong style={{ marginLeft: 8 }}>· {formatoPrecio(appt.precio)} est.</strong>}
             </div>
           )}
         </div>
@@ -750,6 +753,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
   const [tipo,       setTipo]       = useState<TipoCita>('consulta');
   const [adelanto,   setAdelanto]   = useState(false);
   const [pickerOpen, setPickerOpen] = useState<null | 'date'>(null);
+  const [proc,        setProc]        = useState<Procedimiento | null>(null);
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState('');
   const [conflicto,  setConflicto]  = useState<ConflictoInfo | null>(null);
@@ -757,6 +761,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
   const dateStr = `${dateVal.y}-${pad(dateVal.m + 1)}-${pad(dateVal.d)}`;
   const citasDelDia = useCitasDelDia(clinicaId, medicoSel, dateStr);
   const ocupados = computeOcupados(citasDelDia, Number(dur) || 30);
+  const catalogo = useCatalogoProcedimientos(open, clinicaId);
 
   useEffect(() => {
     if (horaSel && ocupados.has(horaSel)) setHoraSel('');
@@ -771,7 +776,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
     if (open && date) {
       setDateVal({ d: date.getDate(), m: date.getMonth(), y: date.getFullYear() });
       setHoraSel('');
-      setDur('30'); setTipo('consulta'); setAdelanto(false);
+      setDur('30'); setTipo('consulta'); setAdelanto(false); setProc(null);
       setPickerOpen(null); setSaving(false); setError(''); setConflicto(null);
       // Si el propio usuario es médico se autoselecciona; si no (asistente), vacío.
       setMedicoSel(account.puedeEmitirClinico ? creatorId : '');
@@ -797,9 +802,10 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
       paciente_id: pid,
       fecha,
       duracion_min: Number(dur) || 30,
-      motivo: encodeMotivoConTipo(tipo, TIPO_META[tipo].label),
+      motivo: encodeMotivoConTipo(tipo, proc?.nombre ?? TIPO_META[tipo].label),
       estado: 'programada',
       acepta_adelanto: adelanto,
+      procedimiento_id: proc?.id ?? null, precio: proc?.precio ?? null,
     });
     toast('Cita agendada correctamente');
     onCreated(); onClose();
@@ -869,6 +875,12 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
           </Field>
         )}
 
+        {/* Procedimiento — solo si la clínica tiene catálogo; fija la duración */}
+        {catalogo.length > 0 && (
+          <ProcedimientoCitaField catalogo={catalogo} value={proc}
+            onChange={(p) => { setProc(p); setError(''); setConflicto(null); if (p) { setDur(String(p.duracion_min)); setHoraSel(''); } }} />
+        )}
+
         {/* Fecha / Duración — className grid-2 para que colapse a 1 columna en
             móvil (<560px, ver index.css), igual que el resto de formularios. */}
         <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 22 }}>
@@ -883,7 +895,7 @@ function QuickCitaModal({ open, date, onClose, onCreated, toast, clinicaId, medi
           </div>
           <div>
             <FL>Duración (min)</FL>
-            <Pills radius={9} options={['15', '30', '45', '60', '90'].map((d) => ({ value: d, label: d }))} value={dur} onChange={setDur} />
+            <Pills radius={9} options={opcionesDuracion(['15', '30', '45', '60', '90'], dur)} value={dur} onChange={setDur} />
           </div>
         </div>
 

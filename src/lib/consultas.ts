@@ -22,6 +22,10 @@ export interface ApptUI {
   // la lista de espera de adelanto de citas, que solo mira agenda a futuro.
   medicoId?: string;
   aceptaAdelanto?: boolean;
+  /** Procedimiento del catálogo con el que se agendó (el nombre ya va en `reason`) y su
+   *  precio estimado en MXN al agendar. Solo lo puebla citas.ts. */
+  procedimientoId?: string | null;
+  precio?: number | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

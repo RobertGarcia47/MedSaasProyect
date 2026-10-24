@@ -9,6 +9,7 @@ import { Icon, Button, Card, IconButton, Dialog, TextField, Select } from '../co
 import type { PacienteSelect } from '../lib/patients';
 import type { SexoEnum, GrupoSanguineo } from '../lib/types';
 import { fetchMedicosClinica, fetchMedicosAsignados, type MedicoOption } from '../lib/equipo';
+import { fetchProcedimientos, formatoPrecio, type Procedimiento } from '../lib/procedimientos';
 import {
   fetchCandidatos, fetchOportunidadesAbiertas, asignarOportunidad, descartarOportunidad,
   type CandidatoUI, type OportunidadUI,
@@ -461,7 +462,7 @@ export function PatientSearchField({ patients, value, onChange, required }: {
           <button
             type="button"
             onClick={() => { onChange(''); setBusqueda(''); }}
-            style={{ flexShrink: 0, background: 'var(--surface-container-highest)', border: 'none', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ flexShrink: 0, background: 'var(--card-bg)', border: '1.5px solid var(--primary)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Cambiar
           </button>
@@ -498,6 +499,90 @@ export function PatientSearchField({ patients, value, onChange, required }: {
                   </div>
                 ))
               )}
+            </div>
+          )}
+        </div>
+      )}
+    </Field>
+  );
+}
+
+/* ── Procedimiento de la cita (opcional) ─────────────────────────────────────
+   Si la clínica tiene catálogo de procedimientos, la cita puede llevar uno: al elegirlo
+   el modal toma su duración, y la cita guarda su precio estimado y su nombre como motivo.
+   Sin catálogo (otras especialidades) el campo ni se muestra. */
+export function useCatalogoProcedimientos(open: boolean, clinicaId: string | null): Procedimiento[] {
+  const [catalogo, setCatalogo] = useState<Procedimiento[]>([]);
+  useEffect(() => {
+    if (!open || !clinicaId) return;
+    fetchProcedimientos(clinicaId).then((l) => setCatalogo(l.filter((p) => p.activo))).catch(() => setCatalogo([]));
+  }, [open, clinicaId]);
+  return catalogo;
+}
+
+/** Opciones de duración: las de siempre más la del procedimiento elegido si no coincide. */
+export function opcionesDuracion(base: string[], actual: string): { value: string; label: string }[] {
+  return [...new Set([...base, actual])].sort((a, b) => Number(a) - Number(b)).map((d) => ({ value: d, label: d }));
+}
+
+export function ProcedimientoCitaField({ catalogo, value, onChange }: {
+  catalogo: Procedimiento[];
+  value: Procedimiento | null;
+  onChange: (p: Procedimiento | null) => void;
+}) {
+  const [busqueda, setBusqueda] = useState('');
+  const [abierto, setAbierto] = useState(false);
+  const sinAcentos = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const q = sinAcentos(busqueda.trim());
+  const filtrados = catalogo
+    .filter((p) => !q || sinAcentos(`${p.codigo ?? ''} ${p.nombre} ${p.categoria ?? ''}`).includes(q))
+    .slice(0, 6);
+
+  return (
+    <Field label="Procedimiento (opcional)" icon="medical_services">
+      {value ? (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '9px 0 9px 30px', minHeight: 41, boxSizing: 'border-box' }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--on-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value.nombre}</div>
+            <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 1 }}>
+              {value.duracion_min} min · {value.precio != null ? formatoPrecio(value.precio) : 'Sin precio en el catálogo'}
+            </div>
+          </div>
+          <button type="button" onClick={() => { onChange(null); setBusqueda(''); }}
+            style={{ flexShrink: 0, background: 'var(--card-bg)', border: '1.5px solid var(--primary)', borderRadius: 8, padding: '5px 12px', fontSize: 12, fontWeight: 600, color: 'var(--primary)', cursor: 'pointer', fontFamily: 'inherit' }}>
+            Quitar
+          </button>
+        </div>
+      ) : (
+        <div style={{ position: 'relative' }}>
+          <FocusInput
+            value={busqueda}
+            onChange={(e) => { setBusqueda(e.target.value); setAbierto(true); }}
+            onFocus={() => setAbierto(true)}
+            onBlur={() => setTimeout(() => setAbierto(false), 150)}
+            placeholder="Busca un procedimiento del catálogo…"
+            autoComplete="off"
+          />
+          {abierto && filtrados.length > 0 && (
+            <div role="listbox" style={{
+              position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 20,
+              background: 'var(--card-bg)', borderRadius: 12, boxShadow: '0 12px 28px var(--shadow)',
+              border: '1px solid var(--outline-variant)', maxHeight: 260, overflowY: 'auto',
+            }}>
+              {filtrados.map((p) => (
+                <div key={p.id} role="option"
+                  onMouseDown={() => { onChange(p); setBusqueda(''); setAbierto(false); }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', cursor: 'pointer', borderBottom: '1px solid var(--outline-variant)' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-container-highest)'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'transparent'; }}
+                >
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--on-surface)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.nombre}</div>
+                    <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', marginTop: 1 }}>{[p.codigo, p.categoria, `${p.duracion_min} min`].filter(Boolean).join(' · ')}</div>
+                  </div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--on-surface)' }}>{p.precio != null ? formatoPrecio(p.precio) : '—'}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -1086,11 +1171,13 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
   const [tipo,        setTipo]       = useState('consulta');
   const [adelanto,    setAdelanto]   = useState(false);
   const [pickerOpen,  setPickerOpen] = useState<null | 'date'>(null);
+  const [proc, setProc] = useState<Procedimiento | null>(null);
   const [saving,      setSaving]     = useState(false);
 
   const dateStr = dateValToISO(dateVal);
   const citasDelDia = useCitasDelDia(account.clinicaId, medicoId, dateStr);
   const ocupados = computeOcupados(citasDelDia, Number(dur) || 30);
+  const catalogo = useCatalogoProcedimientos(open, account.clinicaId);
 
   // Si cambia médico/fecha/duración y el horario elegido ya no está libre, se limpia
   // — mejor pedir que elija de nuevo a que se guarde un choque sin darse cuenta.
@@ -1112,7 +1199,7 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
       // si no (asistente), se deja vacío y hay que elegir.
       setMedicoId(account.puedeEmitirClinico ? account.userId : '');
       setDateVal(initDate()); setHoraSel('');
-      setDur('30'); setTipo('consulta'); setAdelanto(false); setPickerOpen(null); setSaving(false);
+      setDur('30'); setTipo('consulta'); setAdelanto(false); setPickerOpen(null); setSaving(false); setProc(null);
     }
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1135,8 +1222,9 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
       const TIPO_LABELS: Record<string, string> = { consulta: 'Consulta', seguimiento: 'Seguimiento', revision: 'Revisión', urgencia: 'Urgencia' };
       await createCita(account.clinicaId!, medicoId, account.userId, {
         paciente_id: pid, fecha, duracion_min: Number(dur) || 30,
-        motivo: encodeMotivoConTipo(tipo, TIPO_LABELS[tipo] ?? tipo),
+        motivo: encodeMotivoConTipo(tipo, proc?.nombre ?? TIPO_LABELS[tipo] ?? tipo),
         acepta_adelanto: adelanto,
+        procedimiento_id: proc?.id ?? null, precio: proc?.precio ?? null,
       });
       toast?.('Cita agendada correctamente');
       onCreated?.(); onClose();
@@ -1188,6 +1276,12 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
             </Field>
           )}
 
+          {/* Procedimiento — solo si la clínica tiene catálogo; fija la duración */}
+          {catalogo.length > 0 && (
+            <ProcedimientoCitaField catalogo={catalogo} value={proc}
+              onChange={(p) => { setProc(p); if (p) { setDur(String(p.duracion_min)); setHoraSel(''); } }} />
+          )}
+
           {/* Fecha / Duración — className grid-2 para que colapse a 1 columna en
               móvil (<560px, ver index.css), igual que el resto de formularios. */}
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 22 }}>
@@ -1202,7 +1296,7 @@ export function AppointmentModal({ open, onClose, prefill, toast, onCreated }: A
             </div>
             <div>
               <label style={FL}>Duración (min)</label>
-              <Pills radius={9} options={['15', '30', '45', '60'].map((d) => ({ value: d, label: d }))} value={dur} onChange={setDur} />
+              <Pills radius={9} options={opcionesDuracion(['15', '30', '45', '60'], dur)} value={dur} onChange={setDur} />
             </div>
           </div>
 

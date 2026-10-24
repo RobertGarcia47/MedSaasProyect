@@ -3,6 +3,7 @@ import { useAccount } from '../context/AccountContext';
 import { countConsultas, type ApptUI } from '../lib/consultas';
 import { fetchCitasDia, fetchCitasMes, fetchPrimeraCitaIdPorPaciente, fetchConteoCitasPorDia, fetchProximasCitasClinica } from '../lib/citas';
 import { countPacientes } from '../lib/patients';
+import { formatoPrecio } from '../lib/procedimientos';
 import { countOportunidadesAbiertas } from '../lib/oportunidades';
 import { Icon, Button, Card, Avatar, StatusPill, IconButton } from '../components';
 import { PracticeStats } from '../components/PracticeStats';
@@ -179,6 +180,8 @@ function AmbientStrip({ appts, consultasHoy }: { appts: ApptUI[]; consultasHoy: 
   const huecos = encontrarHuecos(ordenadas).length;
   const conflictos = contarConflictos(visibles);
   const ok = conflictos === 0;
+  // Ingreso estimado del día: suma del precio de las citas con procedimiento (sin canceladas).
+  const estimado = visibles.reduce((s, a) => s + (a.precio ?? 0), 0);
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
@@ -186,7 +189,7 @@ function AmbientStrip({ appts, consultasHoy }: { appts: ApptUI[]; consultasHoy: 
       padding: '10px 16px', marginBottom: 16, fontSize: 13, color: 'var(--on-surface)',
     }}>
       <span style={{ width: 8, height: 8, borderRadius: '50%', background: ok ? 'var(--success)' : 'var(--error)', flexShrink: 0 }} />
-      <span>Hoy: <strong>{consultasHoy} cita{consultasHoy === 1 ? '' : 's'}</strong></span>
+      <span>Hoy: <strong>{consultasHoy} cita{consultasHoy === 1 ? '' : 's'}</strong>{estimado > 0 && <> · {formatoPrecio(estimado)} estimados</>}</span>
       <span style={{ color: 'var(--outline-variant)' }}>·</span>
       <span>{huecos} hueco{huecos === 1 ? '' : 's'} libre{huecos === 1 ? '' : 's'}</span>
       <span style={{ color: 'var(--outline-variant)' }}>·</span>
