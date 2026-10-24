@@ -301,43 +301,45 @@ export function WheelPickerSheet({ title, columns, onClose }: WheelPickerSheetPr
       onClick={onClose}
       style={{
         position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
-        background: 'var(--scrim)', borderRadius: 24,
+        background: 'var(--scrim)', borderRadius: 22,
         display: 'flex', alignItems: 'flex-end', zIndex: 20,
       }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: '100%', background: 'var(--surface-container-high)',
-          borderTopLeftRadius: 22, borderTopRightRadius: 22,
+          width: '100%', background: 'var(--card-bg)',
+          borderTopLeftRadius: 22, borderTopRightRadius: 22, overflow: 'hidden',
           boxShadow: '0 -16px 40px var(--shadow)',
-          padding: '16px 22px 22px',
         }}
       >
-        {/* Sheet header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--on-surface)' }}>{title}</div>
+        {/* Franja de título */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 22px', background: 'var(--primary-gradient)', color: 'var(--on-primary)',
+        }}>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div>
           <button
             onClick={onClose}
             style={{
-              border: 'none', background: 'transparent', color: 'var(--primary)',
-              fontFamily: 'inherit', fontSize: 15, fontWeight: 700,
-              cursor: 'pointer', padding: '6px 8px', borderRadius: 9,
+              border: 'none', background: 'color-mix(in srgb, var(--on-primary) 18%, transparent)', color: 'var(--on-primary)',
+              fontFamily: 'inherit', fontSize: 14.5, fontWeight: 700,
+              cursor: 'pointer', padding: '6px 16px', borderRadius: 999,
               transition: 'background .15s',
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'var(--primary-container)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--on-primary) 30%, transparent)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--on-primary) 18%, transparent)'; }}
           >
             Listo
           </button>
         </div>
 
         {/* Drum wheels */}
-        <div style={{ position: 'relative', height: IH * 5, overflow: 'hidden' }}>
+        <div style={{ position: 'relative', height: IH * 5, overflow: 'hidden', margin: '8px 22px 22px' }}>
           {/* Center selection pill — visual background only (z-index:0, behind columns) */}
           <div style={{
             position: 'absolute', left: 8, right: 8, top: IH * 2,
-            height: IH, background: 'var(--surface-container-highest)', borderRadius: 10, zIndex: 0,
+            height: IH, background: 'color-mix(in srgb, var(--primary) 12%, var(--card-bg))', borderRadius: 10, zIndex: 0,
           }} />
           {/* Columns */}
           <div style={{ position: 'relative', display: 'flex', height: '100%', zIndex: 1 }}>
@@ -346,13 +348,13 @@ export function WheelPickerSheet({ title, columns, onClose }: WheelPickerSheetPr
           {/* Fade top */}
           <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, height: IH * 2,
-            background: 'linear-gradient(var(--surface-container-high), transparent)',
+            background: 'linear-gradient(var(--card-bg), transparent)',
             pointerEvents: 'none', zIndex: 2,
           }} />
           {/* Fade bottom */}
           <div style={{
             position: 'absolute', bottom: 0, left: 0, right: 0, height: IH * 2,
-            background: 'linear-gradient(transparent, var(--surface-container-high))',
+            background: 'linear-gradient(transparent, var(--card-bg))',
             pointerEvents: 'none', zIndex: 2,
           }} />
           {/* Click-to-confirm overlay — transparent, above columns, captures click on center row */}
@@ -555,9 +557,11 @@ export function PickerTrigger({ icon, value, active, placeholder, onClick }: {
 }
 
 // Outer fixed backdrop + inner card (position:relative for picker overlay).
-// `accentBar`: franja de 4px en degradado del acento pegada al borde superior
-// — usada por los modales de agendar cita (ver "Modal con horarios en teal").
-export function ModalCard({ children, accentBar }: { children: React.ReactNode; accentBar?: boolean }) {
+// Tarjeta blanca con el título en una franja de color a todo el ancho (ver ModalBadge):
+// --modal-px es el margen lateral del contenido y la franja lo cancela con márgenes
+// negativos para llegar a los bordes. `accentBar` ya no hace nada: se conserva en la
+// firma para no tocar a los modales que lo pasan (la franja de título lo reemplaza).
+export function ModalCard({ children }: { children: React.ReactNode; accentBar?: boolean }) {
   return (
     <div className="modal-card-backdrop" style={{
       position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
@@ -566,17 +570,15 @@ export function ModalCard({ children, accentBar }: { children: React.ReactNode; 
       padding: 28, overflowY: 'auto', animation: 'fadeIn .2s ease',
     }}>
       <div className="modal-card" style={{
+        '--modal-px': '36px',
         position: 'relative', width: 580, maxWidth: '100%',
-        background: 'var(--surface-container-high)', borderRadius: 24,
+        background: 'var(--card-bg)', borderRadius: 22,
         boxShadow: '0 30px 70px var(--shadow)',
-        padding: '30px 36px 28px',
+        padding: '0 var(--modal-px) 28px',
         overflow: 'hidden',
         animation: 'scaleIn .25s cubic-bezier(.2,0,0,1)',
         fontFamily: 'var(--font-body, system-ui, sans-serif)',
-      }}>
-        {accentBar && (
-          <span style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, var(--primary), var(--accent-claro))' }} />
-        )}
+      } as React.CSSProperties}>
         {children}
       </div>
     </div>
@@ -588,34 +590,41 @@ export function CloseBtn({ onClose }: { onClose: () => void }) {
     <button
       onClick={onClose}
       style={{
-        position: 'absolute', top: 22, right: 22,
+        position: 'absolute', top: 20, right: 20, zIndex: 2,
         width: 36, height: 36, border: 'none', borderRadius: 10,
-        background: 'transparent', color: 'var(--on-surface-variant)',
+        background: 'transparent', color: 'var(--on-primary)',
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 20, transition: 'background .15s, color .15s',
+        fontSize: 20, transition: 'background .15s',
       }}
-      onMouseEnter={(e) => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'var(--surface-container-highest)'; b.style.color = 'var(--on-surface)'; }}
-      onMouseLeave={(e) => { const b = e.currentTarget as HTMLButtonElement; b.style.background = 'transparent'; b.style.color = 'var(--on-surface-variant)'; }}
+      aria-label="Cerrar"
+      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--on-primary) 18%, transparent)'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
     >
       <span className="ms">close</span>
     </button>
   );
 }
 
+/** Franja de título del modal: degradado de la marca a todo el ancho de la tarjeta. */
 export function ModalBadge({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 26 }}>
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 15,
+      margin: '0 calc(-1 * var(--modal-px, 36px)) 26px',
+      padding: '20px calc(var(--modal-px, 36px) + 44px) 20px var(--modal-px, 36px)',
+      background: 'var(--primary-gradient)', color: 'var(--on-primary)',
+    }}>
       <div style={{
-        width: 50, height: 50, borderRadius: 15, flexShrink: 0,
-        background: 'linear-gradient(145deg, var(--primary-container), var(--primary))',
-        boxShadow: '0 8px 18px color-mix(in srgb, var(--primary) 35%, transparent)',
+        width: 46, height: 46, borderRadius: 14, flexShrink: 0,
+        background: 'color-mix(in srgb, var(--on-primary) 18%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--on-primary) 30%, transparent)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <span className="ms" style={{ fontSize: 26, color: 'var(--on-primary-container)' }}>{icon}</span>
+        <span className="ms" style={{ fontSize: 25, color: 'var(--on-primary)' }}>{icon}</span>
       </div>
-      <div>
-        <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--on-surface)', letterSpacing: '-.3px', lineHeight: 1.2 }}>{title}</div>
-        <div style={{ fontSize: 13, color: 'var(--on-surface-variant)', marginTop: 2 }}>{subtitle}</div>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-.3px', lineHeight: 1.2 }}>{title}</div>
+        <div style={{ fontSize: 13, marginTop: 2, color: 'color-mix(in srgb, var(--on-primary) 90%, transparent)' }}>{subtitle}</div>
       </div>
     </div>
   );

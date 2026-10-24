@@ -371,7 +371,7 @@ export function Dialog({ open, onClose, children, width = 560, style = {} }) {
       animation: 'fadeIn .2s ease',
     }}>
       <div onClick={(e) => e.stopPropagation()} style={{
-        background: 'var(--surface-container-high)', borderRadius: 'var(--r-xl)', width, maxWidth: '100%',
+        background: 'var(--card-bg)', borderRadius: 'var(--r-xl)', width, maxWidth: '100%',
         maxHeight: '92vh', display: 'flex', flexDirection: 'column', boxShadow: 'var(--elev-3)',
         animation: 'scaleIn .25s cubic-bezier(.2,0,0,1)', ...style,
       }}>{children}</div>

@@ -465,7 +465,7 @@ a { color: inherit; text-decoration: none; }
   /* !important necesario: ModalCard fija el padding por estilo inline (Clinical.tsx),
      que le gana a una regla de clase normal sin importar el viewport. */
   .modal-card-backdrop { padding: 12px !important; align-items: flex-start !important; }
-  .modal-card { padding: 22px 18px 20px !important; margin-top: 12px; }
+  .modal-card { --modal-px: 18px !important; padding: 0 18px 20px !important; margin-top: 12px; }
   .grid-2, .grid-3, .grid-cedula { grid-template-columns: 1fr !important; }
 
   /* Modal de PDF (receta/informe): pie de 3 botones apilado, con la acción
