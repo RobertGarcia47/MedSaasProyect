@@ -357,6 +357,14 @@ a { color: inherit; text-decoration: none; }
 
 /* ---------- page / layout ---------- */
 .page-pad { padding: 32px 36px 48px; }
+
+/* Ancho máximo del contenido (--page-max, lo fija cada pantalla desde App.tsx según la
+   ruta; 1280px por defecto). En pantallas grandes la página queda centrada con aire a
+   los lados en vez de estirarse. +72px = el relleno lateral de .page-pad, para que
+   --page-max sea el ancho del CONTENIDO. Las pantallas con su propio maxWidth inline
+   (Perfil, estados de error) lo conservan. */
+.density-regular { --page-edge: max(28px, calc((100% - var(--page-max, 1280px)) / 2)); }
+.page-pad { max-width: calc(var(--page-max, 1280px) + 72px); margin-inline: auto; }
 .density-compact .page-pad { padding: 22px 26px 36px; }
 .density-comfy  .page-pad { padding: 44px 48px 60px; }
 

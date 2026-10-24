@@ -229,7 +229,7 @@ export function Informe({ go, goBack, toast, patientId }: {
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
 
       {/* ── Header sticky ─────────────────────────────────────────────────── */}
-      <div className="clinical-topbar" style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--surface)', borderBottom: '1px solid var(--outline-variant)', padding: '10px 28px', display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div className="clinical-topbar" style={{ position: 'sticky', top: 0, zIndex: 20, background: 'var(--surface)', borderBottom: '1px solid var(--outline-variant)', padding: '10px var(--page-edge)', display: 'flex', alignItems: 'center', gap: 12 }}>
         {goBack && (
           <button onClick={goBack} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 10, border: '1px solid var(--outline-variant)', background: 'var(--surface-container)', color: 'var(--on-surface-variant)', cursor: 'pointer', fontSize: 13, fontWeight: 500, fontFamily: 'var(--font-body)', whiteSpace: 'nowrap', flexShrink: 0 }}>
             <Icon name="arrow_back" size={18} />Regresar
@@ -262,7 +262,7 @@ export function Informe({ go, goBack, toast, patientId }: {
       </div>
 
       {/* ── Cuerpo 2 columnas ──────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', maxWidth: 1680, width: '100%', margin: '0 auto', padding: '24px 28px 40px' }} className="consulta-body">
+      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', maxWidth: 'calc(var(--page-max, 1440px) + 56px)', width: '100%', margin: '0 auto', padding: '24px 28px 40px' }} className="consulta-body">
 
         {/* ── Rail izquierdo ──────────────────────────────────────────────── */}
         <div style={{ width: 408, flex: 'none', position: 'sticky', top: 96, display: 'flex', flexDirection: 'column', gap: 18 }} className="consulta-rail">

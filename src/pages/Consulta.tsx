@@ -569,7 +569,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
       {/* ── Top app bar ── */}
       <div className="clinical-topbar" style={{
         position: 'sticky', top: 0, zIndex: 20, background: 'var(--surface)',
-        borderBottom: '1px solid var(--outline-variant)', padding: '10px 28px',
+        borderBottom: '1px solid var(--outline-variant)', padding: '10px var(--page-edge)',
         display: 'flex', alignItems: 'center', gap: 12,
       }}>
         {goBack && (
@@ -622,7 +622,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
       </div>
 
       {/* ── Cuerpo ── */}
-      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', maxWidth: 1680, width: '100%', margin: '0 auto', padding: '24px 28px 40px' }} className="consulta-body">
+      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start', maxWidth: 'calc(var(--page-max, 1440px) + 56px)', width: '100%', margin: '0 auto', padding: '24px 28px 40px' }} className="consulta-body">
         {/* Rail izquierdo */}
         <div style={{ width: 408, flex: 'none', position: 'sticky', top: 96, display: 'flex', flexDirection: 'column', gap: 18 }} className="consulta-rail">
           {/* Paciente */}

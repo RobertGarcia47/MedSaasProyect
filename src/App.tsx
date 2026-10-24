@@ -107,13 +107,21 @@ function Sidebar({ route, go, collapsed, setCollapsed, onLogout, doctor }) {
   );
 }
 
+// Ancho máximo del contenido por pantalla (px). Agenda más ancha porque la vista de
+// semana necesita espacio; las pantallas de captura clínica (Consulta, Receta, Informe,
+// Laboratorio) llevan columnas laterales y piden algo más que el resto.
+const ANCHO_PAGINA: Record<string, number> = {
+  calendar: 1600, consulta: 1440, receta: 1440, informe: 1440, laboratorio: 1440,
+};
+const ANCHO_PAGINA_DEFECTO = 1280;
+
 // ⌘ en Mac, Ctrl en el resto — solo para mostrar el atajo de la búsqueda global.
 const TECLA_ATAJO = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 
 /* ---------- Top nav ---------- */
 function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor, onSearch }) {
   return (
-    <header style={{ height: 68, flexShrink: 0, background: 'var(--surface-container-low)', borderBottom: '1px solid var(--outline-variant)', display: 'flex', alignItems: 'center', gap: 8, padding: '0 24px' }}>
+    <header style={{ height: 68, flexShrink: 0, background: 'var(--surface-container-low)', borderBottom: '1px solid var(--outline-variant)', display: 'flex', alignItems: 'center', gap: 8, padding: '0 max(24px, var(--page-edge))' }}>
       <BrandMark size={36} />
       <nav className="topnav-items" style={{ display: 'flex', gap: 2, marginLeft: 28, flex: 1 }}>
         {NAV.map((i) => {
@@ -533,7 +541,7 @@ export default function App() {
 
   return (
     <AccountCtx.Provider value={account}>
-    <div className="density-regular" style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--background)' }}>
+    <div className="density-regular" style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--background)', '--page-max': `${ANCHO_PAGINA[route.name] ?? ANCHO_PAGINA_DEFECTO}px` } as React.CSSProperties}>
       {account && <AccesoBanner account={account} go={go} />}
       {navStyle === 'topnav' && (
         <TopNav route={route} go={go} theme={theme} setTheme={setTheme} openProfileMenu={() => setPmenu(true)} doctor={doctor} onSearch={() => setSearchOpen(true)} />
