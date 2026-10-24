@@ -58,7 +58,7 @@ function StatCardShell({ icon, title, sub, extra, children }: {
   return (
     <Card variant="elevated" style={{ padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-        <span style={{ width: 4, height: 18, borderRadius: 2, background: '#0E6B5E', flexShrink: 0 }} />
+        <span style={{ width: 4, height: 18, borderRadius: 2, background: '#2F7D5B', flexShrink: 0 }} />
         <Icon name={icon} size={20} style={{ color: 'var(--primary)' }} />
         <span className="title-s" style={{ fontSize: 16 }}>{title}</span>
         {sub && <span style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>{sub}</span>}
@@ -108,10 +108,10 @@ function EmptyMini({ text }: { text: string }) {
 // de los tokens semánticos genéricos (--success/--error/--warning): esta
 // sección quería su propio lenguaje de color (ej. terracota en vez del rojo
 // puro para "Canceladas", para que alarme menos).
-const DX_COLOR = '#0E6B5E';
-const MED_COLOR = '#0E6B5E';
-const MED_CONTROLADO_COLOR = '#C98A1A';
-const TRACK_COLOR = '#E3EAE7';
+const DX_COLOR = '#2F7D5B';
+const MED_COLOR = '#3A6EA5';
+const MED_CONTROLADO_COLOR = '#D4912A';
+const TRACK_COLOR = '#EFE5D3';
 
 function RankedBar({ label, count, max, sub, color = DX_COLOR, badge }: {
   label: string; count: number; max: number; sub?: string; color?: string; badge?: string;
@@ -192,10 +192,10 @@ function TopMedicamentosCard({ resumen }: { resumen: MedicamentosResumen }) {
 // --success/--error/--warning): "Canceladas" usa terracota, no el rojo puro
 // del resto de la app, para que alarme menos que una urgencia real.
 const CITAS_COLOR = {
-  completadas: '#2E8A5F',
-  canceladas: '#C4553B',
-  noAsistio: '#C98A1A',
-  pendientes: '#8A96A0',
+  completadas: '#5E8E2F',
+  canceladas: '#C8523A',
+  noAsistio: '#D4912A',
+  pendientes: '#B9AF9F',
 };
 
 function CitasResumenCard({ resumen, rango, onRangoChange }: { resumen: CitasResumen; rango: number; onRangoChange: (v: number) => void }) {
@@ -253,15 +253,15 @@ function ConsultasPorDiaCard({ data }: { data: DiaSemanaCount[] }) {
       ) : (
         <ResponsiveContainer width="100%" height={200}>
           <BarChart data={data} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
-            <CartesianGrid stroke="#E4E0D8" strokeDasharray="3 3" vertical={false} />
+            <CartesianGrid stroke="#E9DFCE" strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="dia"
               tick={({ x, y, payload, index }) => (
-                <text x={x} y={Number(y) + 14} textAnchor="middle" fontSize={11} fontWeight={index === maxIdx ? 700 : 400} fill={index === maxIdx ? '#0E6B5E' : c['on-surface-variant']}>
+                <text x={x} y={Number(y) + 14} textAnchor="middle" fontSize={11} fontWeight={index === maxIdx ? 700 : 400} fill={index === maxIdx ? '#62408A' : c['on-surface-variant']}>
                   {payload.value}
                 </text>
               )}
-              axisLine={{ stroke: '#E4E0D8' }}
+              axisLine={{ stroke: '#E9DFCE' }}
               tickLine={false}
             />
             <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: c['on-surface-variant'] }} axisLine={false} tickLine={false} />
@@ -271,7 +271,7 @@ function ConsultasPorDiaCard({ data }: { data: DiaSemanaCount[] }) {
               labelStyle={{ color: c['on-surface'] }}
             />
             <Bar dataKey="count" name="Consultas" radius={[6, 6, 0, 0]}>
-              {data.map((_, i) => <Cell key={i} fill={i === maxIdx ? '#0E6B5E' : '#B9CFC8'} />)}
+              {data.map((_, i) => <Cell key={i} fill={i === maxIdx ? '#7B5AA6' : '#E0CFE6'} />)}
             </Bar>
           </BarChart>
         </ResponsiveContainer>

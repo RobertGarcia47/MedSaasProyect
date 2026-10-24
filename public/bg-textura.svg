@@ -5,10 +5,11 @@
     </filter>
   </defs>
 
-  <rect width="1600" height="900" fill="#FDFDFC"/>
+  <rect width="1600" height="900" fill="#FAF4EA"/>
 
   <!-- resplandores muy difusos, sin bordes duros: dan la profundidad de
-       "papel apilado" sin que se note ninguna línea recta de corte -->
-  <ellipse cx="1460" cy="30" rx="520" ry="360" fill="#F1EEE7" opacity=".65" filter="url(#blurBand)"/>
-  <ellipse cx="90" cy="870" rx="560" ry="390" fill="#ECE9E2" opacity=".6" filter="url(#blurBand)"/>
+       "papel apilado" sin que se note ninguna línea recta de corte.
+       Tonos crema/miel para la paleta cálida. -->
+  <ellipse cx="1460" cy="30" rx="520" ry="360" fill="#F6E3BC" opacity=".6" filter="url(#blurBand)"/>
+  <ellipse cx="90" cy="870" rx="560" ry="390" fill="#F1E3C8" opacity=".6" filter="url(#blurBand)"/>
 </svg>

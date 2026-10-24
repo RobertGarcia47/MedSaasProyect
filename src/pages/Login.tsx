@@ -63,11 +63,11 @@ function MedicalBackdrop({ children, style = {}, className = '' }) {
   return (
     <div className={className} style={{
       position: 'relative', overflow: 'hidden',
-      background: 'linear-gradient(150deg, #00504A 0%, #006A60 45%, #1E847A 100%)',
+      background: 'linear-gradient(150deg, #173F2E 0%, #1F5F43 45%, #2F7D5B 100%)',
       ...style,
     }}>
-      <div style={{ position: 'absolute', width: 460, height: 460, borderRadius: '50%', top: -140, right: -120, background: 'radial-gradient(circle, rgba(158,242,228,0.35), transparent 70%)' }} />
-      <div style={{ position: 'absolute', width: 380, height: 380, borderRadius: '50%', bottom: -120, left: -100, background: 'radial-gradient(circle, rgba(194,232,253,0.22), transparent 70%)' }} />
+      <div style={{ position: 'absolute', width: 460, height: 460, borderRadius: '50%', top: -140, right: -120, background: 'radial-gradient(circle, rgba(213,232,210,0.30), transparent 70%)' }} />
+      <div style={{ position: 'absolute', width: 380, height: 380, borderRadius: '50%', bottom: -120, left: -100, background: 'radial-gradient(circle, rgba(251,234,208,0.20), transparent 70%)' }} />
       <svg viewBox="0 0 800 120" preserveAspectRatio="none" style={{ position: 'absolute', bottom: '14%', left: 0, width: '120%', height: 90, opacity: 0.5 }}>
         <polyline points="0,60 120,60 150,60 165,20 185,100 205,40 225,60 360,60 390,60 405,30 425,90 445,60 600,60 640,60 655,28 675,92 695,60 800,60"
           fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />

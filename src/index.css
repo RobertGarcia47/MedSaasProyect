@@ -1,148 +1,157 @@
 /* ============================================================
-   MedSaaS — Material Design 3 foundation (teal medical theme)
+   MedSaaS — Material Design 3 foundation (paleta cálida "hoja y crema")
+   Verde hoja de marca, fondo crema, neutros en tonos tierra y cuatro
+   acentos de datos con significado fijo: azul = pacientes, violeta =
+   consultas, ámbar = atención, coral/terracota = alerta.
    ============================================================ */
 
 /* ---------- LIGHT THEME ---------- */
 :root {
-  --primary: #027966;
+  --primary: #2F7D5B;
   /* Degradado sutil de la marca hacia blanco — usado por los botones rellenos
      (Button filled). Se calcula con --primary, así sigue al acento elegido. */
   --primary-gradient: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 80%, white) 100%);
   --on-primary: #FFFFFF;
-  --primary-container: #9EF2E4;
-  --on-primary-container: #00201C;
-  --primary-fixed-dim: #82D5C8;
+  --primary-container: #D5E8D2;
+  --on-primary-container: #0F2E1F;
+  --primary-fixed-dim: #9CCBA9;
 
-  --secondary: #5B6B67;
+  --secondary: #6B6157;
   --on-secondary: #FFFFFF;
   --secondary-container: color-mix(in srgb, var(--secondary) 24%, #FFFFFF);
   --on-secondary-container: color-mix(in srgb, var(--secondary) 75%, black);
 
-  --tertiary: #0284C7;
+  --tertiary: #3A6EA5;
   --on-tertiary: #FFFFFF;
   --tertiary-container: color-mix(in srgb, var(--tertiary) 24%, #FFFFFF);
   --on-tertiary-container: color-mix(in srgb, var(--tertiary) 75%, black);
 
-  --error: #BA1A1A;
+  --error: #B3392A;
   --on-error: #FFFFFF;
-  --error-container: #FFDAD6;
-  --on-error-container: #410002;
+  --error-container: #FBE5DA;
+  --on-error-container: #4A1208;
 
-  --success: #2E6B4F;
-  --success-container: #B3F1CF;
-  --on-success-container: #002112;
-  --warning: #8A5A00;
+  --success: #4C7A25;
+  --success-container: #E4EBCF;
+  --on-success-container: #1F3A0E;
+  --warning: #8A4F0A;
   --on-warning: #FFFFFF;
-  --warning-container: #FFDDB3;
-  --on-warning-container: #2C1700;
+  --warning-container: #FBEAD0;
+  --on-warning-container: #3A2000;
 
   /* Paleta extendida por acento — los mismos 6 tonos de la muestra de
      Configuración (Base=primary, Análogo claro=accent-claro, Análogo
      frío=tertiary, Contraste cálido=accent-warm, Alerta=error fijo,
      Neutro=secondary). Usada por tipo de cita/informe y las tarjetas del
      Dashboard. Los fondos pastel y el tono oscuro para insignias se calculan
-     con color-mix() en vez de tener una variable aparte por matiz. */
-  --accent-claro: #0D8A6F; /* análogo claro — Seguimiento / nota obstétrica */
-  --accent-warm: #C2700A;  /* contraste cálido — Revisión / notas de resumen */
+     con color-mix() en vez de tener una variable aparte por matiz.
+     --accent-violet es el acento fijo de "consultas" (no cambia con el
+     acento de marca elegido). */
+  --accent-claro: #4A9A6B; /* análogo claro — Seguimiento / nota obstétrica */
+  --accent-warm: #B8761A;  /* contraste cálido — Revisión / notas de resumen */
+  --accent-violet: #7B5AA6; /* consultas — historial, notas clínicas */
 
-  /* El lienzo general va casi liso, sin teñir por acento — el color vive
-     en piezas deliberadas (StatChip, badges de tipo, botones), no en el
-     fondo de toda la página. Ver [[propuesta-color-tarjetas-solidas]].
-     La única textura de fondo es --app-bg-image (capa decorativa fija,
-     ver bloque "fondo decorativo" más abajo). */
-  --background: #FFFFFF;
+  /* El lienzo general es crema cálido con dos resplandores suaves
+     (--app-bg-image, capa decorativa fija, ver bloque "fondo decorativo"
+     más abajo). El color vive en piezas deliberadas (StatChip, badges de
+     tipo, botones), no teñido por acento. Ver [[propuesta-color-tarjetas-solidas]]. */
+  --background: #FAF4EA;
   --app-bg-image: url('/bg-textura.svg');
-  --on-background: #161D1B;
+  --on-background: #2B2218;
   --surface: #FFFFFF;
-  --on-surface: #161D1B;
-  --surface-variant: #E7EAE7;
-  --on-surface-variant: #3F4946;
-  --outline: #6F7976;
-  --outline-variant: #C5CAC5;
+  --on-surface: #2B2218;
+  --surface-variant: #EFE6D6;
+  --on-surface-variant: #5E5449;
+  --outline: #86796A;
+  --outline-variant: #DDD0B8;
 
-  --surface-dim: #D5DBD8;
-  --surface-bright: #F4FBF8;
+  --surface-dim: #E3D8C5;
+  --surface-bright: #FFFBF3;
   --surface-container-lowest: #FFFFFF;
-  --surface-container-low: #F1F3F1;
+  --surface-container-low: #F7F0E3;
   /* Fondo de las tarjetas (Card elevated): blanco puro en claro para que destaquen
-     sobre el fondo decorativo; en oscuro sigue siendo el contenedor elevado. */
+     sobre el fondo crema; en oscuro sigue siendo el contenedor elevado. */
   --card-bg: #FFFFFF;
-  --surface-container: #ECEFEC;
-  --surface-container-high: #E6E9E6;
-  --surface-container-highest: #E0E4E0;
+  --surface-container: #F2EADC;
+  --surface-container-high: #EDE3D2;
+  --surface-container-highest: #E8DDCA;
 
-  --inverse-surface: #2B322F;
-  --inverse-on-surface: #ECF2EE;
-  --inverse-primary: #82D5C8;
+  --inverse-surface: #3A2F25;
+  --inverse-on-surface: #F6EEE0;
+  --inverse-primary: #9CCBA9;
 
   --scrim: rgba(0,0,0,0.32);
-  --shadow: rgba(0, 32, 28, 0.16);
+  --shadow: rgba(43, 34, 24, 0.16);
 
-  --elev-1: 0 1px 2px rgba(0,32,28,0.18), 0 1px 3px 1px rgba(0,32,28,0.10);
-  --elev-2: 0 1px 2px rgba(0,32,28,0.18), 0 2px 6px 2px rgba(0,32,28,0.10);
-  --elev-3: 0 4px 8px 3px rgba(0,32,28,0.12), 0 1px 3px rgba(0,32,28,0.18);
+  --elev-1: 0 1px 2px rgba(43,34,24,0.14), 0 1px 3px 1px rgba(43,34,24,0.08);
+  --elev-2: 0 1px 2px rgba(43,34,24,0.14), 0 2px 6px 2px rgba(43,34,24,0.08);
+  --elev-3: 0 4px 8px 3px rgba(43,34,24,0.10), 0 1px 3px rgba(43,34,24,0.14);
 
   --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 28px; --r-full: 999px;
 
-  --font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
-  --font-body: 'Public Sans', system-ui, sans-serif;
+  /* Figtree para toda la interfaz; Fraunces (serif) solo para saludos, títulos
+     de página y cifras grandes (ver .display-* / .headline-* más abajo). */
+  --font-display: 'Figtree', system-ui, sans-serif;
+  --font-body: 'Figtree', system-ui, sans-serif;
+  --font-serif: 'Fraunces', Georgia, serif;
 }
 
 /* ---------- DARK THEME ---------- */
 [data-theme="dark"] {
-  --primary: #82D5C8;
-  --on-primary: #003731;
-  --primary-container: #005048;
-  --on-primary-container: #9EF2E4;
+  --primary: #8CCBA6;
+  --on-primary: #0F3A27;
+  --primary-container: #1F5F43;
+  --on-primary-container: #CBEBD6;
 
-  --secondary: #A8B8B4;
-  --on-secondary: #1C3531;
-  --secondary-container: color-mix(in srgb, var(--secondary) 30%, #1A211F);
+  --secondary: #C9BBA6;
+  --on-secondary: #3A2F22;
+  --secondary-container: color-mix(in srgb, var(--secondary) 30%, #1E1913);
   --on-secondary-container: color-mix(in srgb, var(--secondary) 85%, white);
 
-  --tertiary: #7DD3FC;
-  --on-tertiary: #073447;
-  --tertiary-container: color-mix(in srgb, var(--tertiary) 30%, #1A211F);
+  --tertiary: #9DC1EA;
+  --on-tertiary: #0E2B4A;
+  --tertiary-container: color-mix(in srgb, var(--tertiary) 30%, #1E1913);
   --on-tertiary-container: color-mix(in srgb, var(--tertiary) 85%, white);
 
-  --error: #FFB4AB;
-  --on-error: #690005;
-  --error-container: #93000A;
-  --on-error-container: #FFDAD6;
+  --error: #FFB4A5;
+  --on-error: #5C1508;
+  --error-container: #8A2514;
+  --on-error-container: #FFDAD0;
 
-  --success: #98D4AE;
-  --success-container: #14523A;
-  --on-success-container: #B3F1CF;
-  --warning: #F8BC6E;
-  --on-warning: #2C1700;
-  --warning-container: #683E00;
-  --on-warning-container: #FFDDB3;
+  --success: #B5D68A;
+  --success-container: #34501A;
+  --on-success-container: #DCEFC0;
+  --warning: #F2BE6A;
+  --on-warning: #2E1A00;
+  --warning-container: #6B4408;
+  --on-warning-container: #FBE3BC;
 
-  --accent-claro: #5EC9AA;
+  --accent-claro: #7FC59A;
   --accent-warm: #F0B966;
+  --accent-violet: #C4A6E6;
 
-  --background: #0E1513;
+  --background: #16120E;
   --app-bg-image: none;
-  --on-background: #DEE4E1;
-  --surface: #0E1513;
-  --on-surface: #DEE4E1;
-  --surface-variant: #3F4946;
-  --on-surface-variant: #BEC9C5;
-  --outline: #899390;
-  --outline-variant: #3F4946;
+  --on-background: #EDE4D6;
+  --surface: #16120E;
+  --on-surface: #EDE4D6;
+  --surface-variant: #4A4033;
+  --on-surface-variant: #CDBFAC;
+  --outline: #988B79;
+  --outline-variant: #4A4033;
 
-  --surface-dim: #0E1513;
-  --surface-bright: #343B39;
-  --surface-container-lowest: #090F0E;
-  --surface-container-low: #161D1B;
+  --surface-dim: #16120E;
+  --surface-bright: #3B342B;
+  --surface-container-lowest: #110E0B;
+  --surface-container-low: #1E1913;
   --card-bg: var(--surface-container-low);
-  --surface-container: #1A211F;
-  --surface-container-high: #252B2A;
-  --surface-container-highest: #2F3634;
+  --surface-container: #231D17;
+  --surface-container-high: #2D261E;
+  --surface-container-highest: #382F26;
 
-  --inverse-surface: #DEE4E1;
-  --inverse-on-surface: #2B322F;
-  --inverse-primary: #027966;
+  --inverse-surface: #EDE4D6;
+  --inverse-on-surface: #2D261E;
+  --inverse-primary: #2F7D5B;
 
   --scrim: rgba(0,0,0,0.5);
   --shadow: rgba(0,0,0,0.5);
@@ -268,12 +277,14 @@ body { transition: background-color .35s ease, color .35s ease; }
 .ms.fill { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
 
 /* ---------- type scale ---------- */
-.display-l { font-family: var(--font-display); font-weight: 700; font-size: 57px; line-height: 64px; letter-spacing: -.5px; }
-.display-m { font-family: var(--font-display); font-weight: 700; font-size: 45px; line-height: 52px; }
-.display-s { font-family: var(--font-display); font-weight: 700; font-size: 36px; line-height: 44px; }
-.headline-l { font-family: var(--font-display); font-weight: 700; font-size: 32px; line-height: 40px; }
-.headline-m { font-family: var(--font-display); font-weight: 600; font-size: 28px; line-height: 36px; }
-.headline-s { font-family: var(--font-display); font-weight: 600; font-size: 24px; line-height: 32px; }
+/* Display y headline van en Fraunces (serif) a peso 500: dan calidez a saludos,
+   títulos de página y cifras grandes. El resto de la interfaz es Figtree. */
+.display-l { font-family: var(--font-serif); font-weight: 500; font-size: 57px; line-height: 64px; letter-spacing: -.02em; }
+.display-m { font-family: var(--font-serif); font-weight: 500; font-size: 45px; line-height: 52px; letter-spacing: -.015em; }
+.display-s { font-family: var(--font-serif); font-weight: 500; font-size: 36px; line-height: 44px; letter-spacing: -.01em; }
+.headline-l { font-family: var(--font-serif); font-weight: 500; font-size: 36px; line-height: 44px; letter-spacing: -.02em; }
+.headline-m { font-family: var(--font-serif); font-weight: 500; font-size: 30px; line-height: 38px; letter-spacing: -.01em; }
+.headline-s { font-family: var(--font-serif); font-weight: 500; font-size: 24px; line-height: 32px; letter-spacing: -.005em; }
 .title-l { font-family: var(--font-display); font-weight: 600; font-size: 22px; line-height: 28px; }
 .title-m { font-family: var(--font-body); font-weight: 600; font-size: 16px; line-height: 24px; letter-spacing: .15px; }
 .title-s { font-family: var(--font-body); font-weight: 600; font-size: 14px; line-height: 20px; letter-spacing: .1px; }
@@ -331,21 +342,23 @@ input:-webkit-autofill, textarea:-webkit-autofill {
   transition: background-color 9999s ease-in-out 0s;
 }
 
-/* ---------- Dashboard: Accesos rápidos (botones con degradado) ----------
-   El color de cada botón viene por variables inline (--qa-grad/--qa-shadow-*,
-   ver QuickAccessGrid en Dashboard.tsx) — la clase solo pone la forma común
-   y el :hover, que un style inline no puede expresar. */
+/* ---------- Dashboard: Accesos rápidos (tinte suave + icono sólido) ----------
+   El color de cada botón viene por una variable inline (--qa-color, ver
+   QuickAccessGrid en Dashboard.tsx). Fondo = tinte suave del color, texto =
+   el color oscurecido (contraste AA), icono en un cuadro sólido. La clase solo
+   pone la forma común y el :hover, que un style inline no puede expresar. */
 .quick-access-btn {
   display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 22px 12px; border: none; border-radius: 12px; cursor: pointer; position: relative;
-  background-image: var(--qa-grad);
-  box-shadow: 0 6px 16px -6px var(--qa-shadow-a);
-  transition: transform .15s ease, box-shadow .15s ease, background-image .15s ease;
+  padding: 20px 12px; border: 1px solid color-mix(in srgb, var(--qa-color) 18%, transparent);
+  border-radius: 16px; cursor: pointer; position: relative;
+  background: color-mix(in srgb, var(--qa-color) 12%, var(--card-bg));
+  color: color-mix(in srgb, var(--qa-color) 72%, var(--on-surface));
+  transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
 }
 .quick-access-btn:hover {
-  background-image: var(--qa-grad-hover);
+  background: color-mix(in srgb, var(--qa-color) 20%, var(--card-bg));
   transform: translateY(-2px);
-  box-shadow: 0 10px 22px -8px var(--qa-shadow-b);
+  box-shadow: 0 8px 18px -10px color-mix(in srgb, var(--qa-color) 70%, transparent);
 }
 .quick-access-btn:active { transform: translateY(0); }
 
@@ -471,7 +484,7 @@ a { color: inherit; text-decoration: none; }
   /* El fondo real de la página (html/body) queda fuera de .practice-stats-print
      (ver override de variables más abajo) — sin esto, el papel sale con el
      fondo oscuro si el médico tiene modo oscuro activo. */
-  html, body { background: #ffffff !important; color: #161D1B !important; }
+  html, body { background: #ffffff !important; color: #2B2218 !important; }
 
   /* Truco estándar: oculta todo, vuelve a mostrar solo la sección objetivo y
      su contenido, y la reposiciona en la esquina — así no importa qué más
@@ -496,12 +509,12 @@ a { color: inherit; text-decoration: none; }
   /* Fuerza colores de tema claro dentro de la sección, sin importar si el
      usuario tiene modo oscuro activo — en papel siempre debe verse en claro. */
   .practice-stats-print {
-    --surface: #ffffff; --on-surface: #161D1B;
-    --surface-container-low: #EFF5F2; --surface-container: #E9EFEC;
-    --surface-container-high: #E3EAE7; --surface-container-highest: #DEE4E1;
-    --on-surface-variant: #3F4946; --outline-variant: #BEC9C5;
-    --primary: #027966; --on-primary: #FFFFFF;
-    --success: #2E6B4F; --error: #BA1A1A; --warning: #8A5A00; --outline: #6F7976;
+    --surface: #ffffff; --on-surface: #2B2218;
+    --surface-container-low: #F7F0E3; --surface-container: #F2EADC;
+    --surface-container-high: #EDE3D2; --surface-container-highest: #E8DDCA;
+    --on-surface-variant: #5E5449; --outline-variant: #DDD0B8;
+    --primary: #2F7D5B; --on-primary: #FFFFFF;
+    --success: #4C7A25; --error: #B3392A; --warning: #8A4F0A; --outline: #86796A;
     --elev-1: none; --elev-2: none; --elev-3: none;
   }
 }

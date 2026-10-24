@@ -125,31 +125,34 @@ function Sparkline({ values, tone }: { values: number[]; tone: string }) {
 }
 
 function StatChip({ icon, label, value, tone = 'primary', onClick, pulse, delta, spark }: {
-  icon: string; label: string; value: string | number; tone?: 'primary' | 'tertiary' | 'secondary' | 'warning'; onClick?: () => void; pulse?: boolean;
+  icon: string; label: string; value: string | number; tone?: 'primary' | 'tertiary' | 'violet' | 'warning'; onClick?: () => void; pulse?: boolean;
   /** ej. "+2" — comparación breve contra el periodo anterior (ayer/mes pasado). */
   delta?: { text: string; positive: boolean; vs?: string };
   /** últimos N días para el mini-gráfico; se omite si hay menos de 2 puntos. */
   spark?: number[];
 }) {
+  // Cada tono tiene un significado fijo en toda la app: verde = citas, azul =
+  // pacientes, violeta = consultas, ámbar = atención. Tinte suave + icono sólido.
   const tones: Record<string, string> = {
     primary:   'var(--primary)',
     tertiary:  'var(--tertiary)',
-    secondary: 'var(--secondary)',
-    warning:   'var(--warning)',
+    violet:    'var(--accent-violet)',
+    warning:   'var(--accent-warm)',
   };
   const fg = tones[tone] ?? tones.primary;
   return (
     <div onClick={onClick} className={onClick ? 'state-layer' : ''} style={{
-      flex: 1, minWidth: 0, display: 'flex', alignItems: 'stretch', position: 'relative',
-      background: 'var(--surface)', border: '1px solid var(--outline-variant)',
+      flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 14, position: 'relative',
+      background: 'var(--card-bg)', border: '1px solid var(--outline-variant)',
       borderRadius: 'var(--r-lg)', overflow: 'hidden', cursor: onClick ? 'pointer' : 'default',
+      padding: '14px 16px',
     }}>
-      <div style={{ width: 54, flexShrink: 0, background: fg, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <Icon name={icon} size={22} fill />
+      <div style={{ width: 46, height: 46, flexShrink: 0, borderRadius: 14, background: `color-mix(in srgb, ${fg} 14%, var(--card-bg))`, color: fg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name={icon} size={24} fill />
       </div>
-      <div style={{ minWidth: 0, padding: '12px 16px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-          <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, lineHeight: 1, letterSpacing: '-1px', color: 'var(--on-surface)' }}>{value}</div>
+          <div style={{ fontFamily: 'var(--font-serif)', fontWeight: 500, fontSize: 30, lineHeight: 1, letterSpacing: '-.02em', color: 'var(--on-surface)' }}>{value}</div>
           {delta && (
             <span style={{ fontSize: 10.5, fontWeight: 700, color: delta.positive ? 'var(--success)' : 'var(--on-surface-variant)', whiteSpace: 'nowrap' }}>
               {delta.text}{delta.vs && <span style={{ fontWeight: 400, color: 'var(--on-surface-variant)' }}> {delta.vs}</span>}
@@ -448,13 +451,14 @@ function CalendarBig({ year, month, appts, onPrev, onNext, onPickDay }: {
 
 // ── Accesos rápidos ────────────────────────────────────────────────────────
 // Un color por acción (en vez del --primary plano) para distinguirlas de un
-// vistazo; violeta y coral se probaron y se descartaron (el coral se
-// confundía con el rojo de "Canceladas" en Panorama de tu práctica).
-const QUICK_ACCESS_COLORS: Record<string, { grad: string; gradHover: string; shadow: string }> = {
-  'Nuevo paciente': { grad: 'linear-gradient(135deg, #0B7A68 0%, #14B89A 100%)', gradHover: 'linear-gradient(135deg, #096B5B 0%, #10A88C 100%)', shadow: '#0E6B5E' },
-  'Agendar cita':   { grad: 'linear-gradient(135deg, #1F5FAF 0%, #3B9BF0 100%)', gradHover: 'linear-gradient(135deg, #1A52A0 0%, #328CE0 100%)', shadow: '#2F6497' },
-  'Crear receta':   { grad: 'linear-gradient(135deg, #5B4B8A 0%, #8C74C7 100%)', gradHover: 'linear-gradient(135deg, #4E3F78 0%, #7A64B5 100%)', shadow: '#5B4B8A' },
-  'Ver expediente': { grad: 'linear-gradient(135deg, #B8790F 0%, #F2B84B 100%)', gradHover: 'linear-gradient(135deg, #A86C0A 0%, #E6A93A 100%)', shadow: '#B8790F' },
+// vistazo; el coral se descartó (se confundía con el rojo de "Canceladas" en
+// Panorama de tu práctica). Tinte suave + icono sólido: el estilo vive en
+// .quick-access-btn (index.css) y solo recibe --qa-color.
+const QUICK_ACCESS_COLORS: Record<string, string> = {
+  'Nuevo paciente': 'var(--primary)',
+  'Agendar cita':   'var(--tertiary)',
+  'Crear receta':   'var(--accent-violet)',
+  'Ver expediente': 'var(--accent-warm)',
 };
 
 function QuickAccessGrid({ openModal, go, puedePrescribir }: { openModal: (type: string) => void; go: (name: string, params?: any) => void; puedePrescribir: boolean }) {
@@ -475,15 +479,12 @@ function QuickAccessGrid({ openModal, go, puedePrescribir }: { openModal: (type:
           return (
             <button
               key={label} onClick={fn} className="quick-access-btn"
-              style={{
-                '--qa-grad': c.grad, '--qa-grad-hover': c.gradHover,
-                '--qa-shadow-a': `${c.shadow}88`, '--qa-shadow-b': `${c.shadow}aa`,
-              } as React.CSSProperties}
+              style={{ '--qa-color': c } as React.CSSProperties}
             >
-              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'rgba(255,255,255,.22)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--qa-color)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <Icon name={ic} size={22} fill />
               </div>
-              <span style={{ fontSize: 14, fontWeight: 600, color: '#fff', textAlign: 'center', lineHeight: 1.2 }}>{label}</span>
+              <span style={{ fontSize: 14, fontWeight: 600, textAlign: 'center', lineHeight: 1.2 }}>{label}</span>
             </button>
           );
         })}
@@ -730,7 +731,7 @@ export function Dashboard({ go, openModal, toast, dataVersion = 0 }: { go: (name
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
             <StatChip icon="event_available" label="Citas hoy"     value={consultasHoy}   tone="primary"   onClick={() => go('calendar')} delta={deltaCitas} spark={sparkCitas} />
             <StatChip icon="groups"          label="Pacientes"     value={totalPacientes} tone="tertiary"  onClick={() => go('patients')} />
-            <StatChip icon="calendar_month"  label="Consultas mes" value={consultasMes}   tone="secondary" onClick={() => go('calendar')} delta={deltaMes} />
+            <StatChip icon="calendar_month"  label="Consultas mes" value={consultasMes}   tone="violet" onClick={() => go('calendar')} delta={deltaMes} />
             <StatChip icon="bolt" label="Oportunidades" value={oportunidades} tone="warning" pulse={oportunidades > 0} onClick={() => setOportModalOpen(true)} />
           </div>
 
