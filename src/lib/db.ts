@@ -10,8 +10,21 @@ import { supabase } from './supabase';
 
 export type Rol = 'owner' | 'medico' | 'asistente';
 
-export type AccentColor = 'teal' | 'blue' | 'indigo';
+/** Tema de diseño (columna `profiles.accent_color`, se aplica como <html data-accent>).
+ *  Los estilos de cada uno viven en index.css. */
+export type AccentColor = 'marino' | 'azul' | 'grafito' | 'verde';
+export const TEMA_DEFECTO: AccentColor = 'marino';
 export type ThemeMode = 'light' | 'dark';
+
+/** Convierte el valor guardado (incluidos los de antes del rediseño: teal / blue / indigo)
+ *  a un tema válido. 'teal' era el defecto de todos, así que pasa al nuevo defecto. */
+export function normalizarTema(raw: string | null | undefined): AccentColor {
+  switch (raw) {
+    case 'marino': case 'azul': case 'grafito': case 'verde': return raw;
+    case 'blue': return 'azul';
+    default: return TEMA_DEFECTO; // 'teal', 'indigo', null o desconocido
+  }
+}
 
 export interface Profile {
   id: string;
@@ -19,7 +32,7 @@ export interface Profile {
   apellido_paterno: string | null;
   apellido_materno: string | null;
   onboarding_completed: boolean;
-  accent_color: AccentColor;
+  accent_color: string;   // valor crudo de la base; usar normalizarTema()
   theme_mode: ThemeMode;
 }
 

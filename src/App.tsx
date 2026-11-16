@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Component } from 'react';
 import { supabase } from './lib/supabase';
-import { loadAccountContext, esPracticaDental, type AccountContext, type AccentColor, type ThemeMode } from './lib/db';
+import { loadAccountContext, esPracticaDental, normalizarTema, TEMA_DEFECTO, type AccountContext, type AccentColor, type ThemeMode } from './lib/db';
 import { AccountCtx } from './context/AccountContext';
 import { Icon, Button, IconButton, FAB, Avatar, Divider, Snackbar } from './components';
 import { Login, BrandMark } from './pages/Login';
@@ -121,8 +121,8 @@ const TECLA_ATAJO = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(n
 /* ---------- Top nav ---------- */
 function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor, onSearch }) {
   return (
-    <header style={{ height: 68, flexShrink: 0, background: 'var(--primary-gradient)', color: 'var(--on-primary)', boxShadow: '0 2px 14px color-mix(in srgb, var(--primary) 28%, transparent)', position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', gap: 8, padding: '0 max(24px, var(--page-edge))' }}>
-      <BrandMark size={36} onPrimary />
+    <header style={{ height: 68, flexShrink: 0, background: 'var(--nav-bg)', color: 'var(--nav-ink)', borderBottom: '1px solid var(--nav-border)', boxShadow: 'var(--nav-shadow)', position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', gap: 8, padding: '0 max(24px, var(--page-edge))' }}>
+      <BrandMark size={36} onNav />
       <nav className="topnav-items" style={{ display: 'flex', gap: 2, marginLeft: 28, flex: 1 }}>
         {NAV.map((i) => {
           const active = route.name === i.key || (i.key === 'patients' && route.name === 'patient');
@@ -130,8 +130,8 @@ function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor, onSearch 
             <button key={i.key} onClick={() => go(i.key)} className="state-layer" style={{
               display: 'flex', alignItems: 'center', gap: 8, height: 44, padding: '0 18px',
               borderRadius: 'var(--r-full)', border: 'none', cursor: 'pointer', position: 'relative',
-              background: active ? 'color-mix(in srgb, var(--on-primary) 22%, transparent)' : 'transparent',
-              color: active ? 'var(--on-primary)' : 'color-mix(in srgb, var(--on-primary) 86%, transparent)',
+              background: active ? 'var(--nav-active-bg)' : 'transparent',
+              color: active ? 'var(--nav-active-ink)' : 'color-mix(in srgb, var(--nav-ink) 86%, transparent)',
               fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14,
             }}>
               <Icon name={i.icon} size={20} fill={active} />{i.label}
@@ -140,12 +140,14 @@ function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor, onSearch 
         })}
       </nav>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <IconButton name="search" color="var(--on-primary)" tooltip={`Buscar (${TECLA_ATAJO}+K)`} onClick={onSearch} />
-        <IconButton name={theme === 'dark' ? 'light_mode' : 'dark_mode'} color="var(--on-primary)" tooltip="Tema" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
-        <IconButton name="notifications" color="var(--on-primary)" tooltip="Notificaciones" />
-        <div onClick={openProfileMenu} style={{ cursor: 'pointer', marginLeft: 4 }}>
+        <IconButton name="search" color="var(--nav-ink)" tooltip={`Buscar (${TECLA_ATAJO}+K)`} onClick={onSearch} />
+        <IconButton name={theme === 'dark' ? 'light_mode' : 'dark_mode'} color="var(--nav-ink)" tooltip="Tema" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
+        <IconButton name="notifications" color="var(--nav-ink)" tooltip="Notificaciones" />
+        <div onClick={openProfileMenu} role="button" tabIndex={0} aria-label="Menú de la cuenta"
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfileMenu(); } }}
+          style={{ cursor: 'pointer', marginLeft: 4 }}>
           <Avatar initials={doctor.initials} size={40}
-            style={{ background: 'color-mix(in srgb, var(--on-primary) 20%, transparent)', color: 'var(--on-primary)', boxShadow: 'inset 0 0 0 1.5px color-mix(in srgb, var(--on-primary) 55%, transparent)' }} />
+            style={{ background: 'var(--nav-active-bg)', color: 'var(--nav-ink)', boxShadow: 'inset 0 0 0 1.5px color-mix(in srgb, var(--nav-ink) 45%, transparent)' }} />
         </div>
       </div>
     </header>
@@ -354,7 +356,7 @@ export default function App() {
   const [authReady,  setAuthReady]  = useState(false);
   const [authError,  setAuthError]  = useState('');
   const [theme,     setThemeState]  = useState<ThemeMode>(() => (localStorage.getItem('theme_mode') as ThemeMode) || 'light');
-  const [accent,    setAccentState] = useState<AccentColor>(() => (localStorage.getItem('accent_color') as AccentColor) || 'teal');
+  const [accent,    setAccentState] = useState<AccentColor>(() => normalizarTema(localStorage.getItem('accent_color')) ?? TEMA_DEFECTO);
   const [route,     setRoute]     = useState<{ name: string; params: any }>({ name: 'dashboard', params: {} });
   const [prevRoute, setPrevRoute] = useState<{ name: string; params: any } | null>(null);
   const [navStyle,  setNavStyle]  = useState('topnav');
@@ -385,7 +387,10 @@ export default function App() {
   const setAccent = (a: AccentColor) => {
     setAccentState(a);
     localStorage.setItem('accent_color', a);
-    if (account) supabase.from('profiles').update({ accent_color: a }).eq('id', account.userId).then();
+    // Si falla (p. ej. falta correr sql/2026-11-16_tema_diseno.sql) el tema igual aplica en este
+    // navegador, pero no se recordaría en otros dispositivos.
+    if (account) supabase.from('profiles').update({ accent_color: a }).eq('id', account.userId)
+      .then(({ error }) => { if (error) console.warn('No se pudo guardar el tema de diseño:', error.message); });
   };
 
   // Aplica el guard: sesión → perfil → onboarding_completed → trial (§6.1).
@@ -418,7 +423,7 @@ export default function App() {
       setAuthError('');
       // La DB manda sobre lo local (sincroniza entre dispositivos).
       const { accent_color, theme_mode } = load.account.profile;
-      if (accent_color) { setAccentState(accent_color); localStorage.setItem('accent_color', accent_color); }
+      if (accent_color) { const t = normalizarTema(accent_color); setAccentState(t); localStorage.setItem('accent_color', t); }
       if (theme_mode) { setThemeState(theme_mode); localStorage.setItem('theme_mode', theme_mode); }
     } catch (e: any) {
       console.error('Error al resolver la sesión:', e);
@@ -576,7 +581,7 @@ export default function App() {
       <BottomNav route={route} go={go} />
 
       <div className="mobile-fab">
-        <FAB icon="add" onClick={() => openModal('appointment')} />
+        <FAB icon="add" ariaLabel="Nueva cita" onClick={() => openModal('appointment')} />
       </div>
 
       <ProfileMenu open={pmenu} onClose={() => setPmenu(false)} go={go} theme={theme} setTheme={setTheme} onLogout={onLogout} doctor={doctor} esDentista={esPracticaDental(account?.tipoProfesional)} />

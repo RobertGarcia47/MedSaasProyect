@@ -152,7 +152,7 @@ function StatChip({ icon, label, value, tone = 'primary', onClick, pulse, delta,
         <Icon name={icon} size={24} fill />
       </div>
       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0 6px', flexWrap: 'wrap' }}>
           <div style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 28, lineHeight: 1, letterSpacing: '-.02em', color: 'var(--on-surface)' }}>{value}</div>
           {delta && (
             <span style={{ fontSize: 10.5, fontWeight: 700, color: delta.positive ? 'var(--success)' : 'var(--on-surface-variant)', whiteSpace: 'nowrap' }}>
@@ -412,8 +412,8 @@ function CalendarBig({ year, month, appts, onPrev, onNext, onPickDay }: {
           </div>
         </div>
         <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-          <IconButton name="chevron_left" onClick={onPrev} style={{ border: '1px solid var(--outline-variant)' }} />
-          <IconButton name="chevron_right" onClick={onNext} style={{ border: '1px solid var(--outline-variant)' }} />
+          <IconButton name="chevron_left" tooltip="Mes anterior" onClick={onPrev} style={{ border: '1px solid var(--outline-variant)' }} />
+          <IconButton name="chevron_right" tooltip="Mes siguiente" onClick={onNext} style={{ border: '1px solid var(--outline-variant)' }} />
         </div>
       </div>
 
@@ -731,7 +731,9 @@ export function Dashboard({ go, openModal, toast, dataVersion = 0 }: { go: (name
         <>
           <AmbientStrip appts={appts} consultasHoy={consultasHoy} />
 
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+          {/* Cuadrícula (no flex): con flex + minWidth:0 las 4 tarjetas se encogían a ~80px en
+              móvil y el número quedaba recortado. Aquí pasan a 2×2 y en escritorio a 4 en fila. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 165px), 1fr))', gap: 12, marginBottom: 20 }}>
             <StatChip icon="event_available" label="Citas hoy"     value={consultasHoy}   tone="primary"   onClick={() => go('calendar')} delta={deltaCitas} spark={sparkCitas} />
             <StatChip icon="groups"          label="Pacientes"     value={totalPacientes} tone="tertiary"  onClick={() => go('patients')} />
             <StatChip icon="calendar_month"  label="Consultas mes" value={consultasMes}   tone="violet" onClick={() => go('calendar')} delta={deltaMes} />

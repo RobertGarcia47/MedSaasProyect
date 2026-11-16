@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAccount } from '../context/AccountContext';
 import { Switch, Select } from '../components';
@@ -15,11 +15,60 @@ import {
   type PlanUI, type MetodoPagoUI,
 } from '../lib/suscripciones';
 
-const ACENTOS: { id: AccentColor; nombre: string; desc: string; color: string }[] = [
-  { id: 'teal',   nombre: 'Verde clínico', desc: 'Identidad base de MedSaaS',   color: '#027966' },
-  { id: 'blue',   nombre: 'Azul médico',   desc: 'Tono azulado, hospitalario',  color: '#2D5DA0' },
-  { id: 'indigo', nombre: 'Morado',        desc: 'Tono violeta, distintivo',    color: '#5450A8' },
+// Temas de diseño. Los estilos reales viven en index.css ([data-accent="<id>"]); `p` son los colores
+// con los que se dibuja la vista previa, fijos para que cada tarjeta se vea igual sin importar el
+// tema activo. `claro` = la barra es blanca (el logo y el avatar llevan color).
+interface TemaVista { bg: string; surf: string; ink: string; ink2: string; line: string; pri: string; nav: string; navInk: string; navAct: string; navActInk: string; tint: string; tintInk: string; r: number; pill: boolean; claro: boolean }
+const TEMAS: { id: AccentColor; nombre: string; desc: string; defecto?: boolean; p: TemaVista }[] = [
+  { id: 'marino', nombre: 'Marino y coral', desc: 'Barra oscura y una acción cálida', defecto: true,
+    p: { bg: '#F6F5F3', surf: '#FFFFFF', ink: '#1B1F2A', ink2: '#5B6070', line: '#E1DFDA', pri: '#B83D16', nav: '#14263F', navInk: '#FFFFFF', navAct: 'rgba(255,255,255,.18)', navActInk: '#FFFFFF', tint: '#FBE3DA', tintInk: '#8A2F10', r: 8, pill: false, claro: false } },
+  { id: 'azul', nombre: 'Azul clínico', desc: 'Claro, sobrio y confiable',
+    p: { bg: '#F4F7FB', surf: '#FFFFFF', ink: '#14213D', ink2: '#55627A', line: '#E1E7F0', pri: '#1F5FD6', nav: '#FFFFFF', navInk: '#14213D', navAct: '#E8F0FD', navActInk: '#1F5FD6', tint: '#E8F0FD', tintInk: '#1F5FD6', r: 10, pill: false, claro: true } },
+  { id: 'grafito', nombre: 'Grafito', desc: 'Casi todo neutro, con un acento mínimo',
+    p: { bg: '#FAFAF9', surf: '#FFFFFF', ink: '#18181B', ink2: '#52525B', line: '#E4E4E7', pri: '#0F766E', nav: '#FFFFFF', navInk: '#18181B', navAct: '#F0F0EE', navActInk: '#18181B', tint: '#DDF0EE', tintInk: '#0F5F58', r: 8, pill: false, claro: true } },
+  { id: 'verde', nombre: 'Verde clásico', desc: 'El diseño original: verde hoja sobre crema',
+    p: { bg: '#FAF4EA', surf: '#FFFFFF', ink: '#2B2218', ink2: '#5E5449', line: '#DDD0B8', pri: '#2F7D5B', nav: '#2F7D5B', navInk: '#FFFFFF', navAct: 'rgba(255,255,255,.22)', navActInk: '#FFFFFF', tint: '#D5E8D2', tintInk: '#1F6B4A', r: 12, pill: true, claro: false } },
 ];
+
+/** Mini-pantalla de Inicio con la paleta y la forma del tema, para elegirlo viendo cómo queda. */
+function TemaVistaPrevia({ p }: { p: TemaVista }) {
+  const caja = (w: string) => <div style={{ height: 8, width: w, borderRadius: 4, background: p.line }} />;
+  return (
+    <div aria-hidden="true" style={{ background: p.bg, borderRadius: p.r, overflow: 'hidden', border: `1px solid ${p.line}`, fontFamily: 'var(--font-body)' }}>
+      <div style={{ height: 34, background: p.nav, borderBottom: p.claro ? `1px solid ${p.line}` : 'none', display: 'flex', alignItems: 'center', gap: 8, padding: '0 12px' }}>
+        <span style={{ width: 16, height: 16, borderRadius: 5, background: p.claro ? p.pri : 'rgba(255,255,255,.2)' }} />
+        <span style={{ fontSize: 11.5, fontWeight: 700, color: p.navInk }}>MedSaaS</span>
+        <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 600, padding: '3px 9px', borderRadius: 99, background: p.navAct, color: p.navActInk }}>Inicio</span>
+        <span style={{ fontSize: 10.5, color: p.navInk, opacity: .8 }}>Agenda</span>
+        <span style={{ fontSize: 10.5, color: p.navInk, opacity: .8 }}>Pacientes</span>
+        <span style={{ marginLeft: 'auto', width: 18, height: 18, borderRadius: '50%', background: p.claro ? p.tint : p.navAct }} />
+      </div>
+      <div style={{ padding: '12px 12px 14px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: p.ink }}>Buenos días, Jose</div>
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: '#fff', background: p.pri, padding: '5px 11px', borderRadius: p.pill ? 99 : p.r }}>+ Nueva cita</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {[['4', 'Citas hoy'], ['128', 'Pacientes'], ['2', 'Pendientes']].map(([n, l]) => (
+            <div key={l} style={{ flex: 1, background: p.surf, border: `1px solid ${p.line}`, borderRadius: p.r, padding: '7px 9px' }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: p.ink, lineHeight: 1.1 }}>{n}</div>
+              <div style={{ fontSize: 9.5, color: p.ink2 }}>{l}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ background: p.surf, border: `1px solid ${p.line}`, borderRadius: p.r, overflow: 'hidden' }}>
+          {['María Torres', 'Diego Herrera'].map((n, i) => (
+            <div key={n} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', borderTop: i ? `1px solid ${p.line}` : 'none' }}>
+              <span style={{ width: 20, height: 20, borderRadius: '50%', background: p.tint, color: p.tintInk, fontSize: 9, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{n.split(' ').map((x) => x[0]).join('')}</span>
+              <span style={{ fontSize: 11, fontWeight: 600, color: p.ink, flex: 1 }}>{n}</span>
+              {caja('34px')}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ─── Tipos locales ─────────────────────────────────────────────────────────────
 
@@ -173,16 +222,18 @@ function PField({ label, value, onChange, type = 'text', placeholder, icon, full
   fullWidth?: boolean; readOnly?: boolean; required?: boolean; prefix?: string;
 }) {
   const [focused, setFocused] = useState(false);
+  const campoId = useId();
   const active = focused && !readOnly;
   return (
     <div style={{ gridColumn: fullWidth ? '1 / -1' : undefined }}>
-      <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 600, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>
+      <label htmlFor={campoId} style={{ display: 'block', fontSize: '10.5px', fontWeight: 600, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>
         {label}{required && ' *'}
       </label>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: active ? '1.5px solid var(--primary)' : '1px solid var(--outline-variant)', borderRadius: 8, padding: '9px 13px', background: readOnly ? 'var(--surface-container)' : 'var(--surface-container-highest)', transition: 'border-color .15s, background .15s' }}>
         {icon && <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{icon}</span>}
         {prefix && <span style={{ fontSize: 12, color: 'var(--on-surface-variant)', fontWeight: 700 }}>{prefix}</span>}
         <input
+          id={campoId}
           type={type}
           value={value}
           onChange={e => onChange?.(e.target.value)}
@@ -205,15 +256,17 @@ function PSelect({ label, value, onChange, options, icon, fullWidth }: {
   icon?: React.ReactNode; fullWidth?: boolean;
 }) {
   const [focused, setFocused] = useState(false);
+  const campoId = useId();
   const hasValue = value !== '';
   return (
     <div style={{ gridColumn: fullWidth ? '1 / -1' : undefined }}>
-      <label style={{ display: 'block', fontSize: '10.5px', fontWeight: 600, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>
+      <label htmlFor={campoId} style={{ display: 'block', fontSize: '10.5px', fontWeight: 600, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.6px', marginBottom: 5 }}>
         {label}
       </label>
       <div style={{ display: 'flex', alignItems: 'center', gap: 9, border: focused ? '1.5px solid var(--primary)' : '1px solid var(--outline-variant)', borderRadius: 8, padding: '9px 13px', background: 'var(--surface-container-highest)', transition: 'border-color .15s, background .15s' }}>
         {icon && <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>{icon}</span>}
         <select
+          id={campoId}
           value={value}
           onChange={e => onChange(e.target.value)}
           onFocus={() => setFocused(true)}
@@ -1163,7 +1216,7 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
   ];
 
   return (
-    <div className="page-pad fade-up" style={{ maxWidth: 780, margin: '0 auto', width: '100%' }}>
+    <div className="page-pad fade-up" style={{ maxWidth: 1160, margin: '0 auto', width: '100%' }}>
       {/* Encabezado de la página (fuera de la tarjeta) */}
       <h1 className="headline-l" style={{ letterSpacing: '-.3px', marginBottom: 6 }}>Configuración</h1>
       <p className="body-m" style={{ color: 'var(--on-surface-variant)', margin: '0 0 28px' }}>
@@ -1171,7 +1224,7 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
       </p>
 
       {/* Tarjeta principal — sin overflow:hidden (el indicador de tab usa margin-bottom:-1) */}
-      <div style={{ background: 'var(--surface)', borderRadius: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.07)' }}>
+      <div style={{ background: 'var(--surface)', borderRadius: 'var(--r-modal)', boxShadow: 'var(--elev-1)', border: '1px solid var(--outline-variant)' }}>
 
         {/* Tab bar */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--outline-variant)', padding: '0 20px', overflowX: 'auto' }}>
@@ -1198,45 +1251,54 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
         </div>
 
         {/* Contenido del tab activo */}
-        <div style={{ padding: '32px 36px', minHeight: 280 }}>
+        <div style={{ padding: '32px 40px 40px', minHeight: 280 }}>
 
           {tab === 'apariencia' && (
             <>
               <SectionHead icon="palette" title="Apariencia" />
               <SettingRow icon="dark_mode" title="Tema oscuro" desc="Cambia entre modo día y noche"
-                control={<Switch checked={theme === 'dark'} onChange={(v: boolean) => setTheme(v ? 'dark' : 'light')} />} />
+                control={<Switch ariaLabel="Tema oscuro" checked={theme === 'dark'} onChange={(v: boolean) => setTheme(v ? 'dark' : 'light')} />} />
               <SettingRow icon="menu" title="Navegación" desc="Elige entre barra superior o barra lateral"
-                control={<Select value={navStyle === 'topnav' ? 'Navbar superior' : 'Barra lateral'} onChange={(v: string) => setNavStyle(v === 'Navbar superior' ? 'topnav' : 'sidebar')} options={['Navbar superior', 'Barra lateral']} style={{ width: 170 }} />} />
+                control={<Select ariaLabel="Navegación" value={navStyle === 'topnav' ? 'Navbar superior' : 'Barra lateral'} onChange={(v: string) => setNavStyle(v === 'Navbar superior' ? 'topnav' : 'sidebar')} options={['Navbar superior', 'Barra lateral']} style={{ width: 170 }} />} />
               <SettingRow icon="translate" title="Idioma" desc="Idioma de la interfaz" last
-                control={<Select value={lang} onChange={setLang} options={['Español', 'English', 'Français', 'Português']} style={{ width: 160 }} />} />
+                control={<Select ariaLabel="Idioma" value={lang} onChange={setLang} options={['Español', 'English', 'Français', 'Português']} style={{ width: 160 }} />} />
 
               <div style={{ marginTop: 26, paddingTop: 22, borderTop: '1px solid var(--outline-variant)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 4 }}>
-                  <span className="ms" style={{ fontSize: 20, color: 'var(--primary)' }}>colors</span>
-                  <span style={{ fontSize: 14.5, fontWeight: 600, color: 'var(--on-surface)' }}>Color de acento</span>
+                  <span className="ms" style={{ fontSize: 20, color: 'var(--primary)' }}>palette</span>
+                  <span style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--on-surface)' }}>Tema de diseño</span>
                 </div>
-                <p className="body-m" style={{ color: 'var(--on-surface-variant)', margin: '0 0 16px', fontSize: 13.5 }}>
-                  Elige el tono con el que se resalta la interfaz. Es una preferencia personal: cada usuario ve la suya.
+                <p className="body-m" style={{ color: 'var(--on-surface-variant)', margin: '0 0 18px', fontSize: 13.5 }}>
+                  Cambia los colores y la forma de toda la interfaz. Es una preferencia personal: cada usuario ve la suya, y funciona con el modo claro y el oscuro.
                 </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 14 }}>
-                  {ACENTOS.map((a) => {
-                    const sel = a.id === accent;
+                <div role="radiogroup" aria-label="Tema de diseño" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 330px), 1fr))', gap: 18 }}>
+                  {TEMAS.map((t) => {
+                    const sel = t.id === accent;
                     return (
-                      <button key={a.id} onClick={() => setAccent(a.id)}
+                      <button key={t.id} type="button" role="radio" aria-checked={sel} onClick={() => setAccent(t.id)}
                         style={{
-                          textAlign: 'left', cursor: 'pointer',
-                          border: `1.5px solid ${sel ? a.color : 'var(--outline-variant)'}`,
-                          background: sel ? 'var(--surface-container-high)' : 'var(--surface)',
-                          borderRadius: 16, padding: 14, fontFamily: 'var(--font-body)',
-                          boxShadow: sel ? `0 0 0 3px ${a.color}22` : 'none',
-                          display: 'flex', alignItems: 'center', gap: 10,
+                          textAlign: 'left', cursor: 'pointer', fontFamily: 'var(--font-body)', padding: 14,
+                          border: `2px solid ${sel ? 'var(--primary)' : 'var(--outline-variant)'}`,
+                          background: sel ? 'var(--primary-container)' : 'var(--surface)',
+                          color: sel ? 'var(--on-primary-container)' : 'var(--on-surface)',
+                          borderRadius: 'var(--r-lg)', display: 'flex', flexDirection: 'column', gap: 12,
                         }}>
-                        <span style={{ width: 30, height: 30, borderRadius: '50%', background: a.color, flexShrink: 0 }} />
-                        <span style={{ flex: 1 }}>
-                          <span style={{ display: 'block', fontSize: 14, fontWeight: 700, color: 'var(--on-surface)' }}>{a.nombre}</span>
-                          <span style={{ display: 'block', fontSize: 12, color: 'var(--on-surface-variant)' }}>{a.desc}</span>
-                        </span>
-                        {sel && <span className="ms" style={{ fontSize: 20, color: a.color }}>check_circle</span>}
+                        <TemaVistaPrevia p={t.p} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <span style={{ display: 'flex', flexShrink: 0 }}>
+                            {[t.p.nav, t.p.pri, t.p.bg].map((c, i) => (
+                              <span key={i} style={{ width: 22, height: 22, borderRadius: '50%', background: c, border: '2px solid var(--surface)', boxShadow: '0 0 0 1px var(--outline-variant)', marginLeft: i ? -7 : 0 }} />
+                            ))}
+                          </span>
+                          <span style={{ flex: 1, minWidth: 0 }}>
+                            <span style={{ display: 'block', fontSize: 15, fontWeight: 700 }}>
+                              {t.nombre}
+                              {t.defecto && <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: 'var(--surface-container-high)', color: 'var(--on-surface-variant)' }}>Predeterminado</span>}
+                            </span>
+                            <span style={{ display: 'block', fontSize: 12.5, opacity: .85 }}>{t.desc}</span>
+                          </span>
+                          {sel && <span className="ms" aria-hidden="true" style={{ fontSize: 24, color: 'var(--primary)' }}>check_circle</span>}
+                        </div>
                       </button>
                     );
                   })}

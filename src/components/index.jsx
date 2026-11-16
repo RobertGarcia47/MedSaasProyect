@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useId } from 'react';
 
 /* ---------- Icon ---------- */
 // `onClick` es opcional: sin él, el icono es decorativo. Con él, se comporta
@@ -63,7 +63,7 @@ export function Button({ variant = 'filled', icon, trailingIcon, children, onCli
       className="state-layer"
       style={{
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-        height: h, padding: v.padding || pad, borderRadius: 'var(--r-full)', cursor: disabled ? 'not-allowed' : 'pointer',
+        height: h, padding: v.padding || pad, borderRadius: 'var(--r-btn, var(--r-full))', cursor: disabled ? 'not-allowed' : 'pointer',
         fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14, letterSpacing: '.1px',
         opacity: disabled ? .38 : 1, width: full ? '100%' : 'auto', position: 'relative',
         transition: 'box-shadow .2s, background .2s', whiteSpace: 'nowrap', ...v, ...style,
@@ -77,12 +77,13 @@ export function Button({ variant = 'filled', icon, trailingIcon, children, onCli
 }
 
 /* ---------- IconButton ---------- */
-export function IconButton({ name, fill, onClick, tooltip, active, size = 40, iconSize = 22, style = {}, color, className = '' }) {
+export function IconButton({ name, fill, onClick, tooltip, ariaLabel, active, size = 40, iconSize = 22, style = {}, color, className = '' }) {
   const ripple = useRipple();
   return (
     <button
       onClick={(e) => { ripple(e); onClick && onClick(e); }}
       title={tooltip}
+      aria-label={ariaLabel || tooltip}
       className={`state-layer ${className}`}
       style={{
         width: size, height: size, borderRadius: 'var(--r-full)', border: 'none', cursor: 'pointer',
@@ -97,17 +98,18 @@ export function IconButton({ name, fill, onClick, tooltip, active, size = 40, ic
 }
 
 /* ---------- FAB ---------- */
-export function FAB({ icon, label, onClick, extended, style = {} }) {
+export function FAB({ icon, label, ariaLabel, onClick, extended, style = {} }) {
   const ripple = useRipple();
   return (
     <button
+      aria-label={ariaLabel || label}
       onClick={(e) => { ripple(e); onClick && onClick(e); }}
       className="state-layer"
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 12, height: 56,
         padding: extended ? '0 20px' : 0, width: extended ? 'auto' : 56,
         justifyContent: 'center', borderRadius: 'var(--r-lg)', border: 'none', cursor: 'pointer',
-        background: 'var(--primary)', color: '#fff',
+        background: 'var(--primary)', color: 'var(--on-primary)',
         boxShadow: 'var(--elev-3)', fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 15,
         position: 'relative', ...style,
       }}
@@ -197,6 +199,7 @@ export function Avatar({ initials, color, size = 40, fontSize, style = {} }) {
 /* ---------- TextField ---------- */
 export function TextField({ label, value, onChange, type = 'text', icon, trailingIcon, onTrailingClick, placeholder, required, error, helper, style = {}, multiline, rows = 3, autoFocus, staticLabel }) {
   const [focus, setFocus] = useState(false);
+  const campoId = useId();
   const filled = value !== undefined && value !== '';
   const active = focus || filled;
   const Comp = multiline ? 'textarea' : 'input';
@@ -207,7 +210,7 @@ export function TextField({ label, value, onChange, type = 'text', icon, trailin
     return (
       <div style={{ ...style }}>
         {label && (
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: error ? 'var(--error)' : 'var(--on-surface-variant)', marginBottom: 6 }}>
+          <label htmlFor={campoId} style={{ display: 'block', fontSize: 13, fontWeight: 600, color: error ? 'var(--error)' : 'var(--on-surface-variant)', marginBottom: 6 }}>
             {label}{required && ' *'}
           </label>
         )}
@@ -219,6 +222,7 @@ export function TextField({ label, value, onChange, type = 'text', icon, trailin
         }}>
           {icon && <Icon name={icon} size={20} style={{ color: focus ? 'var(--primary)' : 'var(--on-surface-variant)', marginRight: 10, marginTop: multiline ? 14 : 0 }} />}
           <Comp
+            id={campoId} aria-label={label ? undefined : placeholder}
             type={type} value={value} autoFocus={autoFocus} rows={multiline ? rows : undefined}
             onChange={(e) => onChange && onChange(e.target.value)}
             onAnimationStart={(e) => { if (e.animationName === 'autofill-start' && onChange) onChange(e.target.value); }}
@@ -255,7 +259,7 @@ export function TextField({ label, value, onChange, type = 'text', icon, trailin
         {icon && <Icon name={icon} size={22} style={{ color: focus ? 'var(--primary)' : 'var(--on-surface-variant)', marginRight: 12, marginTop: multiline ? 16 : 0 }} />}
         <div style={{ flex: 1, position: 'relative', paddingTop: active ? 18 : 0 }}>
           {label && (
-            <label style={{
+            <label htmlFor={campoId} style={{
               position: 'absolute', left: 0, pointerEvents: 'none', transition: 'all .15s cubic-bezier(.2,0,0,1)',
               color: error ? 'var(--error)' : focus ? 'var(--primary)' : 'var(--on-surface-variant)',
               top: active ? 6 : '50%', transform: active ? 'none' : 'translateY(-50%)',
@@ -263,6 +267,7 @@ export function TextField({ label, value, onChange, type = 'text', icon, trailin
             }}>{label}{required && ' *'}</label>
           )}
           <Comp
+            id={campoId} aria-label={label ? undefined : placeholder}
             type={type} value={value} autoFocus={autoFocus} rows={multiline ? rows : undefined}
             onChange={(e) => onChange && onChange(e.target.value)}
             onAnimationStart={(e) => { if (e.animationName === 'autofill-start' && onChange) onChange(e.target.value); }}
@@ -290,7 +295,8 @@ export function TextField({ label, value, onChange, type = 'text', icon, trailin
 }
 
 /* ---------- Select ---------- */
-export function Select({ label, value, onChange, options, icon, style = {} }) {
+export function Select({ label, ariaLabel, value, onChange, options, icon, style = {} }) {
+  const selectId = useId();
   return (
     <div style={{ position: 'relative', ...style }}>
       <div style={{
@@ -300,8 +306,8 @@ export function Select({ label, value, onChange, options, icon, style = {} }) {
       }}>
         {icon && <Icon name={icon} size={22} style={{ color: 'var(--on-surface-variant)', marginRight: 10 }} />}
         <div style={{ flex: 1 }}>
-          {label && <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)' }}>{label}</div>}
-          <select value={value} onChange={(e) => onChange(e.target.value)}
+          {label && <label htmlFor={selectId} style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--on-surface-variant)' }}>{label}</label>}
+          <select id={selectId} aria-label={label ? undefined : (ariaLabel || undefined)} value={value} onChange={(e) => onChange(e.target.value)}
             style={{ width: '100%', border: 'none', outline: 'none', background: 'transparent', color: 'var(--on-surface)', fontSize: 16, fontFamily: 'var(--font-body)', appearance: 'none', cursor: 'pointer', paddingTop: 2 }}>
             {options.map((o) => <option key={o.value || o} value={o.value || o}>{o.label || o}</option>)}
           </select>
@@ -313,9 +319,9 @@ export function Select({ label, value, onChange, options, icon, style = {} }) {
 }
 
 /* ---------- Switch ---------- */
-export function Switch({ checked, onChange }) {
+export function Switch({ checked, onChange, ariaLabel }) {
   return (
-    <button onClick={() => onChange(!checked)} style={{
+    <button type="button" role="switch" aria-checked={!!checked} aria-label={ariaLabel} onClick={() => onChange(!checked)} style={{
       width: 52, height: 32, borderRadius: 'var(--r-full)', border: `2px solid ${checked ? 'var(--primary)' : 'var(--outline)'}`,
       background: checked ? 'var(--primary)' : 'var(--surface-container-highest)', cursor: 'pointer', position: 'relative', transition: 'all .2s', flexShrink: 0,
     }}>
@@ -339,7 +345,8 @@ export function Segmented({ options, value, onChange, style = {} }) {
         const val = typeof o === 'object' ? (o.value || o.label) : o;
         const sel = val === value;
         return (
-          <button key={val} onClick={() => onChange(val)} className="state-layer"
+          <button key={val} type="button" onClick={() => onChange(val)} className="state-layer"
+            aria-pressed={sel} aria-label={typeof o === 'object' ? (o.ariaLabel || undefined) : undefined}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', border: 'none',
               borderLeft: i ? '1px solid var(--outline)' : 'none', cursor: 'pointer', position: 'relative',

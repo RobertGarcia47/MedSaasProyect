@@ -1,217 +1,323 @@
 /* ============================================================
-   MedSaaS — Material Design 3 foundation (paleta cálida "hoja y crema")
-   Verde hoja de marca, fondo crema, neutros en tonos tierra y cuatro
-   acentos de datos con significado fijo: azul = pacientes, violeta =
-   consultas, ámbar = atención, coral/terracota = alerta.
+   MedSaaS — Material Design 3 foundation, con temas de diseño.
+   Tema por defecto: "Marino y coral" (este bloque :root y [data-theme="dark"]).
+   Las otras variantes se eligen en Configuración → Apariencia y se aplican con
+   <html data-accent="azul|grafito|verde"> (ids en lib/db.ts, TEMAS_DISENO):
+     marino   Marino y coral   barra marino, acción coral, neutros fríos  (defecto)
+     azul     Azul clínico     barra blanca, acción azul
+     grafito  Grafito          casi todo neutro, acento teal mínimo
+     verde    Verde clásico    el diseño original: verde hoja sobre crema
+   Cada tema define su paleta clara y oscura, la barra superior (--nav-*), la
+   franja de título de los modales (--band-*) y la forma (--r-*, --r-btn).
+   Cuatro acentos de datos con significado fijo: azul = pacientes, violeta =
+   consultas, ámbar = atención, rojo = alerta.
    ============================================================ */
 
-/* ---------- LIGHT THEME ---------- */
+/* ---------- LIGHT THEME (Marino y coral) ---------- */
 :root {
-  --primary: #2F7D5B;
-  /* Degradado sutil de la marca hacia blanco — usado por los botones rellenos
-     (Button filled). Se calcula con --primary, así sigue al acento elegido. */
-  --primary-gradient: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 80%, white) 100%);
+  --primary: #B83D16;
+  /* Sin degradado: el tema por defecto es plano. "Verde clásico" lo redefine. */
+  --primary-gradient: var(--primary);
   --on-primary: #FFFFFF;
-  --primary-container: #D5E8D2;
-  --on-primary-container: #0F2E1F;
-  --primary-fixed-dim: #9CCBA9;
+  --primary-container: #FBE3DA;
+  --on-primary-container: #4A1608;
+  --primary-fixed-dim: #F2B7A2;
 
-  --secondary: #6B6157;
+  --secondary: #5B6070;
   --on-secondary: #FFFFFF;
-  --secondary-container: color-mix(in srgb, var(--secondary) 24%, #FFFFFF);
-  --on-secondary-container: color-mix(in srgb, var(--secondary) 75%, black);
+  --secondary-container: color-mix(in srgb, var(--secondary) 18%, #FFFFFF);
+  --on-secondary-container: color-mix(in srgb, var(--secondary) 80%, black);
 
-  --tertiary: #3A6EA5;
+  --tertiary: #2F5F9E;
   --on-tertiary: #FFFFFF;
-  --tertiary-container: color-mix(in srgb, var(--tertiary) 24%, #FFFFFF);
+  --tertiary-container: color-mix(in srgb, var(--tertiary) 20%, #FFFFFF);
   --on-tertiary-container: color-mix(in srgb, var(--tertiary) 75%, black);
 
-  --error: #B3392A;
+  --error: #B3261E;
   --on-error: #FFFFFF;
-  --error-container: #FBE5DA;
-  --on-error-container: #4A1208;
+  --error-container: #FBE5E2;
+  --on-error-container: #4A0E0A;
 
-  --success: #4C7A25;
-  --success-container: #E4EBCF;
-  --on-success-container: #1F3A0E;
+  --success: #3E7B3A;
+  --success-container: #DDEFD8;
+  --on-success-container: #17361A;
   --warning: #8A4F0A;
   --on-warning: #FFFFFF;
   --warning-container: #FBEAD0;
   --on-warning-container: #3A2000;
 
-  /* Paleta extendida por acento — los mismos 6 tonos de la muestra de
-     Configuración (Base=primary, Análogo claro=accent-claro, Análogo
-     frío=tertiary, Contraste cálido=accent-warm, Alerta=error fijo,
-     Neutro=secondary). Usada por tipo de cita/informe y las tarjetas del
-     Dashboard. Los fondos pastel y el tono oscuro para insignias se calculan
-     con color-mix() en vez de tener una variable aparte por matiz.
-     --accent-violet es el acento fijo de "consultas" (no cambia con el
-     acento de marca elegido). */
-  --accent-claro: #4A9A6B; /* análogo claro — Seguimiento / nota obstétrica */
-  --accent-warm: #B8761A;  /* contraste cálido — Revisión / notas de resumen */
-  --accent-violet: #7B5AA6; /* consultas — historial, notas clínicas */
+  /* Paleta de datos: Seguimiento / Revisión / consultas. */
+  --accent-claro: #1B8A7A;
+  --accent-warm: #B8761A;
+  --accent-violet: #6D5BB0;
 
-  /* El lienzo general es crema cálido con dos resplandores suaves
-     (--app-bg-image, capa decorativa fija, ver bloque "fondo decorativo"
-     más abajo). El color vive en piezas deliberadas (StatChip, badges de
-     tipo, botones), no teñido por acento. Ver [[propuesta-color-tarjetas-solidas]]. */
-  --background: #FAF4EA;
-  --app-bg-image: url('/bg-textura.svg');
-  --on-background: #2B2218;
+  --background: #F6F5F3;
+  --app-bg-image: none;
+  --on-background: #1B1F2A;
   --surface: #FFFFFF;
-  --on-surface: #2B2218;
-  --surface-variant: #EFE6D6;
-  --on-surface-variant: #5E5449;
-  --outline: #86796A;
-  --outline-variant: #DDD0B8;
+  --on-surface: #1B1F2A;
+  --surface-variant: #ECEAE6;
+  --on-surface-variant: #5B6070;
+  --outline: #656974;
+  --outline-variant: #E1DFDA;
 
-  --surface-dim: #E3D8C5;
-  --surface-bright: #FFFBF3;
+  --surface-dim: #E4E2DE;
+  --surface-bright: #FFFFFF;
   --surface-container-lowest: #FFFFFF;
-  --surface-container-low: #F7F0E3;
-  /* Fondo de las tarjetas (Card elevated): blanco puro en claro para que destaquen
-     sobre el fondo crema; en oscuro sigue siendo el contenedor elevado. */
+  --surface-container-low: #F1F0EE;
+  /* Fondo de las tarjetas (Card elevated): blanco sobre el lienzo gris cálido. */
   --card-bg: #FFFFFF;
-  --surface-container: #F2EADC;
-  --surface-container-high: #EDE3D2;
-  --surface-container-highest: #E8DDCA;
+  --surface-container: #ECEAE6;
+  --surface-container-high: #E6E4E0;
+  --surface-container-highest: #EFEEEB;
 
-  --inverse-surface: #3A2F25;
-  --inverse-on-surface: #F6EEE0;
-  --inverse-primary: #9CCBA9;
+  --inverse-surface: #1B1F2A;
+  --inverse-on-surface: #F6F5F3;
+  --inverse-primary: #F2B7A2;
 
-  --scrim: rgba(0,0,0,0.32);
-  --shadow: rgba(43, 34, 24, 0.16);
+  --scrim: rgba(12, 22, 38, 0.40);
+  --shadow: rgba(20, 38, 63, 0.16);
 
-  --elev-1: 0 1px 2px rgba(43,34,24,0.14), 0 1px 3px 1px rgba(43,34,24,0.08);
-  --elev-2: 0 1px 2px rgba(43,34,24,0.14), 0 2px 6px 2px rgba(43,34,24,0.08);
-  --elev-3: 0 4px 8px 3px rgba(43,34,24,0.10), 0 1px 3px rgba(43,34,24,0.14);
+  --elev-1: 0 1px 2px rgba(20,38,63,0.08), 0 1px 3px 1px rgba(20,38,63,0.05);
+  --elev-2: 0 1px 2px rgba(20,38,63,0.10), 0 2px 6px 2px rgba(20,38,63,0.06);
+  --elev-3: 0 4px 8px 3px rgba(20,38,63,0.10), 0 1px 3px rgba(20,38,63,0.14);
 
-  --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 28px; --r-full: 999px;
+  /* Barra superior, franja de título de modales y panel del login. */
+  --nav-bg: #14263F;
+  --nav-ink: #FFFFFF;
+  --nav-active-bg: rgba(255, 255, 255, 0.16);
+  --nav-active-ink: #FFFFFF;
+  --nav-border: transparent;
+  --nav-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+  --band-bg: #14263F;
+  --band-ink: #FFFFFF;
+  --hero-bg: #14263F;
+  --nav-mark-bg: rgba(255, 255, 255, 0.16);
+  --nav-mark-ink: #FFFFFF;
+
+  /* Forma: radios compactos; --r-btn = botones, --r-modal = modales y tarjetas grandes. */
+  --r-xs: 4px; --r-sm: 6px; --r-md: 8px; --r-lg: 10px; --r-xl: 14px; --r-full: 999px;
+  --r-btn: 8px; --r-modal: 14px;
 
   /* Figtree (sans) para toda la interfaz, títulos incluidos. */
   --font-display: 'Figtree', system-ui, sans-serif;
   --font-body: 'Figtree', system-ui, sans-serif;
 }
 
-/* ---------- DARK THEME ---------- */
+/* ---------- DARK THEME (Marino y coral) ---------- */
 [data-theme="dark"] {
-  --primary: #8CCBA6;
-  --on-primary: #0F3A27;
-  --primary-container: #1F5F43;
-  --on-primary-container: #CBEBD6;
+  --primary: #F28B68;
+  --on-primary: #3A1204;
+  --primary-container: #7A2A10;
+  --on-primary-container: #FFDCCF;
 
-  --secondary: #C9BBA6;
-  --on-secondary: #3A2F22;
-  --secondary-container: color-mix(in srgb, var(--secondary) 30%, #1E1913);
-  --on-secondary-container: color-mix(in srgb, var(--secondary) 85%, white);
+  --secondary: #A9B0C2;
+  --on-secondary: #1E2536;
+  --secondary-container: color-mix(in srgb, var(--secondary) 24%, #121A28);
+  --on-secondary-container: color-mix(in srgb, var(--secondary) 88%, white);
 
-  --tertiary: #9DC1EA;
+  --tertiary: #9DBDEB;
   --on-tertiary: #0E2B4A;
-  --tertiary-container: color-mix(in srgb, var(--tertiary) 30%, #1E1913);
+  --tertiary-container: color-mix(in srgb, var(--tertiary) 26%, #121A28);
   --on-tertiary-container: color-mix(in srgb, var(--tertiary) 85%, white);
 
-  --error: #FFB4A5;
-  --on-error: #5C1508;
-  --error-container: #8A2514;
-  --on-error-container: #FFDAD0;
+  --error: #FFB4AB;
+  --on-error: #5C0D08;
+  --error-container: #8A1D14;
+  --on-error-container: #FFDAD6;
 
-  --success: #B5D68A;
-  --success-container: #34501A;
-  --on-success-container: #DCEFC0;
+  --success: #A9D6A0;
+  --success-container: #254A24;
+  --on-success-container: #D2EFCB;
   --warning: #F2BE6A;
   --on-warning: #2E1A00;
   --warning-container: #6B4408;
   --on-warning-container: #FBE3BC;
 
-  --accent-claro: #7FC59A;
+  --accent-claro: #6FD0BF;
   --accent-warm: #F0B966;
-  --accent-violet: #C4A6E6;
+  --accent-violet: #BBAEEA;
 
-  --background: #16120E;
+  --background: #0E1522;
   --app-bg-image: none;
-  --on-background: #EDE4D6;
-  --surface: #16120E;
-  --on-surface: #EDE4D6;
-  --surface-variant: #4A4033;
-  --on-surface-variant: #CDBFAC;
-  --outline: #988B79;
-  --outline-variant: #4A4033;
+  --on-background: #E6E9F0;
+  --surface: #121A28;
+  --on-surface: #E6E9F0;
+  --surface-variant: #2A3550;
+  --on-surface-variant: #A9B0C2;
+  --outline: #7A8398;
+  --outline-variant: #2C384F;
 
-  --surface-dim: #16120E;
-  --surface-bright: #3B342B;
-  --surface-container-lowest: #110E0B;
-  --surface-container-low: #1E1913;
+  --surface-dim: #0E1522;
+  --surface-bright: #2A3550;
+  --surface-container-lowest: #0A101B;
+  --surface-container-low: #141C2B;
   --card-bg: var(--surface-container-low);
-  --surface-container: #231D17;
-  --surface-container-high: #2D261E;
-  --surface-container-highest: #382F26;
+  --surface-container: #19233A;
+  --surface-container-high: #202C45;
+  --surface-container-highest: #29365A;
 
-  --inverse-surface: #EDE4D6;
-  --inverse-on-surface: #2D261E;
-  --inverse-primary: #2F7D5B;
+  --inverse-surface: #E6E9F0;
+  --inverse-on-surface: #19233A;
+  --inverse-primary: #B83D16;
 
-  --scrim: rgba(0,0,0,0.5);
-  --shadow: rgba(0,0,0,0.5);
+  --scrim: rgba(0, 0, 0, 0.55);
+  --shadow: rgba(0, 0, 0, 0.5);
 
   --elev-1: 0 1px 2px rgba(0,0,0,0.4), 0 1px 3px 1px rgba(0,0,0,0.25);
   --elev-2: 0 1px 2px rgba(0,0,0,0.4), 0 2px 6px 2px rgba(0,0,0,0.30);
   --elev-3: 0 4px 8px 3px rgba(0,0,0,0.30), 0 1px 3px rgba(0,0,0,0.45);
+
+  --nav-bg: #0A101B;
+  --nav-ink: #E6E9F0;
+  --nav-active-bg: rgba(255, 255, 255, 0.12);
+  --nav-active-ink: #FFFFFF;
+  --nav-border: #2C384F;
+  --nav-shadow: none;
+  --band-bg: #1E3252;
+  --nav-mark-bg: rgba(255, 255, 255, 0.12);
+  --nav-mark-ink: #FFFFFF;
+  --band-ink: #FFFFFF;
+  --hero-bg: #0A101B;
 }
 
-/* ---------- Accent overrides ---------- */
-/* Cada acento trae sus 6 tonos completos — los mismos que en la muestra de
-   Configuración → Apariencia (Base=primary, Análogo claro=accent-claro,
-   Análogo frío=tertiary, Contraste cálido=accent-warm, Neutro=secondary;
-   Alerta se queda fija en --error, no varía por acento). Todas las
-   -container/on-container se derivan con color-mix() del tono fuerte
-   correspondiente, así no hay que mantenerlas sincronizadas a mano.
-   El lienzo (background/surface/surface-container-*) es blanco liso y NO
-   se tiñe por acento (ver arriba) — el color se ve en piezas puntuales:
-   StatChip del Dashboard (bloque lateral sólido), tipo de cita/informe
-   (Calendar.tsx/Dashboard.tsx/Informe.tsx) y botones/badges. */
-[data-accent="blue"] {
-  --primary: #2D5DA0; --primary-container: #D6E3FF; --on-primary-container: #001A41;
-  --secondary: #5B6B7A; --on-secondary: #FFFFFF;
+/* ---------- Tema: Azul clínico ---------- */
+[data-accent="azul"]:not([data-theme="dark"]) {
+  --primary: #1F5FD6; --on-primary: #FFFFFF; --primary-container: #E8F0FD; --on-primary-container: #0B2E78;
+  --primary-fixed-dim: #A9C4F5;
+  --secondary: #55627A;
+  --tertiary: #4F5FAD;
+  --accent-claro: #0E8FC4; --accent-warm: #C26A05; --accent-violet: #7B5AA6;
+  --background: #F4F7FB; --on-background: #14213D;
+  --surface: #FFFFFF; --on-surface: #14213D;
+  --surface-variant: #E7ECF4; --on-surface-variant: #55627A;
+  --outline: #5E6A80; --outline-variant: #E1E7F0;
+  --surface-dim: #DDE4EE; --surface-container-low: #F0F4FA; --surface-container: #EBF0F7;
+  --surface-container-high: #E4EAF3; --surface-container-highest: #EEF2F8;
+  --inverse-surface: #14213D; --inverse-on-surface: #F4F7FB; --inverse-primary: #A9C4F5;
+  --scrim: rgba(10, 22, 48, 0.40); --shadow: rgba(20, 33, 61, 0.16);
+  --elev-1: 0 1px 2px rgba(20,33,61,0.08), 0 1px 3px 1px rgba(20,33,61,0.05);
+  --elev-2: 0 1px 2px rgba(20,33,61,0.10), 0 2px 6px 2px rgba(20,33,61,0.06);
+  --elev-3: 0 4px 8px 3px rgba(20,33,61,0.10), 0 1px 3px rgba(20,33,61,0.14);
+  --nav-bg: #FFFFFF; --nav-ink: #14213D; --nav-active-bg: #E8F0FD; --nav-active-ink: #1F5FD6;
+  --nav-border: #E1E7F0; --nav-shadow: none;
+  --band-bg: #1F5FD6; --band-ink: #FFFFFF; --hero-bg: #12306F;
+  --nav-mark-bg: #1F5FD6; --nav-mark-ink: #FFFFFF;
+  --r-md: 10px; --r-lg: 12px; --r-xl: 16px; --r-btn: 10px; --r-modal: 16px;
+}
+[data-accent="azul"][data-theme="dark"] {
+  --primary: #8DB4FF; --on-primary: #0A2A6B; --primary-container: #1D3F8F; --on-primary-container: #D9E6FF;
+  --secondary: #AEB9CC; --tertiary: #B4C0FF;
+  --accent-claro: #7DD3FC; --accent-warm: #F0B966; --accent-violet: #C4B5FD;
+  --background: #0D1320; --on-background: #E4E9F2;
+  --surface: #121A29; --on-surface: #E4E9F2;
+  --surface-variant: #27344D; --on-surface-variant: #A3AEC2;
+  --outline: #6F7B92; --outline-variant: #2A3548;
+  --surface-dim: #0D1320; --surface-bright: #27344D; --surface-container-lowest: #090E18;
+  --surface-container-low: #131B2A; --surface-container: #172134; --surface-container-high: #1E2A40; --surface-container-highest: #263450;
+  --inverse-surface: #E4E9F2; --inverse-on-surface: #172134; --inverse-primary: #1F5FD6;
+  --nav-bg: #121A29; --nav-ink: #E4E9F2; --nav-active-bg: #1D3F8F; --nav-active-ink: #FFFFFF;
+  --nav-border: #2A3548; --nav-shadow: none;
+  --band-bg: #1D3F8F; --band-ink: #FFFFFF; --hero-bg: #0A1226;
+  --nav-mark-bg: #1D3F8F; --nav-mark-ink: #FFFFFF;
+}
+
+/* ---------- Tema: Grafito ---------- */
+[data-accent="grafito"]:not([data-theme="dark"]) {
+  --primary: #0F766E; --on-primary: #FFFFFF; --primary-container: #DDF0EE; --on-primary-container: #063B37;
+  --primary-fixed-dim: #9BD3CD;
+  --secondary: #52525B;
+  --tertiary: #3B6EA5;
+  --accent-claro: #0F9488; --accent-warm: #B7791F; --accent-violet: #7C5CA8;
+  --background: #FAFAF9; --on-background: #18181B;
+  --surface: #FFFFFF; --on-surface: #18181B;
+  --surface-variant: #EEEEEC; --on-surface-variant: #52525B;
+  --outline: #666670; --outline-variant: #E4E4E7;
+  --surface-dim: #E4E4E2; --surface-container-low: #F5F5F4; --surface-container: #F0F0EE;
+  --surface-container-high: #EAEAE8; --surface-container-highest: #F2F2F0;
+  --inverse-surface: #27272A; --inverse-on-surface: #FAFAF9; --inverse-primary: #9BD3CD;
+  --scrim: rgba(12, 12, 14, 0.40); --shadow: rgba(24, 24, 27, 0.16);
+  --elev-1: 0 1px 2px rgba(24,24,27,0.08), 0 1px 3px 1px rgba(24,24,27,0.05);
+  --elev-2: 0 1px 2px rgba(24,24,27,0.10), 0 2px 6px 2px rgba(24,24,27,0.06);
+  --elev-3: 0 4px 8px 3px rgba(24,24,27,0.10), 0 1px 3px rgba(24,24,27,0.14);
+  --nav-bg: #FFFFFF; --nav-ink: #18181B; --nav-active-bg: #F0F0EE; --nav-active-ink: #18181B;
+  --nav-border: #E4E4E7; --nav-shadow: none;
+  --band-bg: #27272A; --band-ink: #FFFFFF; --hero-bg: #18181B;
+  --nav-mark-bg: #0F766E; --nav-mark-ink: #FFFFFF;
+}
+[data-accent="grafito"][data-theme="dark"] {
+  --primary: #6FD6C8; --on-primary: #04302B; --primary-container: #0F5F58; --on-primary-container: #CDF4EF;
+  --secondary: #A1A1AA; --tertiary: #9DBDEB;
+  --accent-claro: #5FD3C6; --accent-warm: #F0B966; --accent-violet: #BBAEEA;
+  --background: #0F0F11; --on-background: #ECECEE;
+  --surface: #161618; --on-surface: #ECECEE;
+  --surface-variant: #2B2B30; --on-surface-variant: #A1A1AA;
+  --outline: #71717A; --outline-variant: #2E2E33;
+  --surface-dim: #0F0F11; --surface-bright: #2B2B30; --surface-container-lowest: #0B0B0D;
+  --surface-container-low: #151517; --surface-container: #1A1A1D; --surface-container-high: #222226; --surface-container-highest: #2B2B30;
+  --inverse-surface: #ECECEE; --inverse-on-surface: #1A1A1D; --inverse-primary: #0F766E;
+  --nav-bg: #161618; --nav-ink: #ECECEE; --nav-active-bg: #2B2B30; --nav-active-ink: #FFFFFF;
+  --nav-border: #2E2E33; --nav-shadow: none;
+  --band-bg: #2B2B30; --band-ink: #FFFFFF; --hero-bg: #0B0B0D;
+  --nav-mark-bg: #0F5F58; --nav-mark-ink: #FFFFFF;
+}
+
+/* ---------- Tema: Verde clásico (el diseño original) ---------- */
+[data-accent="verde"]:not([data-theme="dark"]) {
+  --primary: #2F7D5B;
+  --primary-gradient: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 80%, white) 100%);
+  --on-primary: #FFFFFF; --primary-container: #D5E8D2; --on-primary-container: #0F2E1F; --primary-fixed-dim: #9CCBA9;
+  --secondary: #6B6157;
   --secondary-container: color-mix(in srgb, var(--secondary) 24%, #FFFFFF);
   --on-secondary-container: color-mix(in srgb, var(--secondary) 75%, black);
-  --tertiary: #4F5FAD; --on-tertiary: #FFFFFF;
+  --tertiary: #3A6EA5;
   --tertiary-container: color-mix(in srgb, var(--tertiary) 24%, #FFFFFF);
   --on-tertiary-container: color-mix(in srgb, var(--tertiary) 75%, black);
-  --accent-claro: #0EA5E9; --accent-warm: #D97706;
+  --error: #B3392A; --error-container: #FBE5DA; --on-error-container: #4A1208;
+  --success: #4C7A25; --success-container: #E4EBCF; --on-success-container: #1F3A0E;
+  --accent-claro: #4A9A6B; --accent-warm: #B8761A; --accent-violet: #7B5AA6;
+  --background: #FAF4EA; --app-bg-image: url('/bg-textura.svg'); --on-background: #2B2218;
+  --surface: #FFFFFF; --on-surface: #2B2218;
+  --surface-variant: #EFE6D6; --on-surface-variant: #5E5449;
+  --outline: #86796A; --outline-variant: #DDD0B8;
+  --surface-dim: #E3D8C5; --surface-bright: #FFFBF3;
+  --surface-container-low: #F7F0E3; --card-bg: #FFFFFF; --surface-container: #F2EADC;
+  --surface-container-high: #EDE3D2; --surface-container-highest: #E8DDCA;
+  --inverse-surface: #3A2F25; --inverse-on-surface: #F6EEE0; --inverse-primary: #9CCBA9;
+  --scrim: rgba(0,0,0,0.32); --shadow: rgba(43, 34, 24, 0.16);
+  --elev-1: 0 1px 2px rgba(43,34,24,0.14), 0 1px 3px 1px rgba(43,34,24,0.08);
+  --elev-2: 0 1px 2px rgba(43,34,24,0.14), 0 2px 6px 2px rgba(43,34,24,0.08);
+  --elev-3: 0 4px 8px 3px rgba(43,34,24,0.10), 0 1px 3px rgba(43,34,24,0.14);
+  --nav-bg: var(--primary-gradient); --nav-ink: #FFFFFF; --nav-active-bg: rgba(255, 255, 255, 0.22); --nav-active-ink: #FFFFFF;
+  --nav-border: transparent; --nav-shadow: 0 2px 14px color-mix(in srgb, var(--primary) 28%, transparent);
+  --band-bg: var(--primary-gradient); --band-ink: #FFFFFF;
+  --nav-mark-bg: rgba(255, 255, 255, 0.18); --nav-mark-ink: #FFFFFF;
+  --hero-bg: linear-gradient(150deg, #173F2E 0%, #1F5F43 45%, #2F7D5B 100%);
+  --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 16px; --r-xl: 28px; --r-btn: 999px; --r-modal: 22px;
 }
-[data-accent="blue"][data-theme="dark"] {
-  --primary: #ABC7FF; --primary-container: #00439A; --on-primary-container: #D6E3FF;
-  --secondary: #B7C4DE; --on-secondary: #263141;
-  --secondary-container: color-mix(in srgb, var(--secondary) 30%, #1A211F);
+[data-accent="verde"][data-theme="dark"] {
+  --primary: #8CCBA6; --on-primary: #0F3A27; --primary-container: #1F5F43; --on-primary-container: #CBEBD6;
+  --secondary: #C9BBA6;
+  --secondary-container: color-mix(in srgb, var(--secondary) 30%, #1E1913);
   --on-secondary-container: color-mix(in srgb, var(--secondary) 85%, white);
-  --tertiary: #C0C6FF; --on-tertiary: #1B2374;
-  --tertiary-container: color-mix(in srgb, var(--tertiary) 30%, #1A211F);
+  --tertiary: #9DC1EA;
+  --tertiary-container: color-mix(in srgb, var(--tertiary) 30%, #1E1913);
   --on-tertiary-container: color-mix(in srgb, var(--tertiary) 85%, white);
-  --accent-claro: #7DD3FC; --accent-warm: #F0B966;
+  --error: #FFB4A5; --error-container: #8A2514; --on-error-container: #FFDAD0;
+  --success: #B5D68A; --success-container: #34501A; --on-success-container: #DCEFC0;
+  --accent-claro: #7FC59A; --accent-warm: #F0B966; --accent-violet: #C4A6E6;
+  --background: #16120E; --on-background: #EDE4D6; --surface: #16120E; --on-surface: #EDE4D6;
+  --surface-variant: #4A4033; --on-surface-variant: #CDBFAC; --outline: #988B79; --outline-variant: #4A4033;
+  --surface-dim: #16120E; --surface-bright: #3B342B; --surface-container-lowest: #110E0B;
+  --surface-container-low: #1E1913; --surface-container: #231D17; --surface-container-high: #2D261E; --surface-container-highest: #382F26;
+  --inverse-surface: #EDE4D6; --inverse-on-surface: #2D261E; --inverse-primary: #2F7D5B;
+  --primary-gradient: linear-gradient(135deg, var(--primary) 0%, color-mix(in srgb, var(--primary) 80%, white) 100%);
+  --nav-bg: var(--primary-gradient); --nav-ink: #0F3A27; --nav-active-bg: rgba(15, 58, 39, 0.20); --nav-active-ink: #0F3A27;
+  --nav-border: transparent; --nav-shadow: 0 2px 14px color-mix(in srgb, var(--primary) 28%, transparent);
+  --nav-mark-bg: rgba(15, 58, 39, 0.20); --nav-mark-ink: #0F3A27;
+  --band-bg: var(--primary-gradient); --band-ink: #0F3A27; --hero-bg: linear-gradient(150deg, #0F2A1E 0%, #173F2E 55%, #1F5F43 100%);
 }
-[data-accent="green"] { --primary: #1E6E52; --primary-container: #A8F2CD; --on-primary-container: #002115; }
-[data-accent="green"][data-theme="dark"] { --primary: #8AD6B2; --primary-container: #005236; --on-primary-container: #A8F2CD; }
-[data-accent="indigo"] {
-  --primary: #5450A8; --primary-container: #E3DFFF; --on-primary-container: #0E0069;
-  --secondary: #6B647A; --on-secondary: #FFFFFF;
-  --secondary-container: color-mix(in srgb, var(--secondary) 24%, #FFFFFF);
-  --on-secondary-container: color-mix(in srgb, var(--secondary) 75%, black);
-  --tertiary: #4361C4; --on-tertiary: #FFFFFF;
-  --tertiary-container: color-mix(in srgb, var(--tertiary) 24%, #FFFFFF);
-  --on-tertiary-container: color-mix(in srgb, var(--tertiary) 75%, black);
-  --accent-claro: #8B5CF6; --accent-warm: #B8860B;
-}
-[data-accent="indigo"][data-theme="dark"] {
-  --primary: #C5C0FF; --primary-container: #3B3891; --on-primary-container: #E3DFFF;
-  --secondary: #CBC0DE; --on-secondary: #322C42;
-  --secondary-container: color-mix(in srgb, var(--secondary) 30%, #1A211F);
-  --on-secondary-container: color-mix(in srgb, var(--secondary) 85%, white);
-  --tertiary: #B4C5FF; --on-tertiary: #1A2D6B;
-  --tertiary-container: color-mix(in srgb, var(--tertiary) 30%, #1A211F);
-  --on-tertiary-container: color-mix(in srgb, var(--tertiary) 85%, white);
-  --accent-claro: #C4B5FD; --accent-warm: #E8C468;
-}
+
 
 /* ---------- base reset ---------- */
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -417,7 +523,9 @@ a { color: inherit; text-decoration: none; }
   .sidebar-wrap { display: none !important; }
   .mobile-menu-btn { display: inline-flex !important; }
   .bottom-nav { display: flex !important; }
-  .mobile-fab { display: flex !important; }
+  /* Botón flotante: fijo a la derecha, arriba de la barra inferior (72px). Antes quedaba
+     en el flujo normal y ocupaba una fila de 56px debajo de la barra. */
+  .mobile-fab { display: flex !important; position: fixed; right: 16px; bottom: calc(72px + 16px + env(safe-area-inset-bottom, 0px)); z-index: 20; }
   .appbar-user { display: none !important; }
   .login-split { grid-template-columns: 1fr !important; }
   .login-hero { display: none !important; }
@@ -482,7 +590,7 @@ a { color: inherit; text-decoration: none; }
   /* El fondo real de la página (html/body) queda fuera de .practice-stats-print
      (ver override de variables más abajo) — sin esto, el papel sale con el
      fondo oscuro si el médico tiene modo oscuro activo. */
-  html, body { background: #ffffff !important; color: #2B2218 !important; }
+  html, body { background: #ffffff !important; color: #1B1F2A !important; }
 
   /* Truco estándar: oculta todo, vuelve a mostrar solo la sección objetivo y
      su contenido, y la reposiciona en la esquina — así no importa qué más
@@ -507,12 +615,12 @@ a { color: inherit; text-decoration: none; }
   /* Fuerza colores de tema claro dentro de la sección, sin importar si el
      usuario tiene modo oscuro activo — en papel siempre debe verse en claro. */
   .practice-stats-print {
-    --surface: #ffffff; --on-surface: #2B2218;
-    --surface-container-low: #F7F0E3; --surface-container: #F2EADC;
-    --surface-container-high: #EDE3D2; --surface-container-highest: #E8DDCA;
-    --on-surface-variant: #5E5449; --outline-variant: #DDD0B8;
-    --primary: #2F7D5B; --on-primary: #FFFFFF;
-    --success: #4C7A25; --error: #B3392A; --warning: #8A4F0A; --outline: #86796A;
+    --surface: #ffffff; --on-surface: #1B1F2A;
+    --surface-container-low: #F1F0EE; --surface-container: #ECEAE6;
+    --surface-container-high: #E6E4E0; --surface-container-highest: #EFEEEB;
+    --on-surface-variant: #5B6070; --outline-variant: #E1DFDA;
+    --primary: #14263F; --on-primary: #FFFFFF; --primary-gradient: #14263F;
+    --success: #3E7B3A; --error: #B3261E; --warning: #8A4F0A; --outline: #8A8E9A;
     --elev-1: none; --elev-2: none; --elev-3: none;
   }
 }

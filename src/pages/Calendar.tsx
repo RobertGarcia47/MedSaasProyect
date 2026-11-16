@@ -581,7 +581,7 @@ function WeekView({ appts, monday, onApptClick, onDayClick }: {
           <div style={{ position: 'relative' }}>
             {HOURS.map(h => (
               <div key={h} style={{ height: HOUR_H, position: 'relative' }}>
-                <span style={{ position: 'absolute', top: -7, right: 10, fontSize: 11, color: 'var(--on-surface-variant)', fontWeight: 500, opacity: .7 }}>{h}:00</span>
+                <span style={{ position: 'absolute', top: -7, right: 10, fontSize: 11, color: 'var(--on-surface-variant)', fontWeight: 500 }}>{h}:00</span>
               </div>
             ))}
           </div>
@@ -677,7 +677,7 @@ function DayView({ appts, date, onApptClick, onAddClick }: {
           <div style={{ width: 64, flexShrink: 0, position: 'relative' }}>
             {HOURS.map(h => (
               <div key={h} style={{ height: HOUR_H, position: 'relative' }}>
-                <span style={{ position: 'absolute', top: -7, right: 12, fontSize: 11, color: 'var(--on-surface-variant)', fontWeight: 500, opacity: .7 }}>{h}:00</span>
+                <span style={{ position: 'absolute', top: -7, right: 12, fontSize: 11, color: 'var(--on-surface-variant)', fontWeight: 500 }}>{h}:00</span>
               </div>
             ))}
           </div>

@@ -159,7 +159,7 @@ export function PatientList({ go, openModal, dataVersion = 0 }: { go: (n: string
           })}
         </div>
         <div style={{ flex: 1 }} />
-        <Segmented value={view} onChange={(v) => setView(v as 'table' | 'grid')} options={[{ value: 'table', icon: 'table_rows' }, { value: 'grid', icon: 'grid_view' }]} />
+        <Segmented value={view} onChange={(v) => setView(v as 'table' | 'grid')} options={[{ value: 'table', icon: 'table_rows', ariaLabel: 'Vista de tabla' }, { value: 'grid', icon: 'grid_view', ariaLabel: 'Vista de cuadrícula' }]} />
       </div>
 
       {loading ? (
@@ -200,7 +200,7 @@ export function PatientList({ go, openModal, dataVersion = 0 }: { go: (n: string
                     ? <span style={{ fontWeight: 600, color: 'var(--primary)' }}>{proximaCitaTexto(p.proximaCita)}</span>
                     : <span style={{ color: 'var(--on-surface-variant)' }}>—</span>}
                 </div>
-                <IconButton name="chevron_right" size={36} iconSize={22} />
+                <IconButton name="chevron_right" size={36} iconSize={22} tooltip="Abrir expediente" />
               </div>
             ))}
           </Card>

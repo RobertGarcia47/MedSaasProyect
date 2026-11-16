@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useAccount } from '../context/AccountContext';
 import { createPaciente, fetchPacientesSelect } from '../lib/patients';
 import { createCita, encodeMotivoConTipo, fetchCitasDia } from '../lib/citas';
@@ -302,7 +303,7 @@ export function WheelPickerSheet({ title, columns, onClose }: WheelPickerSheetPr
       onClick={onClose}
       style={{
         position: 'absolute', top: 0, right: 0, bottom: 0, left: 0,
-        background: 'var(--scrim)', borderRadius: 22,
+        background: 'var(--scrim)', borderRadius: 'var(--r-modal)',
         display: 'flex', alignItems: 'flex-end', zIndex: 20,
       }}
     >
@@ -310,26 +311,26 @@ export function WheelPickerSheet({ title, columns, onClose }: WheelPickerSheetPr
         onClick={(e) => e.stopPropagation()}
         style={{
           width: '100%', background: 'var(--card-bg)',
-          borderTopLeftRadius: 22, borderTopRightRadius: 22, overflow: 'hidden',
+          borderTopLeftRadius: 'var(--r-modal)', borderTopRightRadius: 'var(--r-modal)', overflow: 'hidden',
           boxShadow: '0 -16px 40px var(--shadow)',
         }}
       >
         {/* Franja de título */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 22px', background: 'var(--primary-gradient)', color: 'var(--on-primary)',
+          padding: '12px 22px', background: 'var(--band-bg)', color: 'var(--band-ink)',
         }}>
           <div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div>
           <button
             onClick={onClose}
             style={{
-              border: 'none', background: 'color-mix(in srgb, var(--on-primary) 18%, transparent)', color: 'var(--on-primary)',
+              border: 'none', background: 'color-mix(in srgb, var(--band-ink) 18%, transparent)', color: 'var(--band-ink)',
               fontFamily: 'inherit', fontSize: 14.5, fontWeight: 700,
               cursor: 'pointer', padding: '6px 16px', borderRadius: 999,
               transition: 'background .15s',
             }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--on-primary) 30%, transparent)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--on-primary) 18%, transparent)'; }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--band-ink) 30%, transparent)'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--band-ink) 18%, transparent)'; }}
           >
             Listo
           </button>
@@ -647,17 +648,22 @@ export function PickerTrigger({ icon, value, active, placeholder, onClick }: {
 // negativos para llegar a los bordes. `accentBar` ya no hace nada: se conserva en la
 // firma para no tocar a los modales que lo pasan (la franja de título lo reemplaza).
 export function ModalCard({ children }: { children: React.ReactNode; accentBar?: boolean }) {
-  return (
+  // Va en un portal sobre <body>: dentro de .fade-up (transform) un `position: fixed` deja de
+  // ser relativo al viewport y el modal quedaba confinado a la página, con el título bajo la
+  // barra superior. El centrado es "seguro" (margin: auto en vez de align-items: center): si la
+  // tarjeta es más alta que la pantalla, arranca arriba y el scroll del fondo llega a todo, en
+  // vez de perder por arriba el título y la ✕ (inalcanzables).
+  return createPortal(
     <div className="modal-card-backdrop" style={{
       position: 'fixed', top: 0, right: 0, bottom: 0, left: 0,
       background: 'var(--scrim)', zIndex: 1000,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
       padding: 28, overflowY: 'auto', animation: 'fadeIn .2s ease',
     }}>
       <div className="modal-card" style={{
         '--modal-px': '36px',
-        position: 'relative', width: 580, maxWidth: '100%',
-        background: 'var(--card-bg)', borderRadius: 22,
+        position: 'relative', width: 580, maxWidth: '100%', margin: 'auto',
+        background: 'var(--card-bg)', borderRadius: 'var(--r-modal)',
         boxShadow: '0 30px 70px var(--shadow)',
         padding: '0 var(--modal-px) 28px',
         overflow: 'hidden',
@@ -666,7 +672,8 @@ export function ModalCard({ children }: { children: React.ReactNode; accentBar?:
       } as React.CSSProperties}>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -677,12 +684,12 @@ export function CloseBtn({ onClose }: { onClose: () => void }) {
       style={{
         position: 'absolute', top: 20, right: 20, zIndex: 2,
         width: 36, height: 36, border: 'none', borderRadius: 10,
-        background: 'transparent', color: 'var(--on-primary)',
+        background: 'transparent', color: 'var(--band-ink)',
         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontSize: 20, transition: 'background .15s',
       }}
       aria-label="Cerrar"
-      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--on-primary) 18%, transparent)'; }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'color-mix(in srgb, var(--band-ink) 18%, transparent)'; }}
       onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
     >
       <span className="ms">close</span>
@@ -690,26 +697,26 @@ export function CloseBtn({ onClose }: { onClose: () => void }) {
   );
 }
 
-/** Franja de título del modal: degradado de la marca a todo el ancho de la tarjeta. */
+/** Franja de título del modal: color de la franja del tema (--band-bg) a todo el ancho de la tarjeta. */
 export function ModalBadge({ icon, title, subtitle }: { icon: string; title: string; subtitle: string }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 15,
       margin: '0 calc(-1 * var(--modal-px, 36px)) 26px',
       padding: '20px calc(var(--modal-px, 36px) + 44px) 20px var(--modal-px, 36px)',
-      background: 'var(--primary-gradient)', color: 'var(--on-primary)',
+      background: 'var(--band-bg)', color: 'var(--band-ink)',
     }}>
       <div style={{
         width: 46, height: 46, borderRadius: 14, flexShrink: 0,
-        background: 'color-mix(in srgb, var(--on-primary) 18%, transparent)',
-        border: '1px solid color-mix(in srgb, var(--on-primary) 30%, transparent)',
+        background: 'color-mix(in srgb, var(--band-ink) 18%, transparent)',
+        border: '1px solid color-mix(in srgb, var(--band-ink) 30%, transparent)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <span className="ms" style={{ fontSize: 25, color: 'var(--on-primary)' }}>{icon}</span>
+        <span className="ms" style={{ fontSize: 25, color: 'var(--band-ink)' }}>{icon}</span>
       </div>
       <div style={{ minWidth: 0 }}>
         <div style={{ fontSize: 21, fontWeight: 700, letterSpacing: '-.3px', lineHeight: 1.2 }}>{title}</div>
-        <div style={{ fontSize: 13, marginTop: 2, color: 'color-mix(in srgb, var(--on-primary) 90%, transparent)' }}>{subtitle}</div>
+        <div style={{ fontSize: 13, marginTop: 2, color: 'color-mix(in srgb, var(--band-ink) 90%, transparent)' }}>{subtitle}</div>
       </div>
     </div>
   );
@@ -801,7 +808,7 @@ function ModalHeader({ icon, title, subtitle, onClose }: { icon: string; title: 
         <h2 className="headline-s" style={{ fontSize: 22 }}>{title}</h2>
         {subtitle && <p className="body-m" style={{ color: 'var(--on-surface-variant)', marginTop: 2 }}>{subtitle}</p>}
       </div>
-      <IconButton name="close" onClick={onClose} />
+      <IconButton name="close" tooltip="Cerrar" onClick={onClose} />
     </div>
   );
 }

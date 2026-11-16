@@ -18,21 +18,22 @@ function authErrorMsg(message?: string): string {
 }
 
 /* ---------- BrandMark ---------- */
-/** `light`: texto blanco fijo, para el panel verde del Login. `onPrimary`: sigue el color del
- *  tema (--on-primary), para la barra superior, que es verde en claro y menta en oscuro. */
-export function BrandMark({ size = 44, light = false, onPrimary = false }) {
-  const fg = onPrimary ? 'var(--on-primary)' : light ? '#fff' : null;
-  const fgSub = onPrimary ? 'color-mix(in srgb, var(--on-primary) 82%, transparent)' : light ? 'rgba(255,255,255,0.8)' : null;
+/** `light`: texto blanco fijo, para el panel de color del Login. `onNav`: sigue los colores de la
+ *  barra superior del tema (--nav-ink, --nav-mark-*): translúcido sobre barras de color, de
+ *  color sobre barras blancas. */
+export function BrandMark({ size = 44, light = false, onNav = false }) {
+  const fg = onNav ? 'var(--nav-ink)' : light ? '#fff' : null;
+  const fgSub = onNav ? 'color-mix(in srgb, var(--nav-ink) 78%, transparent)' : light ? 'rgba(255,255,255,0.8)' : null;
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
       <div style={{
-        width: size, height: size, borderRadius: 14, flexShrink: 0,
-        background: onPrimary ? 'color-mix(in srgb, var(--on-primary) 18%, transparent)' : light ? 'rgba(255,255,255,0.16)' : 'var(--primary)',
+        width: size, height: size, borderRadius: onNav ? 'var(--r-lg)' : 14, flexShrink: 0,
+        background: onNav ? 'var(--nav-mark-bg)' : light ? 'rgba(255,255,255,0.16)' : 'var(--primary)',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         boxShadow: fg ? 'none' : '0 6px 18px -6px var(--primary)',
-        border: onPrimary ? '1px solid color-mix(in srgb, var(--on-primary) 30%, transparent)' : light ? '1px solid rgba(255,255,255,0.25)' : 'none',
+        border: light ? '1px solid rgba(255,255,255,0.25)' : 'none',
       }}>
-        <Icon name="clinical_notes" size={size * 0.56} fill style={{ color: fg ?? 'var(--on-primary)' }} />
+        <Icon name="clinical_notes" size={size * 0.56} fill style={{ color: onNav ? 'var(--nav-mark-ink)' : (fg ?? 'var(--on-primary)') }} />
       </div>
       <div style={{ lineHeight: 1.05 }}>
         <div className="title-l" style={{ fontWeight: 800, color: fg ?? 'var(--on-surface)', letterSpacing: '-.3px' }}>MedSaaS</div>
@@ -67,7 +68,7 @@ function MedicalBackdrop({ children, style = {}, className = '' }) {
   return (
     <div className={className} style={{
       position: 'relative', overflow: 'hidden',
-      background: 'linear-gradient(150deg, #173F2E 0%, #1F5F43 45%, #2F7D5B 100%)',
+      background: 'var(--hero-bg)',
       ...style,
     }}>
       <div style={{ position: 'absolute', width: 460, height: 460, borderRadius: '50%', top: -140, right: -120, background: 'radial-gradient(circle, rgba(213,232,210,0.30), transparent 70%)' }} />

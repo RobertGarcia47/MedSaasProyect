@@ -92,7 +92,7 @@ export function PdfPreviewModal<T>({ open, data, generar, titulo, detalle, icono
           <div className="title-l" style={{ fontWeight: 700, fontSize: 17 }}>{titulo}</div>
           {detalle && <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>{detalle}</div>}
         </div>
-        <IconButton name="close" onClick={onClose} />
+        <IconButton name="close" tooltip="Cerrar" onClick={onClose} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0, background: 'var(--surface-container-lowest)', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>

@@ -96,7 +96,7 @@ export function PdfInformeModal({ open, data, onClose, toast }: {
             </span>
           </div>
         </div>
-        <IconButton name="close" onClick={onClose} />
+        <IconButton name="close" tooltip="Cerrar" onClick={onClose} />
       </div>
 
       {/* Vista previa */}
