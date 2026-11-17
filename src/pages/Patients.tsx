@@ -12,6 +12,7 @@ import { ExamenOralResumen } from '../components/ExamenOralResumen';
 import { esPracticaSaludMental, esPracticaDental } from '../lib/db';
 import { PlanTratamientoTab } from '../components/PlanTratamientoTab';
 import { ArchivosPacienteTab } from '../components/ArchivosPacienteTab';
+import { ResumenIaCard } from '../components/ResumenIaCard';
 import { obtenerInformes, formatFolio, TIPO_INFORME_LABEL, TIPO_INFORME_ICON, TIPO_INFORME_COLOR, VISIBILIDAD_ICON, VISIBILIDAD_LABEL, type InformeUI } from '../lib/informes';
 import { obtenerEstudios, urlDescarga, type EstudioUI } from '../lib/laboratorio';
 import { obtenerConsultas, type ConsultaDetalleUI } from '../lib/consultas';
@@ -681,15 +682,9 @@ export function PatientRecord({ id, go, openModal, toast, dataVersion = 0 }: { i
               <Divider style={{ margin: '18px 0' }} />
               <InfoStat label="Última consulta" value={pac.consultas[0] ? fechaCorta(pac.consultas[0].fecha) : undefined} sub={pac.consultas[0] ? haceCuanto(pac.consultas[0].fecha) : undefined} />
             </Card>
-            <Card variant="filled" style={{ padding: 20 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <Icon name="smart_toy" size={22} style={{ color: 'var(--primary)' }} />
-                <h3 className="title-m">Resumen IA</h3>
-              </div>
-              <p className="body-m" style={{ color: 'var(--on-surface-variant)', lineHeight: 1.6 }}>
-                Funcionalidad disponible próximamente.
-              </p>
-            </Card>
+            {expedienteId && (
+              <ResumenIaCard key={expedienteId} expedienteId={expedienteId} puedeUsar={account.accesoNivel !== 'limitado'} toast={toast} />
+            )}
           </div>
         </div>
       )}
