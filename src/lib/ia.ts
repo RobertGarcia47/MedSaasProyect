@@ -124,6 +124,35 @@ export function indicacionesAHtml(i: IndicacionesPaciente): string {
   return partes.join('');
 }
 
+// ── Mejorar nota de la consulta ───────────────────────────────────────────────
+
+export type FormatoNota = 'general' | 'dental' | 'salud_mental';
+
+export interface PropuestaNotaResultado {
+  secciones: Array<{ titulo: string; texto: string }>;
+  faltantes: string[];
+  /** Oraciones omitidas porque traían cifras que el profesional no había escrito. */
+  descartadas: number;
+  formato: FormatoNota;
+  modelo: string;
+  uso: { input_tokens: number; output_tokens: number };
+  generado_en: string;
+}
+
+/** Propone la nota reorganizada (Edge Function `mejorar-nota`). No cambia nada: el profesional decide. */
+export async function mejorarNota(p: {
+  expedienteId: string; motivo: string; notas: string; signos: string; formato: FormatoNota;
+}): Promise<PropuestaNotaResultado> {
+  return invocarIA<PropuestaNotaResultado>('mejorar-nota', {
+    expediente_id: p.expedienteId, motivo: p.motivo, notas: p.notas, signos: p.signos, formato: p.formato,
+  }, 'No se pudo reorganizar la nota.');
+}
+
+/** HTML de la propuesta, con el mismo estilo de las plantillas de nota ("<b>Título:</b> texto"). Todo se escapa. */
+export function propuestaNotaAHtml(secciones: Array<{ titulo: string; texto: string }>): string {
+  return secciones.map((s) => `<p><b>${esc(s.titulo)}:</b> ${esc(s.texto)}</p>`).join('');
+}
+
 // ── Sugerencia de CIE-10 ──────────────────────────────────────────────────────
 
 export interface SugerenciaCie10 {

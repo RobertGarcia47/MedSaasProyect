@@ -16,6 +16,7 @@ import { obtenerPlanTratamiento, guardarPlanTratamiento, PLAN_TRATAMIENTO_VACIO,
 import { guardarNotaPrivada } from '../lib/notasPrivadas';
 import { Cie10Picker } from '../components/Cie10Picker';
 import { Cie10Sugerencias } from '../components/Cie10Sugerencias';
+import { MejorarNotaIa } from '../components/MejorarNotaIa';
 import { Icon, Button, Card, IconButton, Select } from '../components';
 import { Pills } from './Clinical';
 
@@ -403,6 +404,14 @@ export function Consulta({ go, goBack, toast, patientId }: {
   };
 
   const num = (v: string): number | null => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+
+  // Signos capturados, en una línea, para las funciones de IA (sugerir CIE-10, mejorar nota).
+  const signosTexto = () => [
+    vitales.taSist && vitales.taDiast && `TA ${vitales.taSist}/${vitales.taDiast}`,
+    vitales.fc && `FC ${vitales.fc}`, vitales.temp && `Temp ${vitales.temp} °C`,
+    vitales.spo2 && `SpO2 ${vitales.spo2}%`, vitales.glucosa && `Glucosa ${vitales.glucosa}`,
+    vitales.peso && `Peso ${vitales.peso} kg`,
+  ].filter(Boolean).join(', ');
 
   const registrar = async () => {
     if (!motivo.trim()) { setMotivoErr(true); toast?.('El motivo de consulta es obligatorio'); return; }
@@ -1028,6 +1037,16 @@ export function Consulta({ go, goBack, toast, patientId }: {
               <span className="title-s" style={{ fontSize: 16 }}>Nota clínica</span>
               <span style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>Texto libre</span>
             </div>
+            <MejorarNotaIa
+              clinicaId={account.clinicaId}
+              esOwner={account.rol === 'owner'}
+              puedeUsar={puede && !!pid}
+              formato={esSaludMental ? 'salud_mental' : esDental ? 'dental' : 'general'}
+              resolverExpedienteId={async () => expedienteSel ?? await getOrCreateExpediente(pid, account.clinicaId!)}
+              obtenerNota={() => ({ motivo, signos: signosTexto() })}
+              leerEditorHtml={() => editorRef.current?.innerHTML ?? ''}
+              escribirEditorHtml={(html) => { if (editorRef.current) { editorRef.current.innerHTML = html; setDirty(true); } }}
+              toast={toast} />
             {/* Toolbar */}
             <div style={{ position: 'sticky', top: 80, zIndex: 5, display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', background: 'var(--surface-container-low)', borderTop: '1px solid var(--outline-variant)', borderBottom: '1px solid var(--outline-variant)' }}>
               {[['format_bold', 'bold'], ['format_italic', 'italic'], ['format_underlined', 'underline']].map(([ic, cmd]) => (
@@ -1119,12 +1138,7 @@ export function Consulta({ go, goBack, toast, patientId }: {
               obtenerTexto={() => ({
                 motivo,
                 notas: editorRef.current?.innerHTML ?? '',
-                signos: [
-                  vitales.taSist && vitales.taDiast && `TA ${vitales.taSist}/${vitales.taDiast}`,
-                  vitales.fc && `FC ${vitales.fc}`, vitales.temp && `Temp ${vitales.temp} °C`,
-                  vitales.spo2 && `SpO2 ${vitales.spo2}%`, vitales.glucosa && `Glucosa ${vitales.glucosa}`,
-                  vitales.peso && `Peso ${vitales.peso} kg`,
-                ].filter(Boolean).join(', '),
+                signos: signosTexto(),
               })}
               yaElegidos={diagnosticos.map((d) => d.code)}
               onAgregar={addDx}
