@@ -80,6 +80,50 @@ export async function generarResumenPaciente(expedienteId: string): Promise<Resu
   return r;
 }
 
+// ── Indicaciones para el paciente (desde la receta) ───────────────────────────
+
+export interface IndicacionesPaciente {
+  introduccion: string;
+  medicamentos: Array<{ nombre: string; como_tomarlo: string; controlado: boolean }>;
+  cuidados: string[];
+  senales_alarma: string[];
+}
+
+export interface IndicacionesResultado {
+  indicaciones: IndicacionesPaciente;
+  modelo: string;
+  uso: { input_tokens: number; output_tokens: number };
+  generado_en: string;
+}
+
+/** Redacta indicaciones en lenguaje sencillo a partir de la receta en curso (Edge Function `indicaciones-paciente`). */
+export async function generarIndicacionesPaciente(p: {
+  expedienteId: string;
+  diagnosticoCodigo: string;
+  medicamentos: Array<{ medicamento: string; dosis?: string | null; frecuencia?: string | null; duracion?: string | null; via?: string | null; instrucciones?: string | null; controlado?: boolean }>;
+  observaciones: string;
+}): Promise<IndicacionesResultado> {
+  return invocarIA<IndicacionesResultado>('indicaciones-paciente', {
+    expediente_id: p.expedienteId, diagnostico_codigo: p.diagnosticoCodigo, medicamentos: p.medicamentos, observaciones: p.observaciones,
+  }, 'No se pudieron generar las indicaciones.');
+}
+
+const esc = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** HTML para el editor de "Observaciones generales" de la receta. Todo el texto se escapa: viene de un modelo. */
+export function indicacionesAHtml(i: IndicacionesPaciente): string {
+  const lista = (items: string[]) => `<ul>${items.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
+  const partes: string[] = [];
+  if (i.introduccion) partes.push(`<p>${esc(i.introduccion)}</p>`);
+  if (i.medicamentos.length) {
+    partes.push('<p><strong>Cómo tomar sus medicamentos</strong></p>');
+    partes.push(`<ul>${i.medicamentos.map((m) => `<li><strong>${esc(m.nombre)}:</strong> ${esc(m.como_tomarlo)}</li>`).join('')}</ul>`);
+  }
+  if (i.cuidados.length) { partes.push('<p><strong>Cuidados</strong></p>'); partes.push(lista(i.cuidados)); }
+  if (i.senales_alarma.length) { partes.push('<p><strong>Acuda a consulta o a urgencias si:</strong></p>'); partes.push(lista(i.senales_alarma)); }
+  return partes.join('');
+}
+
 // ── Sugerencia de CIE-10 ──────────────────────────────────────────────────────
 
 export interface SugerenciaCie10 {

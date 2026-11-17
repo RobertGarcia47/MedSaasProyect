@@ -5,6 +5,7 @@ import { crearReceta, type MedicamentoInput } from '../lib/recetas';
 import { Cie10Picker } from '../components/Cie10Picker';
 import { construirRecetaPdf, type RecetaPdfData } from '../lib/pdf';
 import { PdfRecetaModal } from '../components/PdfRecetaModal';
+import { IndicacionesIa } from '../components/IndicacionesIa';
 import { Icon, Button, Card, IconButton } from '../components';
 
 // ── Campo outlined con label flotante ────────────────────────────────────────────
@@ -373,6 +374,23 @@ export function Receta({ go, goBack, toast, patientId }: {
               <span className="title-s" style={{ fontSize: 16 }}>Observaciones generales</span>
               <span style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>Indicaciones para el paciente · texto libre</span>
             </div>
+            <IndicacionesIa
+              clinicaId={account.clinicaId}
+              esOwner={account.rol === 'owner'}
+              puedeUsar={puede && !!pid}
+              resolverExpedienteId={async () => paciente?.expediente_id ?? await getOrCreateExpediente(pid, account.clinicaId!)}
+              obtenerReceta={() => ({
+                diagnosticoCodigo: dx,
+                observaciones: obsRef.current?.innerHTML ?? '',
+                medicamentos: meds.map((m) => ({ medicamento: m.nombre, dosis: m.dosis, frecuencia: m.frecuencia, duracion: m.duracion, via: m.via, instrucciones: m.instrucciones, controlado: m.controlado })),
+              })}
+              onInsertar={(html) => {
+                const ed = obsRef.current; if (!ed) return;
+                const vacio = !ed.innerText.trim();
+                ed.innerHTML = vacio ? html : ed.innerHTML + '<p><br></p>' + html;
+                setDirty(true);
+              }}
+              toast={toast} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '8px 16px', background: 'var(--surface-container-low)', borderTop: '1px solid var(--outline-variant)', borderBottom: '1px solid var(--outline-variant)' }}>
               {[['format_bold', 'bold'], ['format_italic', 'italic'], ['format_list_bulleted', 'insertUnorderedList'], ['format_list_numbered', 'insertOrderedList']].map(([ic, cmd]) => (
                 <button key={cmd} onMouseDown={(e) => { e.preventDefault(); exec(cmd); }} style={{ width: 36, height: 36, borderRadius: 8, border: 'none', cursor: 'pointer', background: 'transparent', color: 'var(--on-surface-variant)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Icon name={ic} size={20} /></button>
