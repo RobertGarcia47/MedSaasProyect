@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon, Button } from './index';
-import { mejorarNota, propuestaNotaAHtml, type FormatoNota, type PropuestaNotaResultado } from '../lib/ia';
-import { useEstadoIA, IaActivar } from './IaConsentimiento';
+import { mejorarNota, propuestaNotaAHtml, sinCupo, type FormatoNota, type PropuestaNotaResultado } from '../lib/ia';
+import { useEstadoIA, IaActivar, AvisoCupo } from './IaConsentimiento';
 
 // "Mejorar con IA" de la nota de consulta. Reorganiza lo que el profesional ya escribió en las secciones
 // de la nota clínica. Es la única función de IA que toca SU texto, así que:
@@ -95,7 +95,7 @@ export function MejorarNotaIa({ clinicaId, esOwner, puedeUsar, formato, resolver
             <Button variant="text" size="sm" icon="undo" onClick={restaurar}>Restaurar mi texto anterior</Button>
           )}
           {ia.estado?.habilitada && (
-            <Button variant="outlined" size="sm" icon="auto_awesome" onClick={mejorar} disabled={!puedeUsar || cargando}>
+            <Button variant="outlined" size="sm" icon="auto_awesome" onClick={mejorar} disabled={!puedeUsar || cargando || sinCupo(ia.estado)}>
               {cargando ? 'Reorganizando…' : 'Mejorar nota'}
             </Button>
           )}
@@ -110,6 +110,7 @@ export function MejorarNotaIa({ clinicaId, esOwner, puedeUsar, formato, resolver
         {!ia.cargando && !ia.error && !ia.estado?.habilitada && (
           <div style={{ marginTop: 10 }}><IaActivar clinicaId={clinicaId} esOwner={esOwner} onCambio={ia.recargar} compacto /></div>
         )}
+        {ia.estado?.habilitada && <AvisoCupo estado={ia.estado} />}
         {ia.estado?.habilitada && !puedeUsar && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--on-surface-variant)' }}>Disponible con una suscripción activa.</p>}
       </div>
 

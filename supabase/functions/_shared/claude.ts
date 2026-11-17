@@ -1,7 +1,8 @@
-// Llamada genérica a la API de Claude con salida estructurada (tool use forzado). Solo usa fetch:
-// no depende de Deno ni de Supabase, así que también se prueba con Node. Cada función de IA
-// (resumen, CIE-10…) pone su propio prompt y su propia herramienta; el manejo de errores,
-// el tiempo límite y la lectura de tokens viven aquí una sola vez.
+// Llamadas a la API de Claude. Solo usa fetch: no depende de Deno ni de Supabase, así que también se
+// prueba con Node. Cada función de IA pone su propio prompt; el manejo de errores, el tiempo límite y la
+// lectura de tokens viven aquí una sola vez.
+//   - llamarHerramienta: salida estructurada (el modelo responde llamando a una herramienta).
+//   - llamarTexto: respuesta de texto libre, para conversaciones (chat de ayuda).
 
 export class ErrorIA extends Error {
   status: number;
@@ -26,11 +27,8 @@ export interface OpcionesLlamada {
   maxTokens?: number;
 }
 
-/** Pide a Claude que responda SOLO llamando a `herramienta`; devuelve lo que puso en sus argumentos. */
-export async function llamarHerramienta(
-  p: { system: string; mensaje: string; herramienta: HerramientaClaude },
-  op: OpcionesLlamada,
-): Promise<{ entrada: Record<string, unknown>; uso: UsoTokens; modelo: string }> {
+/** Envía la petición a /v1/messages y devuelve el JSON; traduce los errores a mensajes entendibles. */
+async function pedirMensajes(cuerpo: Record<string, unknown>, op: OpcionesLlamada): Promise<{ data: any; modelo: string }> {
   const modelo = op.modelo || MODELO_DEFECTO;
   const f = op.fetchFn ?? fetch;
   const ctrl = new AbortController();
@@ -41,14 +39,7 @@ export async function llamarHerramienta(
       method: 'POST',
       signal: ctrl.signal,
       headers: { 'content-type': 'application/json', 'x-api-key': op.apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: modelo,
-        max_tokens: op.maxTokens ?? 1500,
-        system: p.system,
-        tools: [p.herramienta],
-        tool_choice: { type: 'tool', name: p.herramienta.name },
-        messages: [{ role: 'user', content: p.mensaje }],
-      }),
+      body: JSON.stringify({ model: modelo, max_tokens: op.maxTokens ?? 1500, ...cuerpo }),
     });
   } catch (e) {
     throw new ErrorIA((e as Error).name === 'AbortError' ? 'La IA tardó demasiado en responder. Intenta de nuevo.' : 'No se pudo contactar al servicio de IA.', 504);
@@ -64,14 +55,36 @@ export async function llamarHerramienta(
     if (res.status === 400 && /credit|balance/i.test(detalle)) throw new ErrorIA('La cuenta de IA no tiene saldo. Agrega crédito en la consola de Anthropic.', 402);
     throw new ErrorIA(`El servicio de IA respondió con error ${res.status}${detalle ? `: ${detalle}` : ''}`, 502);
   }
+  return { data: await res.json(), modelo };
+}
 
-  const data = await res.json();
+const usoDe = (data: any): UsoTokens => ({ input_tokens: data.usage?.input_tokens ?? 0, output_tokens: data.usage?.output_tokens ?? 0 });
+
+/** Pide a Claude que responda SOLO llamando a `herramienta`; devuelve lo que puso en sus argumentos. */
+export async function llamarHerramienta(
+  p: { system: string; mensaje: string; herramienta: HerramientaClaude },
+  op: OpcionesLlamada,
+): Promise<{ entrada: Record<string, unknown>; uso: UsoTokens; modelo: string }> {
+  const { data, modelo } = await pedirMensajes({
+    system: p.system,
+    tools: [p.herramienta],
+    tool_choice: { type: 'tool', name: p.herramienta.name },
+    messages: [{ role: 'user', content: p.mensaje }],
+  }, op);
   const bloque = (data.content ?? []).find((b: { type: string }) => b.type === 'tool_use');
   const entrada = bloque?.input;
   if (!entrada || typeof entrada !== 'object') throw new ErrorIA('La IA no devolvió una respuesta válida. Intenta de nuevo.');
-  return {
-    entrada: entrada as Record<string, unknown>,
-    uso: { input_tokens: data.usage?.input_tokens ?? 0, output_tokens: data.usage?.output_tokens ?? 0 },
-    modelo: data.model ?? modelo,
-  };
+  return { entrada: entrada as Record<string, unknown>, uso: usoDe(data), modelo: data.model ?? modelo };
+}
+
+/** Respuesta de texto libre a una conversación (la primera entrada debe ser del usuario). */
+export async function llamarTexto(
+  p: { system: string; mensajes: Array<{ role: 'user' | 'assistant'; content: string }> },
+  op: OpcionesLlamada,
+): Promise<{ texto: string; uso: UsoTokens; modelo: string }> {
+  const { data, modelo } = await pedirMensajes({ system: p.system, messages: p.mensajes }, { maxTokens: 700, ...op });
+  const texto = (data.content ?? [])
+    .filter((b: { type: string }) => b.type === 'text').map((b: { text: string }) => b.text).join('\n').trim();
+  if (!texto) throw new ErrorIA('La IA no devolvió una respuesta. Intenta de nuevo.');
+  return { texto, uso: usoDe(data), modelo: data.model ?? modelo };
 }

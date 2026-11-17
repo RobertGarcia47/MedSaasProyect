@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Icon, Button } from './index';
-import { generarIndicacionesPaciente, indicacionesAHtml } from '../lib/ia';
-import { useEstadoIA, IaActivar } from './IaConsentimiento';
+import { generarIndicacionesPaciente, indicacionesAHtml, sinCupo } from '../lib/ia';
+import { useEstadoIA, IaActivar, AvisoCupo } from './IaConsentimiento';
 
 // Barra "Redactar con IA" del campo "Observaciones generales" de la receta. Toma el diagnóstico y los
 // medicamentos que el médico lleva en la receta y escribe en el editor un borrador de indicaciones en
@@ -50,7 +50,7 @@ export function IndicacionesIa({ clinicaId, esOwner, puedeUsar, resolverExpedien
           <strong style={{ color: 'var(--on-surface)' }}>Redactar con IA.</strong> Escribe un borrador en lenguaje sencillo a partir de los medicamentos de la receta. Tú lo revisas y editas.
         </span>
         {ia.estado?.habilitada && (
-          <Button variant="outlined" size="sm" icon={hecho ? 'refresh' : 'auto_awesome'} onClick={redactar} disabled={!puedeUsar || cargando}>
+          <Button variant="outlined" size="sm" icon={hecho ? 'refresh' : 'auto_awesome'} onClick={redactar} disabled={!puedeUsar || cargando || sinCupo(ia.estado)}>
             {cargando ? 'Redactando…' : hecho ? 'Redactar de nuevo' : 'Redactar indicaciones'}
           </Button>
         )}
@@ -66,6 +66,7 @@ export function IndicacionesIa({ clinicaId, esOwner, puedeUsar, resolverExpedien
       {!ia.cargando && !ia.error && !ia.estado?.habilitada && (
         <div style={{ marginTop: 10 }}><IaActivar clinicaId={clinicaId} esOwner={esOwner} onCambio={ia.recargar} compacto /></div>
       )}
+      {ia.estado?.habilitada && <AvisoCupo estado={ia.estado} />}
       {ia.estado?.habilitada && !puedeUsar && <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--on-surface-variant)' }}>Disponible con una suscripción activa.</p>}
     </div>
   );

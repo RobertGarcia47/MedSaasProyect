@@ -17,7 +17,16 @@ export interface EstadoIA {
   consentimiento_por: string | null;
   usos_mes: number;
   usos_5min: number;
+  /** Créditos gastados este mes y cupo del plan (desde sql/2026-11-18_ia_cupos_ayuda.sql; null si el SQL aún no corre). */
+  creditos_mes: number | null;
+  cupo_mes: number | null;
+  /** Primer día del próximo mes ('YYYY-MM-DD'): cuándo se renuevan los créditos. */
+  renueva_el: string | null;
 }
+
+/** true si la clínica ya gastó todos los créditos de IA de su plan este mes. */
+export const sinCupo = (e: EstadoIA | null | undefined): boolean =>
+  !!e && e.cupo_mes != null && (e.creditos_mes ?? 0) >= e.cupo_mes;
 
 /** Estado de la IA en la clínica (RPC ia_estado). null si no eres miembro de esa clínica. */
 export async function obtenerEstadoIA(clinicaId: string): Promise<EstadoIA | null> {
@@ -182,4 +191,42 @@ export async function sugerirCie10(p: {
   return invocarIA<SugerenciasCie10Resultado>('sugerir-cie10', {
     expediente_id: p.expedienteId, motivo: p.motivo, notas: p.notas, signos: p.signos, ya_elegidos: p.yaElegidos,
   }, 'No se pudieron generar las sugerencias.');
+}
+
+// ── Chat de ayuda ─────────────────────────────────────────────────────────────
+
+export interface MensajeAyuda { role: 'user' | 'assistant'; content: string }
+
+export interface RespuestaAyuda { respuesta: string; acciones: string[]; modelo: string }
+
+/** Accesos directos que puede ofrecer el chat. Debe coincidir con ACCESOS de supabase/functions/_shared/ayudaIa.ts. */
+export const ACCESOS_AYUDA: Record<string, { ruta: string; etiqueta: string }> = {
+  inicio: { ruta: 'dashboard', etiqueta: 'Ir a Inicio' },
+  agenda: { ruta: 'calendar', etiqueta: 'Ir a Agenda' },
+  pacientes: { ruta: 'patients', etiqueta: 'Ir a Pacientes' },
+  perfil: { ruta: 'profile', etiqueta: 'Ir a Mi perfil' },
+  configuracion: { ruta: 'settings', etiqueta: 'Ir a Configuración' },
+  procedimientos: { ruta: 'procedimientos', etiqueta: 'Ir a Procedimientos y precios' },
+};
+
+/** Pregunta al asistente de ayuda (Edge Function `ayuda-chat`). No envía datos de pacientes: solo la conversación y un poco de contexto. */
+export async function preguntarAyuda(p: {
+  clinicaId: string; mensajes: MensajeAyuda[]; pantalla: string; rol: string | null; tipoProfesional: string | null; accesoLimitado: boolean;
+}): Promise<RespuestaAyuda> {
+  return invocarIA<RespuestaAyuda>('ayuda-chat', {
+    clinica_id: p.clinicaId, mensajes: p.mensajes, pantalla: p.pantalla, rol: p.rol,
+    tipo_profesional: p.tipoProfesional, acceso_limitado: p.accesoLimitado,
+  }, 'No se pudo responder. Intenta de nuevo.');
+}
+
+export type TipoReporteAyuda = 'problema' | 'sugerencia' | 'pregunta';
+
+/** Guarda un reporte para el equipo de MedSaaS (tabla ayuda_reportes). */
+export async function enviarReporteAyuda(p: {
+  clinicaId: string; tipo: TipoReporteAyuda; mensaje: string; conversacion: MensajeAyuda[] | null; pantalla: string;
+}): Promise<void> {
+  const { error } = await supabase.from('ayuda_reportes').insert({
+    clinica_id: p.clinicaId, tipo: p.tipo, mensaje: p.mensaje.trim(), conversacion: p.conversacion, pantalla: p.pantalla,
+  });
+  if (error) throw new Error('No se pudo enviar el reporte. Intenta de nuevo en un momento.');
 }

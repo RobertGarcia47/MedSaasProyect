@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Icon, Button, Card } from './index';
-import { generarResumenPaciente, type ResumenPacienteResultado } from '../lib/ia';
-import { useEstadoIA, IaActivar } from './IaConsentimiento';
+import { generarResumenPaciente, sinCupo, type ResumenPacienteResultado } from '../lib/ia';
+import { useEstadoIA, IaActivar, AvisoCupo } from './IaConsentimiento';
 
 // Tarjeta "Resumen IA" del expediente: borrador previo a la consulta generado por Claude (Haiku).
 // No se genera solo: el médico lo pide. La clínica tiene que haber activado la IA (consentimiento del
@@ -110,10 +110,11 @@ export function ResumenIaCard({ expedienteId, clinicaId, esOwner, puedeUsar, toa
           {estado === 'error' && (
             <div role="alert" style={{ fontSize: 13, fontWeight: 600, color: 'var(--on-error-container)', background: 'var(--error-container)', borderRadius: 'var(--r-sm)', padding: '10px 12px', margin: '0 0 12px' }}>{error}</div>
           )}
-          <Button variant="filled" icon="auto_awesome" onClick={generar} disabled={!puedeUsar}>
+          <Button variant="filled" icon="auto_awesome" onClick={generar} disabled={!puedeUsar || sinCupo(ia.estado)}>
             {estado === 'error' ? 'Reintentar' : 'Generar resumen'}
           </Button>
           {!puedeUsar && <p style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', margin: '10px 0 0' }}>Disponible con una suscripción activa.</p>}
+          <AvisoCupo estado={ia.estado} />
         </>
       )}
 
@@ -146,7 +147,7 @@ export function ResumenIaCard({ expedienteId, clinicaId, esOwner, puedeUsar, toa
               {' '}{datos.uso.input_tokens + datos.uso.output_tokens} tokens. Verifícalo antes de usarlo.
             </span>
             <Button variant="outlined" size="sm" icon="content_copy" onClick={copiar}>Copiar</Button>
-            <Button variant="outlined" size="sm" icon="refresh" onClick={generar} disabled={!puedeUsar}>Actualizar</Button>
+            <Button variant="outlined" size="sm" icon="refresh" onClick={generar} disabled={!puedeUsar || sinCupo(ia.estado)}>Actualizar</Button>
           </div>
         </div>
       )}

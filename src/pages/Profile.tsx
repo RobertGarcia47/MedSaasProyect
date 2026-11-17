@@ -1362,7 +1362,7 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
             <>
               <SectionHead icon="auto_awesome" title="Inteligencia artificial" />
               {account.clinicaId
-                ? <PanelIaConfiguracion clinicaId={account.clinicaId} esOwner={esEditor} />
+                ? <PanelIaConfiguracion clinicaId={account.clinicaId} esOwner={esEditor} onVerPlanes={() => setTab('suscripcion')} />
                 : <p className="body-m" style={{ color: 'var(--on-surface-variant)' }}>Esta cuenta no pertenece a una clínica.</p>}
             </>
           )}

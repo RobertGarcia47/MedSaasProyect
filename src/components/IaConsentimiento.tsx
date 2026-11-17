@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useState } from 'react';
 import { Icon, Button } from './index';
-import { obtenerEstadoIA, configurarIAClinica, type EstadoIA } from '../lib/ia';
+import { obtenerEstadoIA, configurarIAClinica, sinCupo, type EstadoIA } from '../lib/ia';
 
 // Consentimiento de la clínica para usar IA. La aceptación vive en la base (clinicas.ia_habilitada y
 // metadatos), la da el PROPIETARIO, y las Edge Functions la exigen: no basta con ocultar un botón.
@@ -93,7 +93,53 @@ export function IaActivar({ clinicaId, esOwner, onCambio, compacto }: {
 }
 
 /** Pestaña "Inteligencia artificial" de Configuración: estado, consentimiento, uso y apagado. */
-export function PanelIaConfiguracion({ clinicaId, esOwner }: { clinicaId: string; esOwner: boolean }) {
+/** Aviso breve cuando la clínica ya gastó los créditos de IA de su plan este mes. Nada si aún hay créditos. */
+export function AvisoCupo({ estado }: { estado: EstadoIA | null }) {
+  if (!sinCupo(estado)) return null;
+  return (
+    <div role="status" style={{ marginTop: 8, fontSize: 12.5, lineHeight: 1.5, padding: '8px 10px', borderRadius: 'var(--r-sm)', background: 'var(--warning-container)', color: 'var(--on-warning-container)' }}>
+      <strong>Se acabaron los créditos de IA de este mes.</strong>{estado?.renueva_el ? ` Se renuevan el ${fechaCorta(estado.renueva_el + 'T12:00:00')}.` : ''} Puedes cambiar de plan en Configuración → Suscripción.
+    </div>
+  );
+}
+
+/** Contador de créditos del mes: "120 de 3,000", con barra y aviso al 80%. */
+function ContadorCreditos({ e, onVerPlanes }: { e: EstadoIA; onVerPlanes?: () => void }) {
+  if (e.cupo_mes == null) {
+    return (
+      <div style={{ flex: '1 1 180px', padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'var(--surface-container)' }}>
+        <div style={{ fontSize: 26, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{e.usos_mes}</div>
+        <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>usos de IA este mes en la clínica</div>
+      </div>
+    );
+  }
+  const usados = e.creditos_mes ?? 0;
+  const pct = e.cupo_mes > 0 ? Math.min(100, Math.round((usados / e.cupo_mes) * 100)) : 100;
+  const agotado = usados >= e.cupo_mes;
+  const alto = !agotado && pct >= 80;
+  const color = agotado ? 'var(--error)' : alto ? 'var(--warning)' : 'var(--primary)';
+  const nf = (n: number) => n.toLocaleString('es-MX');
+  return (
+    <div style={{ flex: '1 1 320px', padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'var(--surface-container)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ fontSize: 26, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{nf(usados)}</span>
+        <span style={{ fontSize: 14, color: 'var(--on-surface-variant)' }}>de {nf(e.cupo_mes)} créditos de IA este mes</span>
+      </div>
+      <div role="progressbar" aria-valuemin={0} aria-valuemax={e.cupo_mes} aria-valuenow={Math.min(usados, e.cupo_mes)} aria-label="Créditos de IA usados este mes"
+        style={{ height: 8, borderRadius: 999, background: 'var(--surface-container-highest)', margin: '10px 0 8px', overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 999 }} />
+      </div>
+      <div style={{ fontSize: 12.5, lineHeight: 1.5, color: 'var(--on-surface-variant)' }}>
+        Cada uso de IA gasta 1 crédito{e.renueva_el ? ` · se renuevan el ${fechaCorta(e.renueva_el + 'T12:00:00')}` : ''}.
+        {agotado && <strong style={{ color: 'var(--error)' }}> Se acabaron los créditos de este mes.</strong>}
+        {alto && <strong style={{ color: 'var(--on-warning-container)' }}> Ya usaste el {pct}%.</strong>}
+        {(agotado || alto) && onVerPlanes && <> <button type="button" onClick={onVerPlanes} style={{ border: 'none', background: 'none', padding: 0, cursor: 'pointer', color: 'var(--primary)', fontWeight: 700, fontSize: 'inherit', fontFamily: 'inherit', textDecoration: 'underline' }}>Ver planes</button></>}
+      </div>
+    </div>
+  );
+}
+
+export function PanelIaConfiguracion({ clinicaId, esOwner, onVerPlanes }: { clinicaId: string; esOwner: boolean; onVerPlanes?: () => void }) {
   const ia = useEstadoIA(clinicaId);
   const [apagando, setApagando] = useState(false);
   const [confirmar, setConfirmar] = useState(false);
@@ -140,10 +186,7 @@ export function PanelIaConfiguracion({ clinicaId, esOwner }: { clinicaId: string
       </div>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 18 }}>
-        <div style={{ flex: '1 1 180px', padding: '14px 16px', borderRadius: 'var(--r-md)', background: 'var(--surface-container)' }}>
-          <div style={{ fontSize: 26, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{e.usos_mes}</div>
-          <div style={{ fontSize: 12.5, color: 'var(--on-surface-variant)' }}>usos de IA este mes en la clínica</div>
-        </div>
+        <ContadorCreditos e={e} onVerPlanes={onVerPlanes} />
       </div>
 
       <p style={{ margin: '0 0 8px', fontSize: 14, fontWeight: 700 }}>Lo que aceptaste</p>

@@ -624,3 +624,8 @@ a { color: inherit; text-decoration: none; }
     --elev-1: none; --elev-2: none; --elev-3: none;
   }
 }
+
+/* El chat de ayuda ocupa la misma esquina que el widget de GoHighLevel del Inicio y éste le tapa botones:
+   se oculta mientras el chat de ayuda está abierto y vuelve al cerrarlo. */
+html.ayuda-abierta chat-widget,
+html.ayuda-abierta iframe[src*="leadconnectorhq"] { display: none !important; }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Icon, Button } from './index';
-import { sugerirCie10, type SugerenciasCie10Resultado, type SugerenciaCie10 } from '../lib/ia';
-import { useEstadoIA, IaActivar } from './IaConsentimiento';
+import { sugerirCie10, sinCupo, type SugerenciasCie10Resultado, type SugerenciaCie10 } from '../lib/ia';
+import { useEstadoIA, IaActivar, AvisoCupo } from './IaConsentimiento';
 
 // "Sugerir con IA" del bloque de diagnósticos de la consulta. Lee el motivo, los signos y la nota que
 // el médico lleva escrita y propone códigos CIE-10. Cada código ya viene validado contra el catálogo
@@ -62,7 +62,7 @@ export function Cie10Sugerencias({ clinicaId, esOwner, puedeUsar, resolverExpedi
           <strong style={{ color: 'var(--on-surface)' }}>Sugerir con IA.</strong> Lee el motivo y la nota y propone códigos. Tú decides cuáles agregar.
         </span>
         {ia.estado?.habilitada && estado !== 'cargando' && (
-          <Button variant="outlined" size="sm" icon={estado === 'listo' ? 'refresh' : 'auto_awesome'} onClick={sugerir} disabled={!puedeUsar}>
+          <Button variant="outlined" size="sm" icon={estado === 'listo' ? 'refresh' : 'auto_awesome'} onClick={sugerir} disabled={!puedeUsar || sinCupo(ia.estado)}>
             {estado === 'listo' ? 'Volver a sugerir' : estado === 'error' ? 'Reintentar' : 'Sugerir diagnósticos'}
           </Button>
         )}
@@ -79,6 +79,8 @@ export function Cie10Sugerencias({ clinicaId, esOwner, puedeUsar, resolverExpedi
       {!ia.cargando && !ia.error && !ia.estado?.habilitada && (
         <div style={{ marginTop: 10 }}><IaActivar clinicaId={clinicaId} esOwner={esOwner} onCambio={ia.recargar} compacto /></div>
       )}
+
+      {ia.estado?.habilitada && <AvisoCupo estado={ia.estado} />}
 
       {ia.estado?.habilitada && !puedeUsar && (
         <p style={{ margin: '8px 0 0', fontSize: 12.5, color: 'var(--on-surface-variant)' }}>Disponible con una suscripción activa.</p>

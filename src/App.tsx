@@ -15,6 +15,7 @@ import { Informe } from './pages/Informe';
 import { Laboratorio } from './pages/Laboratorio';
 import { Profile, Settings } from './pages/Profile';
 import { SearchPalette } from './components/SearchPalette';
+import { AyudaChat } from './components/AyudaChat';
 import { Procedimientos } from './pages/Procedimientos';
 
 // URL del onboarding (donde el usuario completa alta + tenant).
@@ -119,7 +120,7 @@ const ANCHO_PAGINA_DEFECTO = 1280;
 const TECLA_ATAJO = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl';
 
 /* ---------- Top nav ---------- */
-function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor, onSearch }) {
+function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor, onSearch, onHelp }) {
   return (
     <header style={{ height: 68, flexShrink: 0, background: 'var(--nav-bg)', color: 'var(--nav-ink)', borderBottom: '1px solid var(--nav-border)', boxShadow: 'var(--nav-shadow)', position: 'relative', zIndex: 10, display: 'flex', alignItems: 'center', gap: 8, padding: '0 max(24px, var(--page-edge))' }}>
       <BrandMark size={36} onNav />
@@ -142,6 +143,7 @@ function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor, onSearch 
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <IconButton name="search" color="var(--nav-ink)" tooltip={`Buscar (${TECLA_ATAJO}+K)`} onClick={onSearch} />
         <IconButton name={theme === 'dark' ? 'light_mode' : 'dark_mode'} color="var(--nav-ink)" tooltip="Tema" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
+        <IconButton name="help" color="var(--nav-ink)" tooltip="Ayuda" onClick={onHelp} />
         <IconButton name="notifications" color="var(--nav-ink)" tooltip="Notificaciones" />
         <div onClick={openProfileMenu} role="button" tabIndex={0} aria-label="Menú de la cuenta"
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openProfileMenu(); } }}
@@ -155,7 +157,7 @@ function TopNav({ route, go, theme, setTheme, openProfileMenu, doctor, onSearch 
 }
 
 /* ---------- App bar (sidebar layout) ---------- */
-function AppBar({ theme, setTheme, onMenu, openProfileMenu, doctor, onSearch }) {
+function AppBar({ theme, setTheme, onMenu, openProfileMenu, doctor, onSearch, onHelp }) {
   return (
     <header style={{ height: 72, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 14, padding: '0 24px', background: 'var(--surface)', borderBottom: '1px solid var(--outline-variant)' }}>
       <IconButton name="menu" onClick={onMenu} className="mobile-menu-btn" />
@@ -166,6 +168,7 @@ function AppBar({ theme, setTheme, onMenu, openProfileMenu, doctor, onSearch }) 
       </button>
       <div style={{ flex: 1 }} />
       <IconButton name={theme === 'dark' ? 'light_mode' : 'dark_mode'} tooltip="Tema día/noche" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} />
+      <IconButton name="help" tooltip="Ayuda" onClick={onHelp} />
       <div style={{ position: 'relative' }}>
         <IconButton name="notifications" tooltip="Notificaciones" />
         <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: '50%', background: 'var(--error)', border: '2px solid var(--surface)' }} />
@@ -184,14 +187,14 @@ function AppBar({ theme, setTheme, onMenu, openProfileMenu, doctor, onSearch }) 
 }
 
 /* ---------- Profile menu ---------- */
-function ProfileMenu({ open, onClose, go, theme, setTheme, onLogout, doctor, esDentista }) {
+function ProfileMenu({ open, onClose, go, theme, setTheme, onLogout, doctor, esDentista, onHelp }) {
   if (!open) return null;
-  const items = [
+  const items: [string, string, () => void][] = [
     ['account_circle', 'Mi perfil',       () => { go('profile');  onClose(); }],
-    ...(esDentista ? [['medical_services', 'Procedimientos y precios', () => { go('procedimientos'); onClose(); }]] : []),
+    ...(esDentista ? [['medical_services', 'Procedimientos y precios', () => { go('procedimientos'); onClose(); }] as [string, string, () => void]] : []),
     ['settings',       'Configuración',   () => { go('settings'); onClose(); }],
     [theme === 'dark' ? 'light_mode' : 'dark_mode', theme === 'dark' ? 'Modo día' : 'Modo noche', () => setTheme(theme === 'dark' ? 'light' : 'dark')],
-    ['help',           'Ayuda y soporte', onClose],
+    ['help',           'Ayuda y soporte', () => { onClose(); onHelp(); }],
   ];
   return (
     <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 900 }}>
@@ -366,6 +369,7 @@ export default function App() {
   const [snack,     setSnack]     = useState<string | null>(null);
   const [pmenu,     setPmenu]     = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [ayudaOpen, setAyudaOpen] = useState(false);
   const [dataVersion, setDataVersion] = useState(0); // se incrementa tras un write para refrescar listas
   const bumpData = () => setDataVersion((v) => v + 1);
 
@@ -550,7 +554,7 @@ export default function App() {
     <div className="density-regular" style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--background)', '--page-max': `${ANCHO_PAGINA[route.name] ?? ANCHO_PAGINA_DEFECTO}px` } as React.CSSProperties}>
       {account && <AccesoBanner account={account} go={go} />}
       {navStyle === 'topnav' && (
-        <TopNav route={route} go={go} theme={theme} setTheme={setTheme} openProfileMenu={() => setPmenu(true)} doctor={doctor} onSearch={() => setSearchOpen(true)} />
+        <TopNav route={route} go={go} theme={theme} setTheme={setTheme} openProfileMenu={() => setPmenu(true)} doctor={doctor} onSearch={() => setSearchOpen(true)} onHelp={() => setAyudaOpen(true)} />
       )}
 
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
@@ -570,7 +574,7 @@ export default function App() {
 
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
           {navStyle === 'sidebar' && (
-            <AppBar theme={theme} setTheme={setTheme} onMenu={() => setDrawer(true)} openProfileMenu={() => setPmenu(true)} doctor={doctor} onSearch={() => setSearchOpen(true)} />
+            <AppBar theme={theme} setTheme={setTheme} onMenu={() => setDrawer(true)} openProfileMenu={() => setPmenu(true)} doctor={doctor} onSearch={() => setSearchOpen(true)} onHelp={() => setAyudaOpen(true)} />
           )}
           <main className="main-scroll" style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
             <ErrorBoundary routeKey={route.name + (route.params.id || '')}>{page}</ErrorBoundary>
@@ -584,12 +588,14 @@ export default function App() {
         <FAB icon="add" ariaLabel="Nueva cita" onClick={() => openModal('appointment')} />
       </div>
 
-      <ProfileMenu open={pmenu} onClose={() => setPmenu(false)} go={go} theme={theme} setTheme={setTheme} onLogout={onLogout} doctor={doctor} esDentista={esPracticaDental(account?.tipoProfesional)} />
+      <ProfileMenu open={pmenu} onClose={() => setPmenu(false)} go={go} theme={theme} setTheme={setTheme} onLogout={onLogout} doctor={doctor} esDentista={esPracticaDental(account?.tipoProfesional)} onHelp={() => setAyudaOpen(true)} />
 
       <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} clinicaId={account?.clinicaId ?? ''} dataVersion={dataVersion} go={go} openModal={openModal} />
       <AppointmentModal  open={modal?.type === 'appointment'}  onClose={closeModal} prefill={modal?.prefill} toast={toast} onCreated={bumpData} />
       <ReportModal       open={modal?.type === 'report'}       onClose={closeModal} prefill={modal?.prefill} toast={toast} onCreated={bumpData} />
       <PatientModal      open={modal?.type === 'patient'}      onClose={closeModal} toast={toast} onCreated={bumpData} />
+
+      <AyudaChat open={ayudaOpen} onClose={() => setAyudaOpen(false)} go={go} pantalla={route.name} toast={toast} />
 
       <Snackbar open={!!snack} message={snack} />
     </div>
