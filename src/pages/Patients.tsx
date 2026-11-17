@@ -683,7 +683,7 @@ export function PatientRecord({ id, go, openModal, toast, dataVersion = 0 }: { i
               <InfoStat label="Última consulta" value={pac.consultas[0] ? fechaCorta(pac.consultas[0].fecha) : undefined} sub={pac.consultas[0] ? haceCuanto(pac.consultas[0].fecha) : undefined} />
             </Card>
             {expedienteId && (
-              <ResumenIaCard key={expedienteId} expedienteId={expedienteId} puedeUsar={account.accesoNivel !== 'limitado'} toast={toast} />
+              <ResumenIaCard key={expedienteId} expedienteId={expedienteId} clinicaId={account.clinicaId} esOwner={account.rol === 'owner'} puedeUsar={account.accesoNivel !== 'limitado'} toast={toast} />
             )}
           </div>
         </div>

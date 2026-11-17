@@ -3,33 +3,23 @@
 // con el token del propio usuario (la RLS decide qué puede ver; nadie manda datos desde el navegador),
 // le quita la identidad y pide un borrador estructurado a Claude (Haiku por defecto).
 //
+// Antes de llamar al modelo, autorizarIA() comprueba sesión, acceso al expediente, que la clínica
+// haya activado la IA (consentimiento en la base) y los límites de uso. Ver _shared/iaServidor.ts.
+//
 // Secretos (supabase secrets set):
 //   ANTHROPIC_API_KEY   obligatorio. La clave vive solo aquí, jamás en el navegador.
 //   ANTHROPIC_MODEL     opcional. Por defecto 'claude-haiku-5-5'.
+//   IA_LIMITE_MENSUAL   opcional. Llamadas de IA por clínica al mes (por defecto 1000).
 
-import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
+import { autorizarIA, registrarUsoIA, edadEnAnios, json } from '../_shared/iaServidor.ts';
 import {
-  construirContexto, pedirResumen, ErrorIA, MODELO_DEFECTO, limpiarTexto,
+  construirContexto, pedirResumen, ErrorIA, MODELO_DEFECTO,
   type DatosExpediente,
 } from '../_shared/resumenIa.ts';
 
-const json = (cuerpo: unknown, status = 200) =>
-  new Response(JSON.stringify(cuerpo), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-
 const MAX_CONSULTAS = 6;
 const MAX_RECETAS = 3;
-
-function edadEnAnios(fechaNacimiento: string | null): number | null {
-  if (!fechaNacimiento) return null;
-  const n = new Date(`${fechaNacimiento}T00:00:00`);
-  if (Number.isNaN(n.getTime())) return null;
-  const hoy = new Date();
-  let e = hoy.getFullYear() - n.getFullYear();
-  const m = hoy.getMonth() - n.getMonth();
-  if (m < 0 || (m === 0 && hoy.getDate() < n.getDate())) e--;
-  return e >= 0 ? e : null;
-}
 
 function signos(c: Record<string, unknown>): string | null {
   const partes: string[] = [];
@@ -45,28 +35,12 @@ function signos(c: Record<string, unknown>): string | null {
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
-  if (req.method !== 'POST') return json({ error: 'Método no permitido' }, 405);
 
   try {
-    const apiKey = Deno.env.get('ANTHROPIC_API_KEY');
-    if (!apiKey) return json({ error: 'La IA todavía no está configurada en el servidor (falta el secreto ANTHROPIC_API_KEY).' }, 503);
-
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return json({ error: 'Sesión requerida' }, 401);
-
-    const body = await req.json().catch(() => ({}));
-    const expedienteId = typeof body?.expediente_id === 'string' ? body.expediente_id : '';
-    if (!/^[0-9a-f-]{36}$/i.test(expedienteId)) return json({ error: 'expediente_id inválido' }, 400);
-
-    // Cliente con el JWT del usuario: todo lo que lee pasa por su RLS.
-    const sb = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return json({ error: 'Sesión inválida' }, 401);
-
-    const { data: exp } = await sb.from('expedientes').select('id, paciente_id, clinica_id').eq('id', expedienteId).maybeSingle();
-    if (!exp) return json({ error: 'Expediente no encontrado o sin acceso' }, 404);
+    const ctx = await autorizarIA(req);
+    if (ctx instanceof Response) return ctx;
+    const { sb, expediente: exp } = ctx;
+    const expedienteId = exp.id;
 
     const [pacR, alergR, antR, consR, dxR, recR] = await Promise.all([
       sb.from('pacientes').select('nombre, apellido_paterno, apellido_materno, fecha_nacimiento, sexo, grupo_sanguineo').eq('id', exp.paciente_id).maybeSingle(),
@@ -131,13 +105,10 @@ Deno.serve(async (req: Request) => {
     const modelo = Deno.env.get('ANTHROPIC_MODEL') || MODELO_DEFECTO;
     // El nombre real solo se usa aquí para BORRARLO del texto libre; nunca se envía.
     const nombres = [pacR.data?.nombre, pacR.data?.apellido_paterno, pacR.data?.apellido_materno].filter(Boolean) as string[];
-    const { resumen, uso, modelo: usado } = await pedirResumen(construirContexto(datos, nombres), { apiKey, modelo });
+    const { resumen, uso, modelo: usado } = await pedirResumen(construirContexto(datos, nombres), { apiKey: ctx.apiKey, modelo });
 
-    // Queda constancia del uso de IA sobre este expediente (las lecturas ya se auditan en las RPC).
-    const { error: audErr } = await sb.from('auditoria').insert({
-      clinica_id: exp.clinica_id, profile_id: user.id, accion: 'READ', tabla: 'ia_resumen_paciente', registro_id: expedienteId,
-    });
-    if (audErr) console.warn('resumen-paciente: no se pudo auditar:', limpiarTexto(audErr.message, 200));
+    // Queda constancia del uso (tokens) y de la lectura del expediente por la IA.
+    await registrarUsoIA(ctx, 'resumen_paciente', usado, uso);
 
     return json({
       resumen,

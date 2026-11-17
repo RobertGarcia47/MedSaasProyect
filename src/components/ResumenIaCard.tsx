@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { Icon, Button, Card } from './index';
 import { generarResumenPaciente, type ResumenPacienteResultado } from '../lib/ia';
+import { useEstadoIA, IaActivar } from './IaConsentimiento';
 
 // Tarjeta "Resumen IA" del expediente: borrador previo a la consulta generado por Claude (Haiku).
-// No se genera solo: el médico lo pide, y la primera vez se le explica qué se envía y a quién.
-// (El aviso de aquí es provisional para el demo; el consentimiento real va por clínica, en la base.)
-
-const CLAVE_AVISO = 'ia_aviso_resumen_aceptado';
-const leerAviso = () => { try { return localStorage.getItem(CLAVE_AVISO) === '1'; } catch { return false; } };
+// No se genera solo: el médico lo pide. La clínica tiene que haber activado la IA (consentimiento del
+// propietario, guardado en la base); si no, la tarjeta lo explica y, al propietario, le deja activarla.
 
 function Seccion({ icono, titulo, tono, children }: { icono: string; titulo: string; tono?: 'warning'; children: React.ReactNode }) {
   return (
@@ -51,14 +49,15 @@ function textoPlano(r: ResumenPacienteResultado): string {
   ].join('\n');
 }
 
-export function ResumenIaCard({ expedienteId, puedeUsar, toast }: { expedienteId: string; puedeUsar: boolean; toast?: (m: string) => void }) {
+export function ResumenIaCard({ expedienteId, clinicaId, esOwner, puedeUsar, toast }: {
+  expedienteId: string; clinicaId: string | null; esOwner: boolean; puedeUsar: boolean; toast?: (m: string) => void;
+}) {
+  const ia = useEstadoIA(clinicaId);
   const [estado, setEstado] = useState<'inicial' | 'cargando' | 'listo' | 'error'>('inicial');
   const [datos, setDatos] = useState<ResumenPacienteResultado | null>(null);
   const [error, setError] = useState('');
-  const [avisoVisto, setAvisoVisto] = useState(leerAviso);
 
   const generar = async () => {
-    if (!avisoVisto) { try { localStorage.setItem(CLAVE_AVISO, '1'); } catch { /* sin almacenamiento */ } setAvisoVisto(true); }
     setEstado('cargando'); setError('');
     try {
       setDatos(await generarResumenPaciente(expedienteId));
@@ -83,28 +82,42 @@ export function ResumenIaCard({ expedienteId, puedeUsar, toast }: { expedienteId
         <span style={{ fontSize: 11.5, fontWeight: 700, padding: '3px 9px', borderRadius: 'var(--r-full)', background: 'var(--surface-container-high)', color: 'var(--on-surface-variant)' }}>Borrador</span>
       </div>
 
-      {(estado === 'inicial' || estado === 'error') && (
+      {ia.cargando && <div className="skel-block" style={{ height: 12, width: '70%', borderRadius: 6 }} />}
+
+      {!ia.cargando && ia.error && (
+        <p role="alert" style={{ margin: 0, fontSize: 13, color: 'var(--on-error-container)', background: 'var(--error-container)', borderRadius: 'var(--r-sm)', padding: '10px 12px' }}>
+          No se pudo verificar la configuración de IA de la clínica. Si es la primera vez, falta correr el SQL de consentimiento en Supabase.
+        </p>
+      )}
+
+      {!ia.cargando && !ia.error && !ia.estado?.habilitada && clinicaId && (
         <>
           <p className="body-m" style={{ color: 'var(--on-surface-variant)', lineHeight: 1.6, margin: '0 0 12px' }}>
             Prepara un resumen previo a la consulta con alertas, evolución y pendientes a partir del expediente.
           </p>
-          {!avisoVisto && (
-            <p style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--on-surface-variant)', margin: '0 0 12px', padding: '10px 12px', borderRadius: 'var(--r-sm)', background: 'var(--surface-container)' }}>
-              Se envían a un proveedor externo de IA los datos clínicos del expediente (edad, sexo, alergias, antecedentes, consultas y recetas recientes),
-              <strong> sin nombre, teléfono ni CURP</strong>. Es un borrador de apoyo: verifícalo antes de usarlo.
-            </p>
-          )}
+          <IaActivar clinicaId={clinicaId} esOwner={esOwner} onCambio={ia.recargar} compacto />
+        </>
+      )}
+
+      {!ia.cargando && ia.estado?.habilitada && (estado === 'inicial' || estado === 'error') && (
+        <>
+          <p className="body-m" style={{ color: 'var(--on-surface-variant)', lineHeight: 1.6, margin: '0 0 12px' }}>
+            Prepara un resumen previo a la consulta con alertas, evolución y pendientes a partir del expediente.
+          </p>
+          <p style={{ fontSize: 12.5, lineHeight: 1.55, color: 'var(--on-surface-variant)', margin: '0 0 12px' }}>
+            Se envían a un proveedor externo de IA los datos clínicos del expediente, <strong>sin nombre, teléfono ni CURP</strong>. Es un borrador de apoyo: verifícalo antes de usarlo.
+          </p>
           {estado === 'error' && (
             <div role="alert" style={{ fontSize: 13, fontWeight: 600, color: 'var(--on-error-container)', background: 'var(--error-container)', borderRadius: 'var(--r-sm)', padding: '10px 12px', margin: '0 0 12px' }}>{error}</div>
           )}
           <Button variant="filled" icon="auto_awesome" onClick={generar} disabled={!puedeUsar}>
-            {estado === 'error' ? 'Reintentar' : avisoVisto ? 'Generar resumen' : 'Entiendo, generar resumen'}
+            {estado === 'error' ? 'Reintentar' : 'Generar resumen'}
           </Button>
           {!puedeUsar && <p style={{ fontSize: 12.5, color: 'var(--on-surface-variant)', margin: '10px 0 0' }}>Disponible con una suscripción activa.</p>}
         </>
       )}
 
-      {estado === 'cargando' && (
+      {ia.estado?.habilitada && estado === 'cargando' && (
         <div role="status" aria-live="polite">
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: 'var(--on-surface-variant)', marginBottom: 12 }}>
             <Icon name="progress_activity" size={20} style={{ animation: 'spin 1s linear infinite' }} /> Leyendo el expediente…
@@ -113,7 +126,7 @@ export function ResumenIaCard({ expedienteId, puedeUsar, toast }: { expedienteId
         </div>
       )}
 
-      {estado === 'listo' && r && datos && (
+      {ia.estado?.habilitada && estado === 'listo' && r && datos && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--on-surface)' }}>{r.resumen}</p>
           {r.alertas.length > 0 && <Seccion icono="warning" titulo="Alertas" tono="warning"><Lista items={r.alertas} /></Seccion>}

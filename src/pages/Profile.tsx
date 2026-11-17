@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useId } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAccount } from '../context/AccountContext';
 import { Switch, Select } from '../components';
+import { PanelIaConfiguracion } from '../components/IaConsentimiento';
 import type { Especialidad } from '../lib/types';
 import { PLANTILLAS, type Plantilla } from '../lib/pdf';
 import type { AccentColor, ThemeMode } from '../lib/db';
@@ -1209,6 +1210,7 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
     { key: 'apariencia', label: 'Apariencia',             icon: 'palette' },
     { key: 'recetas',    label: 'Recetas',                icon: 'prescriptions' },
     { key: 'equipo',       label: 'Equipo',                 icon: 'group' },
+    { key: 'ia',           label: 'Inteligencia artificial', icon: 'auto_awesome' },
     { key: 'suscripcion',  label: 'Suscripción',            icon: 'workspace_premium' },
     { key: 'notif',      label: 'Notificaciones',         icon: 'notifications' },
     { key: 'seguridad',  label: 'Seguridad y privacidad', icon: 'security' },
@@ -1353,6 +1355,15 @@ export function Settings({ theme, setTheme, accent, setAccent, onLogout, navStyl
                 {plantillaMsg && plantillaMsg !== 'Guardado' && <span style={{ color: 'var(--error)' }}>{plantillaMsg}</span>}
                 {!esEditor && <span style={{ color: 'var(--on-surface-variant)' }}>Solo el propietario de la clínica puede cambiar la plantilla.</span>}
               </div>
+            </>
+          )}
+
+          {tab === 'ia' && (
+            <>
+              <SectionHead icon="auto_awesome" title="Inteligencia artificial" />
+              {account.clinicaId
+                ? <PanelIaConfiguracion clinicaId={account.clinicaId} esOwner={esEditor} />
+                : <p className="body-m" style={{ color: 'var(--on-surface-variant)' }}>Esta cuenta no pertenece a una clínica.</p>}
             </>
           )}
 

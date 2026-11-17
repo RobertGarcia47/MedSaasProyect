@@ -23,9 +23,10 @@ export interface ResumenIA {
   por_revisar: string[];
 }
 
-export interface UsoTokens { input_tokens: number; output_tokens: number }
-
-export const MODELO_DEFECTO = 'claude-haiku-5-5';
+import { llamarHerramienta, ErrorIA, MODELO_DEFECTO, type UsoTokens, type OpcionesLlamada } from './claude.ts';
+// Se re-exportan para que quien ya importaba de aquí (la función y las pruebas) no cambie.
+export { ErrorIA, MODELO_DEFECTO };
+export type { UsoTokens };
 
 // ── Limpieza de texto libre ───────────────────────────────────────────────────
 
@@ -148,52 +149,17 @@ export const HERRAMIENTA = {
 
 // ── Llamada a la API de Claude ────────────────────────────────────────────────
 
-export class ErrorIA extends Error {
-  status: number;
-  constructor(message: string, status = 502) { super(message); this.status = status; }
-}
-
-interface OpcionesLlamada { apiKey: string; modelo?: string; fetchFn?: typeof fetch; timeoutMs?: number }
-
 export async function pedirResumen(contexto: string, op: OpcionesLlamada): Promise<{ resumen: ResumenIA; uso: UsoTokens; modelo: string }> {
-  const modelo = op.modelo || MODELO_DEFECTO;
-  const f = op.fetchFn ?? fetch;
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), op.timeoutMs ?? 45_000);
-  let res: Response;
-  try {
-    res = await f('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      signal: ctrl.signal,
-      headers: { 'content-type': 'application/json', 'x-api-key': op.apiKey, 'anthropic-version': '2023-06-01' },
-      body: JSON.stringify({
-        model: modelo,
-        max_tokens: 1500,
-        system: SYSTEM_PROMPT,
-        tools: [HERRAMIENTA],
-        tool_choice: { type: 'tool', name: HERRAMIENTA.name },
-        messages: [{ role: 'user', content: `<expediente>\n${contexto}\n</expediente>\n\nPrepara el resumen previo a la consulta.` }],
-      }),
-    });
-  } catch (e) {
-    throw new ErrorIA((e as Error).name === 'AbortError' ? 'La IA tardó demasiado en responder. Intenta de nuevo.' : 'No se pudo contactar al servicio de IA.', 504);
-  } finally {
-    clearTimeout(timer);
-  }
+  const { entrada, uso, modelo } = await llamarHerramienta(
+    { system: SYSTEM_PROMPT, herramienta: HERRAMIENTA, mensaje: `<expediente>
+${contexto}
+</expediente>
 
-  if (!res.ok) {
-    let detalle = '';
-    try { detalle = (await res.json())?.error?.message ?? ''; } catch { /* sin cuerpo */ }
-    if (res.status === 401) throw new ErrorIA('La clave de la API de IA no es válida. Revisa el secreto ANTHROPIC_API_KEY.', 502);
-    if (res.status === 429) throw new ErrorIA('Se alcanzó el límite de uso de la IA. Intenta en un momento.', 429);
-    if (res.status === 400 && /credit|balance/i.test(detalle)) throw new ErrorIA('La cuenta de IA no tiene saldo. Agrega crédito en la consola de Anthropic.', 402);
-    throw new ErrorIA(`El servicio de IA respondió con error ${res.status}${detalle ? `: ${detalle}` : ''}`, 502);
-  }
-
-  const data = await res.json();
-  const bloque = (data.content ?? []).find((b: { type: string }) => b.type === 'tool_use');
-  const r = bloque?.input as Partial<ResumenIA> | undefined;
-  if (!r || typeof r.resumen !== 'string') throw new ErrorIA('La IA no devolvió un resumen válido. Intenta de nuevo.');
+Prepara el resumen previo a la consulta.` },
+    op,
+  );
+  const r = entrada as Partial<ResumenIA>;
+  if (typeof r.resumen !== 'string') throw new ErrorIA('La IA no devolvió un resumen válido. Intenta de nuevo.');
 
   const lista = (x: unknown) => (Array.isArray(x) ? x.filter((s) => typeof s === 'string' && s.trim()).slice(0, 5) as string[] : []);
   const resumen: ResumenIA = {
@@ -205,5 +171,5 @@ export async function pedirResumen(contexto: string, op: OpcionesLlamada): Promi
     medicacion: lista(r.medicacion),
     por_revisar: lista(r.por_revisar),
   };
-  return { resumen, uso: { input_tokens: data.usage?.input_tokens ?? 0, output_tokens: data.usage?.output_tokens ?? 0 }, modelo: data.model ?? modelo };
+  return { resumen, uso, modelo };
 }

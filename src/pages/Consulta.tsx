@@ -15,6 +15,7 @@ import { obtenerAntecedentes, guardarAntecedentes, ANTECEDENTES_VACIOS, type Ant
 import { obtenerPlanTratamiento, guardarPlanTratamiento, PLAN_TRATAMIENTO_VACIO, type PlanTratamiento } from '../lib/planTratamiento';
 import { guardarNotaPrivada } from '../lib/notasPrivadas';
 import { Cie10Picker } from '../components/Cie10Picker';
+import { Cie10Sugerencias } from '../components/Cie10Sugerencias';
 import { Icon, Button, Card, IconButton, Select } from '../components';
 import { Pills } from './Clinical';
 
@@ -1110,6 +1111,24 @@ export function Consulta({ go, goBack, toast, patientId }: {
                   : `${diagnosticos.length} ${diagnosticos.length === 1 ? 'diagnóstico' : 'diagnósticos'}`}
               </span>
             </div>
+            <Cie10Sugerencias
+              clinicaId={account.clinicaId}
+              esOwner={account.rol === 'owner'}
+              puedeUsar={puede && !!pid}
+              resolverExpedienteId={async () => expedienteSel ?? await getOrCreateExpediente(pid, account.clinicaId!)}
+              obtenerTexto={() => ({
+                motivo,
+                notas: editorRef.current?.innerHTML ?? '',
+                signos: [
+                  vitales.taSist && vitales.taDiast && `TA ${vitales.taSist}/${vitales.taDiast}`,
+                  vitales.fc && `FC ${vitales.fc}`, vitales.temp && `Temp ${vitales.temp} °C`,
+                  vitales.spo2 && `SpO2 ${vitales.spo2}%`, vitales.glucosa && `Glucosa ${vitales.glucosa}`,
+                  vitales.peso && `Peso ${vitales.peso} kg`,
+                ].filter(Boolean).join(', '),
+              })}
+              yaElegidos={diagnosticos.map((d) => d.code)}
+              onAgregar={addDx}
+              toast={toast} />
             <Cie10Picker
               onSelect={addDx}
               excluir={diagnosticos.map((d) => d.code)}
