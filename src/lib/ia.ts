@@ -89,6 +89,52 @@ export async function generarResumenPaciente(expedienteId: string): Promise<Resu
   return r;
 }
 
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+/** "2026-10-23" → "23 oct 2026". Cualquier otro texto se deja tal cual. */
+export const fechaLegible = (f: string): string => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(f);
+  return m && MESES_CORTOS[Number(m[2]) - 1] ? `${Number(m[3])} ${MESES_CORTOS[Number(m[2]) - 1]} ${m[1]}` : f;
+};
+
+/** Fecha de hoy en hora LOCAL ('YYYY-MM-DD'); toISOString() la adelanta un día por las noches en México. */
+export function hoyLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Texto plano del resumen (para copiar al portapapeles). */
+export function resumenATexto(r: ResumenIA): string {
+  const bloque = (t: string, l: string[]) => (l.length ? `\n${t}\n${l.map((x) => `- ${x}`).join('\n')}` : '');
+  return [
+    'RESUMEN PREVIO A LA CONSULTA (borrador generado por IA — verificar)',
+    '', r.resumen,
+    bloque('ALERTAS', r.alertas),
+    r.evolucion.length ? `\nEVOLUCIÓN\n${r.evolucion.map((e) => `- ${fechaLegible(e.fecha)}: ${e.texto}`).join('\n')}` : '',
+    bloque('MEDICACIÓN RECIENTE', r.medicacion),
+    bloque('POR REVISAR', r.por_revisar),
+  ].join('\n');
+}
+
+/** Título con el que se guarda el resumen como informe: "Resumen IA · 18 nov 2026". */
+export const tituloInformeResumen = (fechaISO: string): string => `Resumen IA · ${fechaLegible(fechaISO)}`;
+
+/**
+ * Cuerpo del informe (HTML, solo h3/p/ul/li/strong: lo que entiende el editor de informes y el PDF) con el resumen.
+ * Todo el texto se escapa porque viene de un modelo.
+ */
+export function resumenAHtmlInforme(r: ResumenIA, fechaISO: string, modelo: string): string {
+  const lista = (items: string[]) => `<ul>${items.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
+  const partes: string[] = [`<p>${esc(r.resumen)}</p>`];
+  if (r.alertas.length) partes.push('<h3>Alertas</h3>', lista(r.alertas));
+  if (r.evolucion.length) {
+    partes.push('<h3>Evolución</h3>', `<ul>${r.evolucion.map((e) => `<li><strong>${esc(fechaLegible(e.fecha))}:</strong> ${esc(e.texto)}</li>`).join('')}</ul>`);
+  }
+  if (r.medicacion.length) partes.push('<h3>Medicación reciente</h3>', lista(r.medicacion));
+  if (r.por_revisar.length) partes.push('<h3>Por revisar</h3>', lista(r.por_revisar));
+  partes.push(`<p><em>Resumen elaborado con apoyo de inteligencia artificial (${esc(modelo.replace(/^claude-/, ''))}) a partir del expediente el ${esc(fechaLegible(fechaISO))}. Verificar antes de usarlo.</em></p>`);
+  return partes.join('');
+}
+
 // ── Indicaciones para el paciente (desde la receta) ───────────────────────────
 
 export interface IndicacionesPaciente {

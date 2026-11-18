@@ -364,15 +364,16 @@ export function Segmented({ options, value, onChange, style = {} }) {
 }
 
 /* ---------- Dialog ---------- */
-export function Dialog({ open, onClose, children, width = 560, style = {} }) {
+// `persistent`: no se cierra con Escape ni al tocar el fondo; solo con los botones del propio diálogo.
+export function Dialog({ open, onClose, children, width = 560, style = {}, persistent = false }) {
   useEffect(() => {
-    const h = (e) => e.key === 'Escape' && onClose && onClose();
+    const h = (e) => e.key === 'Escape' && !persistent && onClose && onClose();
     if (open) document.addEventListener('keydown', h);
     return () => document.removeEventListener('keydown', h);
-  }, [open, onClose]);
+  }, [open, onClose, persistent]);
   if (!open) return null;
   return (
-    <div onClick={onClose} style={{
+    <div onClick={persistent ? undefined : onClose} style={{
       position: 'fixed', inset: 0, background: 'var(--scrim)', zIndex: 1000,
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
       animation: 'fadeIn .2s ease',

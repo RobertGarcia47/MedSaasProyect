@@ -1,76 +1,37 @@
 import { useState } from 'react';
 import { Icon, Button, Card } from './index';
 import { generarResumenPaciente, sinCupo, type ResumenPacienteResultado } from '../lib/ia';
+import { ResumenIaModal } from './ResumenIaModal';
 import { useEstadoIA, IaActivar, AvisoCupo } from './IaConsentimiento';
 
 // Tarjeta "Resumen IA" del expediente: borrador previo a la consulta generado por Claude (Haiku).
 // No se genera solo: el médico lo pide. La clínica tiene que haber activado la IA (consentimiento del
 // propietario, guardado en la base); si no, la tarjeta lo explica y, al propietario, le deja activarla.
 
-function Seccion({ icono, titulo, tono, children }: { icono: string; titulo: string; tono?: 'warning'; children: React.ReactNode }) {
-  return (
-    <div style={{
-      borderRadius: 'var(--r-md)', padding: '12px 14px',
-      background: tono === 'warning' ? 'var(--warning-container)' : 'var(--card-bg)',
-      border: tono === 'warning' ? 'none' : '1px solid var(--outline-variant)',
-      color: tono === 'warning' ? 'var(--on-warning-container)' : 'var(--on-surface)',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, fontSize: 12.5, fontWeight: 700, letterSpacing: '.3px', textTransform: 'uppercase', opacity: .9 }}>
-        <Icon name={icono} size={18} />{titulo}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-const Lista = ({ items }: { items: string[] }) => (
-  <ul style={{ margin: 0, paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 13.5, lineHeight: 1.5 }}>
-    {items.map((t, i) => <li key={i}>{t}</li>)}
-  </ul>
-);
-
-const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-/** "2026-10-23" → "23 oct 2026". Cualquier otro texto se deja tal cual. */
-const fechaLegible = (f: string) => {
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(f);
-  return m && MESES[Number(m[2]) - 1] ? `${Number(m[3])} ${MESES[Number(m[2]) - 1]} ${m[1]}` : f;
-};
-
-function textoPlano(r: ResumenPacienteResultado): string {
-  const s = r.resumen;
-  const bloque = (t: string, l: string[]) => (l.length ? `\n${t}\n${l.map((x) => `- ${x}`).join('\n')}` : '');
-  return [
-    'RESUMEN PREVIO A LA CONSULTA (borrador generado por IA — verificar)',
-    '', s.resumen,
-    bloque('ALERTAS', s.alertas),
-    s.evolucion.length ? `\nEVOLUCIÓN\n${s.evolucion.map((e) => `- ${fechaLegible(e.fecha)}: ${e.texto}`).join('\n')}` : '',
-    bloque('MEDICACIÓN RECIENTE', s.medicacion),
-    bloque('POR REVISAR', s.por_revisar),
-  ].join('\n');
-}
-
-export function ResumenIaCard({ expedienteId, clinicaId, esOwner, puedeUsar, toast }: {
-  expedienteId: string; clinicaId: string | null; esOwner: boolean; puedeUsar: boolean; toast?: (m: string) => void;
+export function ResumenIaCard({ expedienteId, clinicaId, esOwner, puedeUsar, puedeGuardarInforme, onInformeGuardado, onVerPdf, onVerInformes }: {
+  expedienteId: string; clinicaId: string | null; esOwner: boolean; puedeUsar: boolean;
+  /** Guardar el resumen como informe (pide rol clínico y suscripción vigente). */
+  puedeGuardarInforme: boolean;
+  onInformeGuardado: (informeId: string) => void;
+  onVerPdf: (informeId: string) => Promise<void> | void;
+  onVerInformes: () => void;
 }) {
   const ia = useEstadoIA(clinicaId);
   const [estado, setEstado] = useState<'inicial' | 'cargando' | 'listo' | 'error'>('inicial');
   const [datos, setDatos] = useState<ResumenPacienteResultado | null>(null);
   const [error, setError] = useState('');
+  const [modalAbierto, setModalAbierto] = useState(false);
 
   const generar = async () => {
     setEstado('cargando'); setError('');
     try {
       setDatos(await generarResumenPaciente(expedienteId));
       setEstado('listo');
+      setModalAbierto(true);
     } catch (e) {
       setError((e as Error).message);
       setEstado('error');
     }
-  };
-
-  const copiar = async () => {
-    if (!datos) return;
-    try { await navigator.clipboard.writeText(textoPlano(datos)); toast?.('Resumen copiado'); } catch { toast?.('No se pudo copiar'); }
   };
 
   const r = datos?.resumen;
@@ -129,28 +90,33 @@ export function ResumenIaCard({ expedienteId, clinicaId, esOwner, puedeUsar, toa
 
       {ia.estado?.habilitada && estado === 'listo' && r && datos && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--on-surface)' }}>{r.resumen}</p>
-          {r.alertas.length > 0 && <Seccion icono="warning" titulo="Alertas" tono="warning"><Lista items={r.alertas} /></Seccion>}
-          {r.evolucion.length > 0 && (
-            <Seccion icono="timeline" titulo="Evolución">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13.5, lineHeight: 1.5 }}>
-                {r.evolucion.map((e, i) => <div key={i}><strong>{fechaLegible(e.fecha)}</strong> · {e.texto}</div>)}
-              </div>
-            </Seccion>
-          )}
-          {r.medicacion.length > 0 && <Seccion icono="medication" titulo="Medicación reciente"><Lista items={r.medicacion} /></Seccion>}
-          {r.por_revisar.length > 0 && <Seccion icono="checklist" titulo="Por revisar"><Lista items={r.por_revisar} /></Seccion>}
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 2 }}>
-            <span style={{ flex: 1, minWidth: 180, fontSize: 11.5, color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
-              Borrador generado por IA ({datos.modelo.replace(/^claude-/, '')}) a las {new Date(datos.generado_en).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })} ·
-              {' '}{datos.uso.input_tokens + datos.uso.output_tokens} tokens. Verifícalo antes de usarlo.
+          <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--on-surface)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{r.resumen}</p>
+          {r.alertas.length > 0 && (
+            <span style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, padding: '4px 10px', borderRadius: 'var(--r-full)', background: 'var(--warning-container)', color: 'var(--on-warning-container)' }}>
+              <Icon name="warning" size={16} />{r.alertas.length} {r.alertas.length === 1 ? 'alerta' : 'alertas'}
             </span>
-            <Button variant="outlined" size="sm" icon="content_copy" onClick={copiar}>Copiar</Button>
-            <Button variant="outlined" size="sm" icon="refresh" onClick={generar} disabled={!puedeUsar || sinCupo(ia.estado)}>Actualizar</Button>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ flex: 1, minWidth: 180, fontSize: 11.5, color: 'var(--on-surface-variant)', lineHeight: 1.5 }}>
+              Borrador generado por IA a las {new Date(datos.generado_en).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}. Verifícalo antes de usarlo.
+            </span>
+            <Button variant="filled" size="sm" icon="open_in_full" onClick={() => setModalAbierto(true)}>Ver resumen</Button>
           </div>
         </div>
       )}
+
+      <ResumenIaModal
+        open={modalAbierto && estado === 'listo'}
+        datos={datos}
+        expedienteId={expedienteId}
+        puedeActualizar={puedeUsar && !sinCupo(ia.estado)}
+        puedeGuardarInforme={puedeGuardarInforme}
+        onActualizar={() => { setModalAbierto(false); void generar(); }}
+        onCerrar={() => setModalAbierto(false)}
+        onInformeGuardado={onInformeGuardado}
+        onVerPdf={onVerPdf}
+        onVerInformes={() => { setModalAbierto(false); onVerInformes(); }}
+      />
     </Card>
   );
 }

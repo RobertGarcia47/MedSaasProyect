@@ -339,6 +339,19 @@ export function PatientRecord({ id, go, openModal, toast, dataVersion = 0 }: { i
     }
   };
 
+  // PDF de un informe recién guardado desde el Resumen IA (aún no está en la lista cargada).
+  const verInformePdfPorId = async (informeId: string) => {
+    if (!expedienteId) return;
+    try {
+      const inf = (await obtenerInformes(expedienteId)).find((i) => i.id === informeId);
+      if (!inf) { toast?.('No se encontró el informe guardado.'); return; }
+      await verInformePdf(inf);
+    } catch (e) {
+      console.error('No se pudo preparar el PDF del informe:', e);
+      toast?.('No se pudo preparar el PDF del informe.');
+    }
+  };
+
   useEffect(() => {
     if (!id || !clinicaId) { setLoading(false); return; }
     setLoading(true);
@@ -683,7 +696,14 @@ export function PatientRecord({ id, go, openModal, toast, dataVersion = 0 }: { i
               <InfoStat label="Última consulta" value={pac.consultas[0] ? fechaCorta(pac.consultas[0].fecha) : undefined} sub={pac.consultas[0] ? haceCuanto(pac.consultas[0].fecha) : undefined} />
             </Card>
             {expedienteId && (
-              <ResumenIaCard key={expedienteId} expedienteId={expedienteId} clinicaId={account.clinicaId} esOwner={account.rol === 'owner'} puedeUsar={account.accesoNivel !== 'limitado'} toast={toast} />
+              <ResumenIaCard
+                key={expedienteId} expedienteId={expedienteId} clinicaId={account.clinicaId} esOwner={account.rol === 'owner'}
+                puedeUsar={account.accesoNivel !== 'limitado'}
+                puedeGuardarInforme={account.puedeEmitirClinico && account.accesoNivel !== 'limitado'}
+                onInformeGuardado={() => setInformes(null)}
+                onVerPdf={verInformePdfPorId}
+                onVerInformes={() => setTab('informes')}
+              />
             )}
           </div>
         </div>
